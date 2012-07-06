@@ -56,6 +56,8 @@ namespace AtariMapMaker
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
+            this.numericUpDown5 = new System.Windows.Forms.NumericUpDown();
+            this.label3 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -71,6 +73,7 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown3)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).BeginInit();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -241,6 +244,8 @@ namespace AtariMapMaker
             // 
             // tabPage2
             // 
+            this.tabPage2.Controls.Add(this.label3);
+            this.tabPage2.Controls.Add(this.numericUpDown5);
             this.tabPage2.Controls.Add(this.buttonLoadFont);
             this.tabPage2.Controls.Add(this.label2);
             this.tabPage2.Controls.Add(this.numericUpDown4);
@@ -282,6 +287,11 @@ namespace AtariMapMaker
             this.numericUpDown4.Name = "numericUpDown4";
             this.numericUpDown4.Size = new System.Drawing.Size(69, 20);
             this.numericUpDown4.TabIndex = 6;
+            this.numericUpDown4.Value = new decimal(new int[] {
+            2,
+            0,
+            0,
+            0});
             // 
             // numericUpDown3
             // 
@@ -296,6 +306,11 @@ namespace AtariMapMaker
             this.numericUpDown2.Name = "numericUpDown2";
             this.numericUpDown2.Size = new System.Drawing.Size(69, 20);
             this.numericUpDown2.TabIndex = 4;
+            this.numericUpDown2.Value = new decimal(new int[] {
+            2,
+            0,
+            0,
+            0});
             // 
             // numericUpDown1
             // 
@@ -306,7 +321,7 @@ namespace AtariMapMaker
             // 
             // buttonExport
             // 
-            this.buttonExport.Location = new System.Drawing.Point(119, 177);
+            this.buttonExport.Location = new System.Drawing.Point(188, 203);
             this.buttonExport.Name = "buttonExport";
             this.buttonExport.Size = new System.Drawing.Size(75, 23);
             this.buttonExport.TabIndex = 2;
@@ -343,6 +358,26 @@ namespace AtariMapMaker
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // numericUpDown5
+            // 
+            this.numericUpDown5.Location = new System.Drawing.Point(119, 177);
+            this.numericUpDown5.Name = "numericUpDown5";
+            this.numericUpDown5.Size = new System.Drawing.Size(69, 20);
+            this.numericUpDown5.TabIndex = 10;
+            this.numericUpDown5.Value = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            // 
+            // label3
+            // 
+            this.label3.Location = new System.Drawing.Point(13, 179);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(100, 44);
+            this.label3.TabIndex = 11;
+            this.label3.Text = "Extra chars in line";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -369,6 +404,7 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown3)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -402,6 +438,8 @@ namespace AtariMapMaker
         private System.Windows.Forms.NumericUpDown numericUpDown2;
         private System.Windows.Forms.NumericUpDown numericUpDown1;
         private System.Windows.Forms.Button buttonLoadFont;
+        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.NumericUpDown numericUpDown5;
 
     }
 }

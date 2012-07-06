@@ -382,7 +382,7 @@ namespace AtariMapMaker
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    this.Export((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown2.Value, (int)numericUpDown4.Value, 10, "export.dat");
+                    this.Export((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown2.Value, (int)numericUpDown4.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
                     break;
             }
         }
@@ -424,6 +424,7 @@ namespace AtariMapMaker
                     myRenderer.RedrawFont();
                     myCharPicker.GetRenderer().LoadFont(openFileDialog1.FileName);
                     myCharPicker.GetRenderer().RedrawFont();
+                   // myCharPicker.GetPictureTools().Redraw(dataImage);
                     break;
             }
         }

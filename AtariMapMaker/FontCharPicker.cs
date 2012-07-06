@@ -25,8 +25,20 @@ namespace AtariMapMaker
             this.clipboard = clipboard;
             this.palette = palette;
             this.myPictureBox = outputPB;
+            
+            this.myMap = new AtariMap(new Size(1, 1), new Size(16, 16));
+            for (int a = 0; a < 256; a++)
+                myMap.Data[a] = (byte)a;
+
+            //pictureBox1.Image = new Bitmap(256, 256);
+            
             InitializeComponent();
         }
+
+      /*  public AtariPictureTools GetPictureTools()
+        {
+            return fontPickerPictureTools;
+        }*/
 
         public AtariFontRenderer GetRenderer()
         {
@@ -79,15 +91,12 @@ namespace AtariMapMaker
         {
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
-
-            //myRenderer = new AtariFontRenderer("default.fnt");
-            myMap = new AtariMap(new Size(1, 1), new Size(16, 16));
             fontPickerPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, 2);
+            //myRenderer = new AtariFontRenderer("default.fnt");
+            
+            
             dataImage = new Bitmap(128, 128, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-
-            for (int a = 0; a < 256; a++)
-                myMap.Data[a] = (byte)a;
-
+            
             myRenderer.RedrawFont();
             myRenderer.RenderData(myMap, 0, dataImage);
             pictureBox1.Image.Palette = palette.GetPalette();
