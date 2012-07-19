@@ -448,5 +448,29 @@ namespace AtariMapMaker
         {
 
         }
+
+        private void buttonShiftChars_Click(object sender, EventArgs e)
+        {
+            //64-79 -> 80-95
+            //32-47 -> 64-79
+            if (MessageBox.Show("R U sure?", "Shift characters in map", MessageBoxButtons.YesNo) == System.Windows.Forms.DialogResult.Yes)
+            {
+                for (int i = 0; i < myMap.Data.Length; i++)
+                {
+                    if (myMap.Data[i] >= 64 && myMap.Data[i] <= 79)
+                    {
+                        myMap.Data[i] += 16;
+                    }
+                    else
+                    {
+                        if (myMap.Data[i] >= 32 && myMap.Data[i] <= 47)
+                        {
+                        myMap.Data[i] +=32;
+                        }
+                    }
+                }
+                MessageBox.Show("Done");
+            }
+        }
     }
 }

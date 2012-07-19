@@ -44,6 +44,8 @@ namespace AtariMapMaker
             this.button3 = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
             this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.label3 = new System.Windows.Forms.Label();
+            this.numericUpDown5 = new System.Windows.Forms.NumericUpDown();
             this.buttonLoadFont = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.numericUpDown4 = new System.Windows.Forms.NumericUpDown();
@@ -56,8 +58,7 @@ namespace AtariMapMaker
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
-            this.numericUpDown5 = new System.Windows.Forms.NumericUpDown();
-            this.label3 = new System.Windows.Forms.Label();
+            this.buttonShiftChars = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -69,11 +70,11 @@ namespace AtariMapMaker
             this.groupBox2.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.tabPage2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown4)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown3)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).BeginInit();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -244,6 +245,7 @@ namespace AtariMapMaker
             // 
             // tabPage2
             // 
+            this.tabPage2.Controls.Add(this.buttonShiftChars);
             this.tabPage2.Controls.Add(this.label3);
             this.tabPage2.Controls.Add(this.numericUpDown5);
             this.tabPage2.Controls.Add(this.buttonLoadFont);
@@ -263,9 +265,29 @@ namespace AtariMapMaker
             this.tabPage2.Text = "Save/Load/Export";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
+            // label3
+            // 
+            this.label3.Location = new System.Drawing.Point(13, 179);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(100, 44);
+            this.label3.TabIndex = 11;
+            this.label3.Text = "Extra chars in line";
+            // 
+            // numericUpDown5
+            // 
+            this.numericUpDown5.Location = new System.Drawing.Point(119, 177);
+            this.numericUpDown5.Name = "numericUpDown5";
+            this.numericUpDown5.Size = new System.Drawing.Size(69, 20);
+            this.numericUpDown5.TabIndex = 10;
+            this.numericUpDown5.Value = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            // 
             // buttonLoadFont
             // 
-            this.buttonLoadFont.Location = new System.Drawing.Point(6, 287);
+            this.buttonLoadFont.Location = new System.Drawing.Point(8, 256);
             this.buttonLoadFont.Name = "buttonLoadFont";
             this.buttonLoadFont.Size = new System.Drawing.Size(75, 23);
             this.buttonLoadFont.TabIndex = 8;
@@ -358,25 +380,15 @@ namespace AtariMapMaker
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // numericUpDown5
+            // buttonShiftChars
             // 
-            this.numericUpDown5.Location = new System.Drawing.Point(119, 177);
-            this.numericUpDown5.Name = "numericUpDown5";
-            this.numericUpDown5.Size = new System.Drawing.Size(69, 20);
-            this.numericUpDown5.TabIndex = 10;
-            this.numericUpDown5.Value = new decimal(new int[] {
-            10,
-            0,
-            0,
-            0});
-            // 
-            // label3
-            // 
-            this.label3.Location = new System.Drawing.Point(13, 179);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(100, 44);
-            this.label3.TabIndex = 11;
-            this.label3.Text = "Extra chars in line";
+            this.buttonShiftChars.Location = new System.Drawing.Point(8, 332);
+            this.buttonShiftChars.Name = "buttonShiftChars";
+            this.buttonShiftChars.Size = new System.Drawing.Size(105, 52);
+            this.buttonShiftChars.TabIndex = 12;
+            this.buttonShiftChars.Text = "Shift chars\r\n64-79 -> 80-95\r\n32-47 -> 64-79";
+            this.buttonShiftChars.UseVisualStyleBackColor = true;
+            this.buttonShiftChars.Click += new System.EventHandler(this.buttonShiftChars_Click);
             // 
             // MainForm
             // 
@@ -400,11 +412,11 @@ namespace AtariMapMaker
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.tabPage2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown4)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown3)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -440,6 +452,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.Button buttonLoadFont;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.NumericUpDown numericUpDown5;
+        private System.Windows.Forms.Button buttonShiftChars;
 
     }
 }
