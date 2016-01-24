@@ -25,7 +25,7 @@ namespace AtariMapMaker
         //private Bitmap zoomImage;   //obrazok so zoomom a gridmi
         private AtariClipboard clipBoard;   //obrazok(vyrez) co idem kopcit
         //private Bitmap underClipBoardImage;  //zaloha miesta kde idem kreslit clipboard (v toolsoch)
-        private int[] zoomMultiplier = null;
+        private int[] zoomMultiplier = new int[] { 1, 2, 4 }; //100%,200%,400%
         private int drawNo = 0;
         private Graphics gr;
         private FontCharPicker myCharPicker;
@@ -33,7 +33,7 @@ namespace AtariMapMaker
         public MainForm()
         {
             InitializeComponent();
-            zoomMultiplier = new int[] {1,2,4}; //100%,200%,400%
+            //zoomMultiplier = new int[] {1,2,4}; //100%,200%,400%
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -47,7 +47,7 @@ namespace AtariMapMaker
             myRenderer = new AtariFontRenderer();
             myRenderer.SetPalette(myPalette);
            
-            myMap = new AtariMap(new Size(5, 5), new Size(32, 20));
+            myMap = new AtariMap(new Size(20, 10), new Size(32, 8));
 
             this.FillFontColorList();
             //string[] zoomPerc = { "100%", "200%", "400%" };
@@ -291,13 +291,18 @@ namespace AtariMapMaker
 
         private void pictureBox1_ClientSizeChanged(object sender, EventArgs e)
         {
+            if (myMap == null)
+                return;
+
             if (dataImage != null)
                 dataImage.Dispose();
             dataImage = new Bitmap(pictureBox1.Width / zoomMultiplier[zoomIndex], pictureBox1.Height / zoomMultiplier[zoomIndex], System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
 
             if (pictureBox1.Image != null)
+            {
                 pictureBox1.Image.Dispose();
-            gr.Dispose();
+                gr.Dispose();
+            }
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
             gr = Graphics.FromImage(pictureBox1.Image);
@@ -413,6 +418,30 @@ namespace AtariMapMaker
             fs.Dispose();
         }
 
+        private void ExportColumns(int x1, int y1, int x2, int y2, int extraCharsOnLine, string filename)
+        {
+            int xs = x1 * myMap.ScreenSize.Width;
+            int ys = y1 * myMap.ScreenSize.Height;
+            int xf = (x2 + 1) * myMap.ScreenSize.Width;
+            int yf = (y2 + 1) * myMap.ScreenSize.Height;
+
+            System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Create);
+
+
+            byte myData;
+            
+                for (int x = xs; x < xf; x++)
+                    for (int y = ys; y < yf; y++)
+                {
+
+                    
+                     myData = myMap.Data[x + y * myMap.Stride];
+                
+                    fs.WriteByte(myData);
+                }
+            fs.Close();
+            fs.Dispose();
+        }
         private void buttonLoadFont_Click(object sender, EventArgs e)
         {
             openFileDialog1.Filter = "Atari Font (*.fnt)|*.fnt";
@@ -470,6 +499,17 @@ namespace AtariMapMaker
                     }
                 }
                 MessageBox.Show("Done");
+            }
+        }
+
+        private void btn_hoboexport_Click(object sender, EventArgs e)
+        {
+            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            switch (saveFileDialog1.ShowDialog())
+            {
+                case DialogResult.OK:
+                    this.ExportColumns((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown2.Value, (int)numericUpDown4.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
+                    break;
             }
         }
     }
