@@ -46,8 +46,8 @@ namespace AtariMapMaker
 
             myRenderer = new AtariFontRenderer();
             myRenderer.SetPalette(myPalette);
-           
-            myMap = new AtariMap(new Size(20, 10), new Size(32, 8));
+
+            myMap = new AtariMap(new Size(40, 10), new Size(12, 8));
 
             this.FillFontColorList();
             //string[] zoomPerc = { "100%", "200%", "400%" };
@@ -75,11 +75,11 @@ namespace AtariMapMaker
 
         private void button2_Click(object sender, EventArgs e)
         {
-            
+
             myCharPicker.Show();
             //myCharPicker.TopMost = true;
 
-             }
+        }
 
         private void toolStripContainer1_TopToolStripPanel_Click(object sender, EventArgs e)
         {
@@ -97,7 +97,7 @@ namespace AtariMapMaker
             listView1.LargeImageList = GetFontColorImageList(myRenderer.Color5);
             listView1.Columns.Add("Color");
             listView1.Columns.Add("Address");
-                        
+
             listView1.SmallImageList = listView1.LargeImageList;
             for (int i = 0; i < 5; i++)
             {
@@ -116,7 +116,7 @@ namespace AtariMapMaker
         private ImageList GetFontColorImageList(byte[] color5)
         {
             ImageList il = new ImageList();
-            Size size = new Size(30,20);
+            Size size = new Size(30, 20);
             il.ImageSize = size;
             for (int i = 0; i < 5; i++)
             {
@@ -160,7 +160,7 @@ namespace AtariMapMaker
 
         private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
-            
+
             if (e.Button == MouseButtons.Right)     //SCROLL
             {
                 mainPictureTools.Scroll(dataImage, e.Location);
@@ -186,8 +186,8 @@ namespace AtariMapMaker
                     mainPictureTools.DrawUnderClipBoard(clipBoard, e.Location);
                 }
             }
-            int xx = (myRenderer.OffsetX + e.X / (zoomMultiplier[zoomIndex]*8));
-            int yy = (myRenderer.OffsetY + e.Y / (zoomMultiplier[zoomIndex]*8));
+            int xx = (myRenderer.OffsetX + e.X / (zoomMultiplier[zoomIndex] * 8));
+            int yy = (myRenderer.OffsetY + e.Y / (zoomMultiplier[zoomIndex] * 8));
             int scrx = xx / myMap.ScreenSize.Width;
             int scry = yy / myMap.ScreenSize.Height;
             int posx = xx % myMap.ScreenSize.Width;
@@ -264,7 +264,7 @@ namespace AtariMapMaker
         private void timer1_Tick(object sender, EventArgs e)
         {
             //this.Text = "debug: " + mouseStatus + " " + drawNo.ToString();
-            
+
         }
 
         private void pictureBox1_Resize(object sender, EventArgs e)
@@ -344,7 +344,7 @@ namespace AtariMapMaker
             //fs.Write(bb, 0, bb.Length);
 
 
-            
+
             bb = ms.ToArray();
             fs.Write(bb, 0, bb.Length);
 
@@ -362,24 +362,24 @@ namespace AtariMapMaker
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                BinaryFormatter bf = new BinaryFormatter();
-                System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open); //test.dat
-                myMap = (AtariMap)bf.Deserialize(fs);
-                //buttonLoad.Text = fs.Position.ToString();
-                myRenderer = (AtariFontRenderer)bf.Deserialize(fs);
-                //buttonLoad.Text = myMap.ScreenSize.Height.ToString();
-                mainPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, 2);
-                fs.Close();
-                myRenderer.SetPalette(myPalette);
-                this.FillFontColorList();
-                myRenderer.RenderData(myMap, myRenderer.offset, dataImage);
-                mainPictureTools.Redraw(dataImage);
-                pictureBox1.Invalidate();
-                myCharPicker.GetRenderer().FontData = myRenderer.FontData;
-                myCharPicker.GetRenderer().Color5 = myRenderer.Color5;            
-                break;
+                    BinaryFormatter bf = new BinaryFormatter();
+                    System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open); //test.dat
+                    myMap = (AtariMap)bf.Deserialize(fs);
+                    //buttonLoad.Text = fs.Position.ToString();
+                    myRenderer = (AtariFontRenderer)bf.Deserialize(fs);
+                    //buttonLoad.Text = myMap.ScreenSize.Height.ToString();
+                    mainPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, 2);
+                    fs.Close();
+                    myRenderer.SetPalette(myPalette);
+                    this.FillFontColorList();
+                    myRenderer.RenderData(myMap, myRenderer.offset, dataImage);
+                    mainPictureTools.Redraw(dataImage);
+                    pictureBox1.Invalidate();
+                    myCharPicker.GetRenderer().FontData = myRenderer.FontData;
+                    myCharPicker.GetRenderer().Color5 = myRenderer.Color5;
+                    break;
             }
-            }
+        }
 
         private void buttonExport_Click(object sender, EventArgs e)
         {
@@ -396,23 +396,23 @@ namespace AtariMapMaker
         {
             int xs = x1 * myMap.ScreenSize.Width;
             int ys = y1 * myMap.ScreenSize.Height;
-            int xf = (x2+1) * myMap.ScreenSize.Width;
-            int yf = (y2+1) * myMap.ScreenSize.Height;
+            int xf = (x2 + 1) * myMap.ScreenSize.Width;
+            int yf = (y2 + 1) * myMap.ScreenSize.Height;
 
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Create);
 
-             
+
             byte myData;
-            for (int y = ys; y < yf ; y++)
+            for (int y = ys; y < yf; y++)
                 for (int x = xs; x < xf + extraCharsOnLine; x++)
-                { 
-                   
+                {
+
                     if (x < xf)
-                        myData = myMap.Data[x + y*myMap.Stride];
+                        myData = myMap.Data[x + y * myMap.Stride];
                     else
                         myData = 0;
 
-                    fs.WriteByte(myData);       
+                    fs.WriteByte(myData);
                 }
             fs.Close();
             fs.Dispose();
@@ -429,19 +429,54 @@ namespace AtariMapMaker
 
 
             byte myData;
-            
-                for (int x = xs; x < xf; x++)
-                    for (int y = ys; y < yf; y++)
+
+            for (int x = xs; x < xf; x++)
+                for (int y = ys; y < yf; y++)
                 {
 
-                    
-                     myData = myMap.Data[x + y * myMap.Stride];
-                
+
+                    myData = myMap.Data[x + y * myMap.Stride];
+
                     fs.WriteByte(myData);
                 }
             fs.Close();
             fs.Dispose();
         }
+
+        private void ImportColumns(int x1, int y1, string filename)
+        {
+            int xs = x1 * myMap.ScreenSize.Width;
+            int ys = y1 * myMap.ScreenSize.Height;
+            int yf = ys + myMap.ScreenSize.Height;
+
+            System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Open);
+
+
+            byte myData;
+
+            int x = xs;
+            while (fs.Position <= (fs.Length - myMap.ScreenSize.Height))
+            {
+
+                for (int y = ys; y < yf; y++)
+                {
+                    myData = (byte)fs.ReadByte();
+
+                    myMap.Data[x + y * myMap.Stride] = myData;
+
+                }
+                x++;
+                if (x == myMap.Stride)
+                {
+                    MessageBox.Show("Reading aborted! Reached right edge of map.");
+                    break;
+                }
+            }
+            fs.Close();
+            fs.Dispose();
+
+        }
+
         private void buttonLoadFont_Click(object sender, EventArgs e)
         {
             openFileDialog1.Filter = "Atari Font (*.fnt)|*.fnt";
@@ -453,14 +488,14 @@ namespace AtariMapMaker
                     myRenderer.RedrawFont();
                     myCharPicker.GetRenderer().LoadFont(openFileDialog1.FileName);
                     myCharPicker.GetRenderer().RedrawFont();
-                   // myCharPicker.GetPictureTools().Redraw(dataImage);
+                    // myCharPicker.GetPictureTools().Redraw(dataImage);
                     break;
             }
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-          
+
         }
 
         private void button5_Click(object sender, EventArgs e)
@@ -494,7 +529,7 @@ namespace AtariMapMaker
                     {
                         if (myMap.Data[i] >= 32 && myMap.Data[i] <= 47)
                         {
-                        myMap.Data[i] +=32;
+                            myMap.Data[i] += 32;
                         }
                     }
                 }
@@ -509,6 +544,20 @@ namespace AtariMapMaker
             {
                 case DialogResult.OK:
                     this.ExportColumns((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown2.Value, (int)numericUpDown4.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
+                    break;
+            }
+        }
+
+        private void btnHOBOimport_Click(object sender, EventArgs e)
+        {
+            openFileDialog1.Filter = "Column based map datafile (*.*)|*.*";
+            switch (openFileDialog1.ShowDialog())
+            {
+                case DialogResult.OK:
+                    this.ImportColumns((int)numericUpDown1.Value, (int)numericUpDown3.Value, openFileDialog1.FileName);
+                    myRenderer.RenderData(myMap, myRenderer.offset, dataImage);
+                mainPictureTools.Redraw(dataImage);
+                pictureBox1.Invalidate();
                     break;
             }
         }

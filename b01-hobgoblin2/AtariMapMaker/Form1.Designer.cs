@@ -60,6 +60,7 @@ namespace AtariMapMaker
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
+            this.btnHOBOimport = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -96,7 +97,7 @@ namespace AtariMapMaker
             this.splitContainer1.Panel2.Controls.Add(this.labelScreen);
             this.splitContainer1.Panel2.Controls.Add(this.tabControl1);
             this.splitContainer1.Size = new System.Drawing.Size(1675, 1001);
-            this.splitContainer1.SplitterDistance = 1183;
+            this.splitContainer1.SplitterDistance = 1180;
             this.splitContainer1.SplitterWidth = 7;
             this.splitContainer1.TabIndex = 0;
             this.splitContainer1.SplitterMoved += new System.Windows.Forms.SplitterEventHandler(this.splitContainer1_SplitterMoved);
@@ -108,7 +109,7 @@ namespace AtariMapMaker
             this.pictureBox1.Location = new System.Drawing.Point(0, 0);
             this.pictureBox1.Margin = new System.Windows.Forms.Padding(6);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(1183, 1001);
+            this.pictureBox1.Size = new System.Drawing.Size(1180, 1001);
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
             this.pictureBox1.ClientSizeChanged += new System.EventHandler(this.pictureBox1_ClientSizeChanged);
@@ -159,7 +160,7 @@ namespace AtariMapMaker
             this.tabPage1.Margin = new System.Windows.Forms.Padding(6);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(6);
-            this.tabPage1.Size = new System.Drawing.Size(505, 866);
+            this.tabPage1.Size = new System.Drawing.Size(499, 866);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Colors";
             this.tabPage1.UseVisualStyleBackColor = true;
@@ -262,6 +263,7 @@ namespace AtariMapMaker
             // 
             // tabPage2
             // 
+            this.tabPage2.Controls.Add(this.btnHOBOimport);
             this.tabPage2.Controls.Add(this.btn_hoboexport);
             this.tabPage2.Controls.Add(this.buttonShiftChars);
             this.tabPage2.Controls.Add(this.label3);
@@ -288,7 +290,7 @@ namespace AtariMapMaker
             // 
             this.btn_hoboexport.Location = new System.Drawing.Point(15, 375);
             this.btn_hoboexport.Name = "btn_hoboexport";
-            this.btn_hoboexport.Size = new System.Drawing.Size(148, 36);
+            this.btn_hoboexport.Size = new System.Drawing.Size(148, 42);
             this.btn_hoboexport.TabIndex = 13;
             this.btn_hoboexport.Text = "HOBOexport";
             this.btn_hoboexport.UseVisualStyleBackColor = true;
@@ -397,7 +399,7 @@ namespace AtariMapMaker
             // 
             // buttonSave
             // 
-            this.buttonSave.Location = new System.Drawing.Point(11, 129);
+            this.buttonSave.Location = new System.Drawing.Point(172, 48);
             this.buttonSave.Margin = new System.Windows.Forms.Padding(6);
             this.buttonSave.Name = "buttonSave";
             this.buttonSave.Size = new System.Drawing.Size(138, 42);
@@ -408,7 +410,7 @@ namespace AtariMapMaker
             // 
             // buttonLoad
             // 
-            this.buttonLoad.Location = new System.Drawing.Point(11, 70);
+            this.buttonLoad.Location = new System.Drawing.Point(11, 44);
             this.buttonLoad.Margin = new System.Windows.Forms.Padding(6);
             this.buttonLoad.Name = "buttonLoad";
             this.buttonLoad.Size = new System.Drawing.Size(138, 46);
@@ -425,6 +427,16 @@ namespace AtariMapMaker
             // openFileDialog1
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
+            // 
+            // btnHOBOimport
+            // 
+            this.btnHOBOimport.Location = new System.Drawing.Point(15, 168);
+            this.btnHOBOimport.Name = "btnHOBOimport";
+            this.btnHOBOimport.Size = new System.Drawing.Size(148, 42);
+            this.btnHOBOimport.TabIndex = 14;
+            this.btnHOBOimport.Text = "HOBOimport";
+            this.btnHOBOimport.UseVisualStyleBackColor = true;
+            this.btnHOBOimport.Click += new System.EventHandler(this.btnHOBOimport_Click);
             // 
             // MainForm
             // 
@@ -491,6 +503,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.NumericUpDown numericUpDown5;
         private System.Windows.Forms.Button buttonShiftChars;
         private System.Windows.Forms.Button btn_hoboexport;
+        private System.Windows.Forms.Button btnHOBOimport;
 
     }
 }
