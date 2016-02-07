@@ -25,7 +25,7 @@ namespace AtariMapMaker
         //private Bitmap zoomImage;   //obrazok so zoomom a gridmi
         private AtariClipboard clipBoard;   //obrazok(vyrez) co idem kopcit
         //private Bitmap underClipBoardImage;  //zaloha miesta kde idem kreslit clipboard (v toolsoch)
-        private int[] zoomMultiplier = new int[] { 1, 2, 4 }; //100%,200%,400%
+        private int[] zoomMultiplier = new int[] { 1, 2, 3, 4 }; //100%,200%,400%
         private int drawNo = 0;
         private Graphics gr;
         private FontCharPicker myCharPicker;
@@ -44,7 +44,15 @@ namespace AtariMapMaker
                 MessageBox.Show("Error loading palette laoo.act RC=" + RC.ToString());
             colorPicker = new AtariColorPicker(myPalette);
 
-            myRenderer = new AtariFontRenderer();
+            try
+            {
+                myRenderer = new AtariFontRenderer();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading default font file (default.fnt):" + ex.Message);
+            }
+
             myRenderer.SetPalette(myPalette);
 
             myMap = new AtariMap(new Size(40, 10), new Size(12, 8));
@@ -64,7 +72,7 @@ namespace AtariMapMaker
             clipBoard = new AtariClipboard();
             mainPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, zoomMultiplier[zoomIndex]);
             mainPictureTools.Redraw(dataImage);
-            myCharPicker = new FontCharPicker(myRenderer, clipBoard, myPalette, pictureBox2);
+            myCharPicker = new FontCharPicker(myRenderer, clipBoard, myPalette, pictureBox2, zoomMultiplier[zoomIndex]);
         }
 
         //private void button1_Click(object sender, EventArgs e)
@@ -75,7 +83,9 @@ namespace AtariMapMaker
 
         private void button2_Click(object sender, EventArgs e)
         {
-
+            myCharPicker.SetZoom(zoomMultiplier[zoomIndex]);
+            clipBoard.SetZoom(zoomMultiplier[zoomIndex]); //- not needed at all
+            myCharPicker.Invalidate();
             myCharPicker.Show();
             //myCharPicker.TopMost = true;
 
@@ -97,15 +107,16 @@ namespace AtariMapMaker
             listView1.LargeImageList = GetFontColorImageList(myRenderer.Color5);
             listView1.Columns.Add("Color");
             listView1.Columns.Add("Address");
-
+            listView1.Columns.Add("Address2");
             listView1.SmallImageList = listView1.LargeImageList;
             for (int i = 0; i < 5; i++)
             {
                 ListViewItem lvi = new ListViewItem();
-                lvi.Text = "COLOR" + i.ToString();
+                lvi.Text = "COLPF" + i.ToString();
                 if (i == 4)
-                    lvi.Text += " (bg)";
+                    lvi.Text = "COLBAK";
                 lvi.SubItems.Add("$" + String.Format("{0:X4}", 708 + i)); //$d016
+                lvi.SubItems.Add("$" + String.Format("{0:X4}", 0xd016 + i));
                 lvi.ImageIndex = i;
                 listView1.Items.Add(lvi);
             }
@@ -213,9 +224,7 @@ namespace AtariMapMaker
                     int charsize = zoomMultiplier[zoomIndex] * 8;
                     int addoffset = (e.X / charsize) + myMap.Stride * (e.Y / charsize);
                     clipBoard.Paste(myRenderer.offset + addoffset);
-                    myRenderer.RenderData(myMap, myRenderer.offset, dataImage);
-                    mainPictureTools.Redraw(dataImage);
-                    pictureBox1.Invalidate();
+                    RedrawEditorWindow();
                 }
                 else
                 {
@@ -372,9 +381,7 @@ namespace AtariMapMaker
                     fs.Close();
                     myRenderer.SetPalette(myPalette);
                     this.FillFontColorList();
-                    myRenderer.RenderData(myMap, myRenderer.offset, dataImage);
-                    mainPictureTools.Redraw(dataImage);
-                    pictureBox1.Invalidate();
+                    RedrawEditorWindow();
                     myCharPicker.GetRenderer().FontData = myRenderer.FontData;
                     myCharPicker.GetRenderer().Color5 = myRenderer.Color5;
                     break;
@@ -555,11 +562,47 @@ namespace AtariMapMaker
             {
                 case DialogResult.OK:
                     this.ImportColumns((int)numericUpDown1.Value, (int)numericUpDown3.Value, openFileDialog1.FileName);
-                    myRenderer.RenderData(myMap, myRenderer.offset, dataImage);
-                mainPictureTools.Redraw(dataImage);
-                pictureBox1.Invalidate();
+                    RedrawEditorWindow();
                     break;
             }
+        }
+
+        private void btnNewMap_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("Create new map? (current mapdata will be deleted!)", "New map", MessageBoxButtons.OKCancel) == System.Windows.Forms.DialogResult.OK)
+            {
+               
+                myMap = new AtariMap(new Size((int)nudMapW.Value, (int)nudMapH.Value), new Size((int)nudScreenW.Value, (int)nudScreenH.Value));
+                mainPictureTools.SetMap(myMap);
+                RedrawEditorWindow();
+            }
+
+        }
+
+        private void tbZoom_Scroll(object sender, EventArgs e)
+        {
+            zoomIndex = tbZoom.Value;
+            mainPictureTools.SetZoom(zoomMultiplier[zoomIndex]);
+            pictureBox1_ClientSizeChanged(null, null);
+        }
+
+        private void cbDrawGrid_CheckedChanged(object sender, EventArgs e)
+        {
+            mainPictureTools.SetGridVisibility(cbDrawBorders.Checked, cbDrawGrid.Checked);
+            RedrawEditorWindow();
+        }
+
+        private void cbDrawBorders_CheckedChanged(object sender, EventArgs e)
+        {
+            mainPictureTools.SetGridVisibility(cbDrawBorders.Checked, cbDrawGrid.Checked);
+            RedrawEditorWindow();
+        }
+
+        private void RedrawEditorWindow()
+        {
+            myRenderer.RenderData(myMap, myRenderer.offset, dataImage); //redraw data
+            mainPictureTools.Redraw(dataImage);                         //redraw grids
+            pictureBox1.Invalidate();
         }
     }
 }

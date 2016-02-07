@@ -24,6 +24,11 @@ namespace AtariMapMaker
         { 
         }
 
+        public void SetZoom(int zoom)
+        {
+            this.zoom = zoom;
+        }
+
         public Bitmap UnderClipBoardImage
         {
             get

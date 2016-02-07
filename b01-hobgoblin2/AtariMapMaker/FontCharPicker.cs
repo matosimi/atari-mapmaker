@@ -18,14 +18,15 @@ namespace AtariMapMaker
         private AtariClipboard clipboard;
         private AtariPalette palette;
         private PictureBox myPictureBox;
+        private int zoom;
 
-        public FontCharPicker(AtariFontRenderer mainRenderer, AtariClipboard clipboard, AtariPalette palette, PictureBox outputPB)
+        public FontCharPicker(AtariFontRenderer mainRenderer, AtariClipboard clipboard, AtariPalette palette, PictureBox outputPB, int zoom)
         {
             this.myRenderer = mainRenderer;
             this.clipboard = clipboard;
             this.palette = palette;
             this.myPictureBox = outputPB;
-            
+            this.zoom = zoom;
             this.myMap = new AtariMap(new Size(1, 1), new Size(16, 16));
             for (int a = 0; a < 256; a++)
                 myMap.Data[a] = (byte)a;
@@ -43,6 +44,14 @@ namespace AtariMapMaker
         public AtariFontRenderer GetRenderer()
         {
             return myRenderer;
+        }
+
+        public void SetZoom(int zoom)
+        {
+            this.zoom = zoom;
+            pictureBox1.Width = zoom * 128;
+            pictureBox1.Height = zoom * 128;
+            FontCharPicker_VisibleChanged(null, null);
         }
 
         private void FontCharPicker_Load(object sender, EventArgs e)
@@ -91,7 +100,7 @@ namespace AtariMapMaker
         {
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
-            fontPickerPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, 2);
+            fontPickerPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, zoom);
             //myRenderer = new AtariFontRenderer("default.fnt");
             
             
@@ -99,6 +108,7 @@ namespace AtariMapMaker
             
             myRenderer.RedrawFont();
             myRenderer.RenderData(myMap, 0, dataImage);
+            pictureBox2.Image = dataImage;
             pictureBox1.Image.Palette = palette.GetPalette();
             fontPickerPictureTools.Redraw(dataImage, true, false, true);
         }

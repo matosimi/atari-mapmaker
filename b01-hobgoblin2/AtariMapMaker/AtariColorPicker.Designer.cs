@@ -82,7 +82,9 @@ namespace AtariMapMaker
             this.Controls.Add(this.labelOldCol);
             this.Controls.Add(this.labelNewCol);
             this.Controls.Add(this.pictureBox1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
             this.Name = "AtariColorPicker";
             this.Text = "AtariColorPicker";
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
