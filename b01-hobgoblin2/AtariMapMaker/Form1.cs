@@ -26,7 +26,7 @@ namespace AtariMapMaker
         private AtariClipboard clipBoard;   //obrazok(vyrez) co idem kopcit
         //private Bitmap underClipBoardImage;  //zaloha miesta kde idem kreslit clipboard (v toolsoch)
         private int[] zoomMultiplier = new int[] { 1, 2, 3, 4 }; //100%,200%,400%
-        private int drawNo = 0;
+        //private int drawNo = 0;
         private Graphics gr;
         private FontCharPicker myCharPicker;
 
@@ -41,7 +41,10 @@ namespace AtariMapMaker
             myPalette = new AtariPalette();
             int RC = myPalette.Load("laoo.act");
             if (RC > 0)
+            {
                 MessageBox.Show("Error loading palette laoo.act RC=" + RC.ToString());
+                Application.Exit();
+            }
             colorPicker = new AtariColorPicker(myPalette);
 
             try
@@ -51,8 +54,9 @@ namespace AtariMapMaker
             catch (Exception ex)
             {
                 MessageBox.Show("Error loading default font file (default.fnt):" + ex.Message);
+                Application.Exit();
             }
-
+          
             myRenderer.SetPalette(myPalette);
 
             myMap = new AtariMap(new Size(40, 10), new Size(12, 8));
@@ -75,19 +79,14 @@ namespace AtariMapMaker
             myCharPicker = new FontCharPicker(myRenderer, clipBoard, myPalette, pictureBox2, zoomMultiplier[zoomIndex]);
         }
 
-        //private void button1_Click(object sender, EventArgs e)
-        //{
-        //    button1.BackColor = colorPicker.Pick(clr);
-        //    clr = colorPicker.PickedColorIndex();
-        //}
-
+     
         private void button2_Click(object sender, EventArgs e)
         {
             myCharPicker.SetZoom(zoomMultiplier[zoomIndex]);
             clipBoard.SetZoom(zoomMultiplier[zoomIndex]); //- not needed at all
             myCharPicker.Invalidate();
             myCharPicker.Show();
-            //myCharPicker.TopMost = true;
+            myCharPicker.BringToFront();
 
         }
 
@@ -141,12 +140,7 @@ namespace AtariMapMaker
         }
 
 
-        //private void button5_Click(object sender, EventArgs e)
-        //{
-        //    this.FillFontColorList();
-        //}
-
-        private void listView1_MouseLeave(object sender, EventArgs e)
+         private void listView1_MouseLeave(object sender, EventArgs e)
         {
             for (int a = 0; a < listView1.Items.Count; a++)
             {
