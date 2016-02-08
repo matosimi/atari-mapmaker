@@ -65,14 +65,15 @@ namespace AtariMapMaker
         }
 
         public void LoadFont(String fontname)
-        {
-            FileStream fs = new FileStream(fontname, FileMode.Open);
-            fs.Read(fontData, 0, 1024);
-            fs.Close();
-            for (int a = 0; a < 1024; a++)
-            {
-                fontData[a + 1024] = (byte)(fontData[a] ^ 0xFF);
-            }
+        {    
+                FileStream fs = new FileStream(fontname, FileMode.Open);
+                fs.Read(fontData, 0, 1024);
+                fs.Close();
+                for (int a = 0; a < 1024; a++)
+                {
+                    fontData[a + 1024] = (byte)(fontData[a] ^ 0xFF);
+                }
+    
         }
 
         public void SetPalette(AtariPalette yourPalette)

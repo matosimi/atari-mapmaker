@@ -17,10 +17,10 @@ namespace AtariMapMaker
         Pen screenSeparatorPen = new Pen(Color.Red);
         Pen selectionPen = new Pen(Color.Lime);
         Color gridColor = Color.White;
-        int zoom = 2;
-        int charsize = 16;
-
-
+        int zoom;
+        int charsize;
+        bool drawScreenBorders = true;
+        bool drawGrid = true;
 
         public AtariPictureTools(Bitmap destImage, AtariFontRenderer myRenderer, AtariMap myMap, int zoom)
         {
@@ -31,6 +31,23 @@ namespace AtariMapMaker
             this.destImage = destImage;
             this.gr = Graphics.FromImage(destImage);
             this.gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+        }
+
+        public void SetGridVisibility(bool drawScreenBorders, bool drawGrid)
+        {
+            this.drawGrid = drawGrid;
+            this.drawScreenBorders = drawScreenBorders;
+        }
+
+        public void SetMap(AtariMap myMap)
+        {
+            this.myMap = myMap;
+        }
+
+        public void SetZoom(int zoom)
+        {
+            this.zoom = zoom;
+            this.charsize = zoom * 8;
         }
 
         public void SelectionStart(Point firstCorner)
@@ -52,6 +69,14 @@ namespace AtariMapMaker
 
                 mouseSelection.Width = charsize + mx - mouseSelection.X;
                 mouseSelection.Height = charsize + my - mouseSelection.Y;
+
+                if (mouseSelection.Width + mouseSelection.X > dataImage.Width*zoom ||
+                    mouseSelection.Height + mouseSelection.Y > dataImage.Height*zoom)
+                {
+                    //selection out of bounds - do not copy, do not draw selection
+                    mouseSelection.Width = 0;
+                    mouseSelection.Height = 0;
+                }
 
                 // gr.DrawImage(dataImage, 0, 0, dataImage.Width * zoom, dataImage.Height * zoom);
                 this.Redraw(dataImage);
@@ -113,7 +138,7 @@ namespace AtariMapMaker
 
         public void Redraw(Bitmap dataImage)
         {
-            Redraw(dataImage, true, true, true);
+            Redraw(dataImage, true, drawScreenBorders, drawGrid);
         }
 
         public void Redraw(Bitmap dataImage, bool drawData, bool drawScreenBorders, bool drawGrid)
