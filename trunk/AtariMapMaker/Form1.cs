@@ -76,7 +76,10 @@ namespace AtariMapMaker
             clipBoard = new AtariClipboard();
             mainPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, zoomMultiplier[zoomIndex]);
             mainPictureTools.Redraw(dataImage);
-            myCharPicker = new FontCharPicker(myRenderer, clipBoard, myPalette, pictureBox2, zoomMultiplier[zoomIndex]);
+
+            AtariFontRenderer charPickerRenderer = new AtariFontRenderer();
+            charPickerRenderer.SetPalette(myPalette);
+            myCharPicker = new FontCharPicker(charPickerRenderer, clipBoard, myPalette, pictureBox2, zoomMultiplier[zoomIndex]);
         }
 
      
@@ -158,8 +161,11 @@ namespace AtariMapMaker
                 colorPicker.Pick(index);
 
                 myRenderer.Color5[colorIndex] = (byte)colorPicker.PickedColorIndex();
+                myCharPicker.GetRenderer().Color5[colorIndex] = (byte)colorPicker.PickedColorIndex();
                 FillFontColorList();
                 myRenderer.RedrawFont();
+                pictureBox1.Invalidate();
+                myCharPicker.GetRenderer().RedrawFont();
             }
         }
 
@@ -597,6 +603,11 @@ namespace AtariMapMaker
             myRenderer.RenderData(myMap, myRenderer.offset, dataImage); //redraw data
             mainPictureTools.Redraw(dataImage);                         //redraw grids
             pictureBox1.Invalidate();
+        }
+
+        private void listView1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

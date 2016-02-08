@@ -108,7 +108,6 @@ namespace AtariMapMaker
             
             myRenderer.RedrawFont();
             myRenderer.RenderData(myMap, 0, dataImage);
-            pictureBox2.Image = dataImage;
             pictureBox1.Image.Palette = palette.GetPalette();
             fontPickerPictureTools.Redraw(dataImage, true, false, true);
         }
