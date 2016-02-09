@@ -31,16 +31,16 @@ namespace AtariMapMaker
             for (int a = 0; a < 256; a++)
                 myMap.Data[a] = (byte)a;
 
-            //pictureBox1.Image = new Bitmap(256, 256);
             
             InitializeComponent();
         }
 
-      /*  public AtariPictureTools GetPictureTools()
+        public PictureBox GetPictureBox()
         {
-            return fontPickerPictureTools;
-        }*/
+            return this.pictureBox1;
+        }
 
+   
         public AtariFontRenderer GetRenderer()
         {
             return myRenderer;
@@ -94,6 +94,11 @@ namespace AtariMapMaker
             pictureBox1.Image.Palette = palette.GetPalette();
             myRenderer.RedrawFont();
             myRenderer.RenderData(myMap, 0, dataImage);
+        }
+
+        public void RedrawFontWindow()
+        {
+            FontCharPicker_VisibleChanged(null, null);
         }
 
         private void FontCharPicker_VisibleChanged(object sender, EventArgs e)

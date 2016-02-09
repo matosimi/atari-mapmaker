@@ -166,6 +166,8 @@ namespace AtariMapMaker
                 myRenderer.RedrawFont();
                 pictureBox1.Invalidate();
                 myCharPicker.GetRenderer().RedrawFont();
+                myCharPicker.RedrawFontWindow();
+                RedrawEditorWindow();
             }
         }
 
@@ -384,6 +386,7 @@ namespace AtariMapMaker
                     RedrawEditorWindow();
                     myCharPicker.GetRenderer().FontData = myRenderer.FontData;
                     myCharPicker.GetRenderer().Color5 = myRenderer.Color5;
+                    myCharPicker.RedrawFontWindow();
                     break;
             }
         }
@@ -495,7 +498,8 @@ namespace AtariMapMaker
                     myRenderer.RedrawFont();
                     myCharPicker.GetRenderer().LoadFont(openFileDialog1.FileName);
                     myCharPicker.GetRenderer().RedrawFont();
-                    // myCharPicker.GetPictureTools().Redraw(dataImage);
+                    myCharPicker.RedrawFontWindow();
+                    RedrawEditorWindow();
                     break;
             }
         }
