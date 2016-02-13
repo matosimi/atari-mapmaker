@@ -72,6 +72,14 @@ namespace AtariMapMaker
                 fontPickerPictureTools.SelectionChange(dataImage, e.Location);
                 pictureBox1.Invalidate();
             }
+
+            int xx = (myRenderer.OffsetX + e.X / (zoom * 8));
+            int yy = (myRenderer.OffsetY + e.Y / (zoom * 8));
+            if (xx < myMap.Stride && yy < myMap.Screens.Height * myMap.ScreenSize.Height)
+            {
+                byte charVal = myMap.Data[xx + yy * myMap.Stride];
+                this.Text = "FontCharPicker - Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
+            }
         }
 
         private void pictureBox1_MouseUp(object sender, MouseEventArgs e)

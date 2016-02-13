@@ -59,7 +59,8 @@ namespace AtariMapMaker
           
             myRenderer.SetPalette(myPalette);
 
-            myMap = new AtariMap(new Size(40, 10), new Size(12, 8));
+            myMap = new AtariMap(new Size(4, 4), new Size(32, 20));
+            numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.Screens.Width;
 
             this.FillFontColorList();
             //string[] zoomPerc = { "100%", "200%", "400%" };
@@ -80,6 +81,9 @@ namespace AtariMapMaker
             AtariFontRenderer charPickerRenderer = new AtariFontRenderer();
             charPickerRenderer.SetPalette(myPalette);
             myCharPicker = new FontCharPicker(charPickerRenderer, clipBoard, myPalette, pictureBox2, zoomMultiplier[zoomIndex]);
+        
+            comboOperation.Items.AddRange(new String[4] {"Export","Import","Column Export","Column Import"});
+            comboOperation.SelectedIndex = 0;
         }
 
      
@@ -205,8 +209,14 @@ namespace AtariMapMaker
             int scry = yy / myMap.ScreenSize.Height;
             int posx = xx % myMap.ScreenSize.Width;
             int posy = yy % myMap.ScreenSize.Height;
-            labelScreen.Text = "Screen: " + scrx.ToString() + ":" + scry.ToString();
-            labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
+
+            if (xx < myMap.Stride && yy < myMap.Screens.Height * myMap.ScreenSize.Height)
+            {
+                labelScreen.Text = "Screen: " + scrx.ToString() + ":" + scry.ToString();
+                labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
+                byte charVal = myMap.Data[xx + yy * myMap.Stride];
+                labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
+            }
         }
 
         /*private void toolStripComboBoxZoom_SelectedIndexChanged(object sender, EventArgs e)
@@ -379,7 +389,9 @@ namespace AtariMapMaker
                     //buttonLoad.Text = fs.Position.ToString();
                     myRenderer = (AtariFontRenderer)bf.Deserialize(fs);
                     //buttonLoad.Text = myMap.ScreenSize.Height.ToString();
-                    mainPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, 2);
+                    mainPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, zoomMultiplier[tbZoom.Value]);
+                    mainPictureTools.SetGridVisibility(cbDrawBorders.Checked, cbDrawGrid.Checked);
+                  
                     fs.Close();
                     myRenderer.SetPalette(myPalette);
                     this.FillFontColorList();
@@ -398,6 +410,8 @@ namespace AtariMapMaker
             {
                 case DialogResult.OK:
                     this.Export((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown2.Value, (int)numericUpDown4.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
+                    int width = (int)((numericUpDown2.Value - numericUpDown1.Value + 1) * myMap.ScreenSize.Width + numericUpDown5.Value);
+                    MessageBox.Show("Export dataline width: " + width);
                     break;
             }
         }
@@ -487,6 +501,39 @@ namespace AtariMapMaker
 
         }
 
+        private void Import(int x1, int y1, int width, string filename)
+        {
+            int xs = x1 * myMap.ScreenSize.Width;
+            int ys = y1 * myMap.ScreenSize.Height;
+            int xf = xs + width;
+
+            System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Open);
+
+
+            byte myData;
+
+            int y = ys;
+            while (fs.Position <= (fs.Length - width))
+            {
+                for (int x = xs; x < xf; x++)
+                {
+                    myData = (byte)fs.ReadByte();
+                    myMap.Data[x + y * myMap.Stride] = myData;
+
+                }
+                y++;
+                if (y == myMap.Screens.Height * myMap.ScreenSize.Height)
+                {
+                    MessageBox.Show("Reading aborted! Reached bottom edge of map.");
+                    break;
+                }
+            }
+    
+            fs.Close();
+            fs.Dispose();
+
+        }
+
         private void buttonLoadFont_Click(object sender, EventArgs e)
         {
             openFileDialog1.Filter = "Atari Font (*.fnt)|*.fnt";
@@ -571,6 +618,18 @@ namespace AtariMapMaker
             }
         }
 
+        private void btnImport_Click(object sender, EventArgs e)
+        {
+            openFileDialog1.Filter = "Map datafile (*.*)|*.*";
+            switch (openFileDialog1.ShowDialog())
+            {
+                case DialogResult.OK:
+                    this.Import((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown6.Value, openFileDialog1.FileName);
+                    RedrawEditorWindow();
+                    break;
+            }
+        }
+
         private void btnNewMap_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Create new map? (current mapdata will be deleted!)", "New map", MessageBoxButtons.OKCancel) == System.Windows.Forms.DialogResult.OK)
@@ -578,6 +637,7 @@ namespace AtariMapMaker
                
                 myMap = new AtariMap(new Size((int)nudMapW.Value, (int)nudMapH.Value), new Size((int)nudScreenW.Value, (int)nudScreenH.Value));
                 mainPictureTools.SetMap(myMap);
+                numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.Screens.Width;
                 RedrawEditorWindow();
             }
 
@@ -613,5 +673,83 @@ namespace AtariMapMaker
         {
 
         }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void comboOperation_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            //{"Export","Import","Column Export","Column Import"};
+            switch (comboOperation.SelectedIndex)
+            {
+                case 0:
+                    numericUpDown1.Enabled = true;
+                    numericUpDown2.Enabled = true;
+                    numericUpDown3.Enabled = true;
+                    numericUpDown4.Enabled = true;
+                    numericUpDown5.Enabled = true;
+                    numericUpDown6.Enabled = false;
+                    break;
+                case 1:
+                    numericUpDown1.Enabled = true;
+                    numericUpDown2.Enabled = false;
+                    numericUpDown3.Enabled = true;
+                    numericUpDown4.Enabled = false;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = true;
+                    break;
+                case 2:
+                    numericUpDown1.Enabled = true;
+                    numericUpDown2.Enabled = true;
+                    numericUpDown3.Enabled = true;
+                    numericUpDown4.Enabled = true;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
+                case 3:
+                    numericUpDown1.Enabled = true;
+                    numericUpDown2.Enabled = false;
+                    numericUpDown3.Enabled = true;
+                    numericUpDown4.Enabled = false;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
+            
+            }
+        }
+
+        private void btnPerform_Click(object sender, EventArgs e)
+        {
+            //{"Export","Import","Column Export","Column Import"};
+            switch (comboOperation.SelectedIndex)
+            {
+                case 0:
+                    buttonExport_Click(null, null);
+                    break;
+                case 1:
+                    btnImport_Click(null, null);
+                    break;
+                case 2:
+                    btn_hoboexport_Click(null, null);
+                    break;
+                case 3:
+                    btnHOBOimport_Click(null, null);
+                    break;
+            }
+        }
+
+        private void linkLabel2_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://sourceforge.net/projects/atari-mapmaker/");
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("http://matosimi.atari.org");
+        }
+
+
     }
 }

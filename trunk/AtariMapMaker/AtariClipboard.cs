@@ -100,11 +100,14 @@ namespace AtariMapMaker
 
         public void Paste(int offset)
         {
-            if (valid)
+            if (offset + (clipboardWidth - 1) + (clipboardHeight - 1) * dataSource.Stride < dataSource.Data.Length)
             {
-                for (int y = 0; y < clipboardHeight; y++)
-                    for (int x = 0; x < clipboardWidth; x++)
-                        dataSource.Data[offset + x + y * dataSource.Stride] = data[x, y];
+                if (valid)
+                {
+                    for (int y = 0; y < clipboardHeight; y++)
+                        for (int x = 0; x < clipboardWidth; x++)
+                            dataSource.Data[offset + x + y * dataSource.Stride] = data[x, y];
+                }
             }
         }
 
