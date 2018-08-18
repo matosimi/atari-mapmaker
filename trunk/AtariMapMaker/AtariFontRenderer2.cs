@@ -17,6 +17,7 @@ namespace AtariMapMaker
         public int offset = 0;
         private int offsetX = 0, offsetY = 0;
         private bool graphicsMode = true;
+        private string lastFontFile;
 
         public AtariFontRenderer()
         {
@@ -32,6 +33,12 @@ namespace AtariMapMaker
         public int OffsetY
         {
             get { return this.offsetY; }
+        }
+
+        public string LastFontFile
+        {
+            get { return lastFontFile; }
+            set { lastFontFile = value; }
         }
 
         public byte[] FontData
@@ -73,7 +80,7 @@ namespace AtariMapMaker
                 {
                     fontData[a + 1024] = (byte)(fontData[a] ^ 0xFF);
                 }
-    
+            lastFontFile = fontname;    
         }
 
         public void SetPalette(AtariPalette yourPalette)

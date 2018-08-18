@@ -6,6 +6,8 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
+using System.Reflection;
 
 namespace AtariMapMaker
 {
@@ -16,28 +18,26 @@ namespace AtariMapMaker
         private AtariFontRenderer myRenderer;
         private AtariMap myMap;
         private AtariPictureTools mainPictureTools;
-        //private byte clr = 0;
-        //private Point prevMouseLoc = new Point();
         private int zoomIndex = 1;
         private string mouseStatus = "";
-        //private Rectangle mouseSelection = new Rectangle();
-        private Bitmap dataImage;   //obrazok s mapou (len data, bez zoomu)
-        //private Bitmap zoomImage;   //obrazok so zoomom a gridmi
-        private AtariClipboard clipBoard;   //obrazok(vyrez) co idem kopcit
-        //private Bitmap underClipBoardImage;  //zaloha miesta kde idem kreslit clipboard (v toolsoch)
-        private int[] zoomMultiplier = new int[] { 1, 2, 3, 4 }; //100%,200%,400%
-        //private int drawNo = 0;
+        private Bitmap dataImage;                                   //picture with map (data only, no zoom)
+        private AtariClipboard clipBoard;                           //part of picture - for copy
+        private int[] zoomMultiplier = new int[] { 1, 2, 3, 4 };    //100%,200%,400%
         private Graphics gr;
         private FontCharPicker myCharPicker;
 
         public MainForm()
         {
             InitializeComponent();
-            //zoomMultiplier = new int[] {1,2,4}; //100%,200%,400%
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
+            string version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            this.Text = "AtariMapMaker v" + version  + " by Martin Simecek";
+            labelAbout2.Text = "Version " + version + "\n" + Properties.Resources.BuildDate;
+            toolTip1.SetToolTip(buttonRefreshFont, "Reload font");
+
             myPalette = new AtariPalette();
             int RC = myPalette.Load("laoo.act");
             if (RC > 0)
@@ -63,9 +63,6 @@ namespace AtariMapMaker
             numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.Screens.Width;
 
             this.FillFontColorList();
-            //string[] zoomPerc = { "100%", "200%", "400%" };
-            //toolStripComboBoxZoom.Items.AddRange(zoomPerc);
-            //toolStripComboBoxZoom.SelectedIndex = this.zoom;
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height); //, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
             pictureBox1.Image.Palette = myPalette.GetPalette();
 
@@ -194,9 +191,9 @@ namespace AtariMapMaker
                 }
             }
 
-            if (e.Button == MouseButtons.None)  //neni stlacene nic
+            if (e.Button == MouseButtons.None)  //nothing is pressed
             {
-                if (clipBoard.isValid)  //kopirovaci mod (zobrazovanie alpha blendovaneho clipBoardu)
+                if (clipBoard.isValid)  //copy mode (shows alpha blended clipBoard)
                 {
                     mainPictureTools.DrawClipBoard(clipBoard, e.Location);
                     pictureBox1.Refresh();
@@ -219,11 +216,6 @@ namespace AtariMapMaker
             }
         }
 
-        /*private void toolStripComboBoxZoom_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            this.zoom = toolStripComboBoxZoom.SelectedIndex;
-        }
-        */
         private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
             mainPictureTools.PreviousMouseLocation = e.Location;
@@ -232,7 +224,7 @@ namespace AtariMapMaker
 
                 if (clipBoard.isValid)
                 {
-                    clipBoard.SetDataSource(myMap); //aby sa to kopcilo vzdy do mapy (nie do charselectora)
+                    clipBoard.SetDataSource(myMap);     //to copy always to map (not to char selector)
                     int charsize = zoomMultiplier[zoomIndex] * 8;
                     int addoffset = (e.X / charsize) + myMap.Stride * (e.Y / charsize);
                     clipBoard.Paste(myRenderer.offset + addoffset);
@@ -329,7 +321,7 @@ namespace AtariMapMaker
             gr = Graphics.FromImage(pictureBox1.Image);
             gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             myRenderer.RenderData(myMap, myRenderer.offset, dataImage);
-            mainPictureTools.SetDestImage((Bitmap)pictureBox1.Image, gr);   //update noveho image v pictureboxe
+            mainPictureTools.SetDestImage((Bitmap)pictureBox1.Image, gr);   //update of new image in picturebox
             mainPictureTools.Redraw(dataImage);
             pictureBox1.Invalidate();
         }
@@ -550,26 +542,7 @@ namespace AtariMapMaker
                     break;
             }
         }
-
-        private void button4_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void button5_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void button3_Click(object sender, EventArgs e)
-        {
-
-        }
+   
 
         private void buttonShiftChars_Click(object sender, EventArgs e)
         {
@@ -750,6 +723,17 @@ namespace AtariMapMaker
             System.Diagnostics.Process.Start("http://matosimi.atari.org");
         }
 
-
+        private void buttonRefreshFont_Click(object sender, EventArgs e)
+        {
+            if (!String.IsNullOrEmpty(myRenderer.LastFontFile))
+            {
+                myRenderer.LoadFont(myRenderer.LastFontFile);
+                myRenderer.RedrawFont();
+                myCharPicker.GetRenderer().LoadFont(myRenderer.LastFontFile);
+                myCharPicker.GetRenderer().RedrawFont();
+                myCharPicker.RedrawFontWindow();
+                RedrawEditorWindow();
+            }
+        }
     }
 }
