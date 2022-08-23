@@ -15,7 +15,7 @@ namespace AtariMapMaker
     {
         private byte selectedColorIndex;
         private Color selectedColor;
-        private AtariPalette myPalette;
+        private readonly AtariPalette myPalette;
 
        /* public AtariColorPicker()
         {
@@ -81,12 +81,7 @@ namespace AtariMapMaker
             pictureBox2.Image = clr;
         }
 
-        private void pictureBox1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
+        private void PictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
@@ -96,7 +91,7 @@ namespace AtariMapMaker
             }
         }
 
-        private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
+        private void PictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
             if (e.X < 128 && e.Y < 256)
             {

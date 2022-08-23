@@ -16,13 +16,12 @@ namespace AtariMapMaker
         private byte[] color5 = {40,202,148,70,0};
         public int offset = 0;
         private int offsetX = 0, offsetY = 0;
-        private bool graphicsMode = true;
+        private readonly bool graphicsMode = true;
         private string lastFontFile;
 
-        public AtariFontRenderer()
+        public AtariFontRenderer(byte[] fontData)
         {
-            fontData = new byte[2048];
-            this.LoadFont("default.fnt");
+            this.fontData = fontData;
         }
 
         public int OffsetX
@@ -63,12 +62,6 @@ namespace AtariMapMaker
             {
                 color5 = value;
             }
-        }
-
-        public AtariFontRenderer(String fontName)
-        {
-            fontData = new byte[2048];
-            this.LoadFont(fontName);
         }
 
         public void LoadFont(String fontname)
@@ -126,8 +119,10 @@ namespace AtariMapMaker
         //8bpp indexed
         private void CreateFontImage(bool colorMode) //2 or 4
         {
-            fontBmp = new Bitmap(256 * 8, 8, PixelFormat.Format8bppIndexed);
-            fontBmp.Palette = myPalette.GetPalette();
+            fontBmp = new Bitmap(256 * 8, 8, PixelFormat.Format8bppIndexed)
+            {
+                Palette = myPalette.GetPalette()
+            };
 
             BitmapData bmd = fontBmp.LockBits(new Rectangle(0, 0, 8 * 256, 8), System.Drawing.Imaging.ImageLockMode.WriteOnly, fontBmp.PixelFormat);
 

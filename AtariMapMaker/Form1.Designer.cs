@@ -30,28 +30,30 @@ namespace AtariMapMaker
         {
             this.components = new System.ComponentModel.Container();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.pictureBoxMap = new System.Windows.Forms.PictureBox();
             this.labelChar = new System.Windows.Forms.Label();
             this.labelPosition = new System.Windows.Forms.Label();
             this.labelScreen = new System.Windows.Forms.Label();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.checkBoxEditRows = new System.Windows.Forms.CheckBox();
+            this.buttonRefreshFont = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.buttonLoadFont = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.listView1 = new System.Windows.Forms.ListView();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.cbDrawBorders = new System.Windows.Forms.CheckBox();
-            this.cbDrawGrid = new System.Windows.Forms.CheckBox();
-            this.tbZoom = new System.Windows.Forms.TrackBar();
-            this.btnShowFont = new System.Windows.Forms.Button();
+            this.comboBoxDrawBorders = new System.Windows.Forms.CheckBox();
+            this.comboBoxDrawGrid = new System.Windows.Forms.CheckBox();
+            this.trackBarZoom = new System.Windows.Forms.TrackBar();
+            this.buttonShowFont = new System.Windows.Forms.Button();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.btnImport = new System.Windows.Forms.Button();
+            this.buttonImport = new System.Windows.Forms.Button();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
             this.numericUpDown6 = new System.Windows.Forms.NumericUpDown();
             this.lblDataWidth = new System.Windows.Forms.Label();
-            this.btnPerform = new System.Windows.Forms.Button();
+            this.buttonPerform = new System.Windows.Forms.Button();
             this.comboOperation = new System.Windows.Forms.ComboBox();
             this.lblScrToXY = new System.Windows.Forms.Label();
             this.lblScrFromXY = new System.Windows.Forms.Label();
@@ -65,11 +67,12 @@ namespace AtariMapMaker
             this.buttonLoad = new System.Windows.Forms.Button();
             this.buttonSave = new System.Windows.Forms.Button();
             this.buttonExport = new System.Windows.Forms.Button();
-            this.btnHOBOimport = new System.Windows.Forms.Button();
+            this.buttonHoboImport = new System.Windows.Forms.Button();
             this.buttonShiftChars = new System.Windows.Forms.Button();
-            this.btn_hoboexport = new System.Windows.Forms.Button();
+            this.buttonHoboExport = new System.Windows.Forms.Button();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.labelAbout2 = new System.Windows.Forms.Label();
             this.linkLabel2 = new System.Windows.Forms.LinkLabel();
             this.label1 = new System.Windows.Forms.Label();
             this.linkLabel1 = new System.Windows.Forms.LinkLabel();
@@ -80,25 +83,23 @@ namespace AtariMapMaker
             this.nudScreenH = new System.Windows.Forms.NumericUpDown();
             this.lblScreenSize = new System.Windows.Forms.Label();
             this.nudScreenW = new System.Windows.Forms.NumericUpDown();
-            this.btnNewMap = new System.Windows.Forms.Button();
+            this.buttonNewMap = new System.Windows.Forms.Button();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
-            this.buttonRefreshFont = new System.Windows.Forms.Button();
-            this.labelAbout2 = new System.Windows.Forms.Label();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxMap)).BeginInit();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.groupBox4.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.groupBox2.SuspendLayout();
             this.groupBox1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.tbZoom)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarZoom)).BeginInit();
             this.tabPage2.SuspendLayout();
             this.groupBox5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown6)).BeginInit();
@@ -125,7 +126,7 @@ namespace AtariMapMaker
             // 
             // splitContainer1.Panel1
             // 
-            this.splitContainer1.Panel1.Controls.Add(this.pictureBox1);
+            this.splitContainer1.Panel1.Controls.Add(this.pictureBoxMap);
             // 
             // splitContainer1.Panel2
             // 
@@ -136,23 +137,22 @@ namespace AtariMapMaker
             this.splitContainer1.Size = new System.Drawing.Size(914, 542);
             this.splitContainer1.SplitterDistance = 674;
             this.splitContainer1.TabIndex = 0;
-            this.splitContainer1.SplitterMoved += new System.Windows.Forms.SplitterEventHandler(this.splitContainer1_SplitterMoved);
             // 
-            // pictureBox1
+            // pictureBoxMap
             // 
-            this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
-            this.pictureBox1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox1.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(674, 542);
-            this.pictureBox1.TabIndex = 0;
-            this.pictureBox1.TabStop = false;
-            this.pictureBox1.ClientSizeChanged += new System.EventHandler(this.pictureBox1_ClientSizeChanged);
-            this.pictureBox1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseDoubleClick);
-            this.pictureBox1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseDown);
-            this.pictureBox1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseMove);
-            this.pictureBox1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseUp);
-            this.pictureBox1.Resize += new System.EventHandler(this.pictureBox1_Resize);
+            this.pictureBoxMap.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.pictureBoxMap.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pictureBoxMap.Location = new System.Drawing.Point(0, 0);
+            this.pictureBoxMap.Name = "pictureBoxMap";
+            this.pictureBoxMap.Size = new System.Drawing.Size(674, 542);
+            this.pictureBoxMap.TabIndex = 0;
+            this.pictureBoxMap.TabStop = false;
+            this.pictureBoxMap.ClientSizeChanged += new System.EventHandler(this.PictureBoxMap_ClientSizeChanged);
+            this.pictureBoxMap.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseDoubleClick);
+            this.pictureBoxMap.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseDown);
+            this.pictureBoxMap.MouseMove += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseMove);
+            this.pictureBoxMap.MouseUp += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseUp);
+            this.pictureBoxMap.Resize += new System.EventHandler(this.PictureBoxMap_Resize);
             // 
             // labelChar
             // 
@@ -162,7 +162,6 @@ namespace AtariMapMaker
             this.labelChar.Size = new System.Drawing.Size(65, 13);
             this.labelChar.TabIndex = 3;
             this.labelChar.Text = "Char $00 (0)";
-            this.labelChar.Click += new System.EventHandler(this.label1_Click);
             // 
             // labelPosition
             // 
@@ -195,12 +194,13 @@ namespace AtariMapMaker
             // 
             // tabPage1
             // 
+            this.tabPage1.Controls.Add(this.checkBoxEditRows);
             this.tabPage1.Controls.Add(this.buttonRefreshFont);
             this.tabPage1.Controls.Add(this.groupBox4);
             this.tabPage1.Controls.Add(this.buttonLoadFont);
             this.tabPage1.Controls.Add(this.groupBox2);
             this.tabPage1.Controls.Add(this.groupBox1);
-            this.tabPage1.Controls.Add(this.btnShowFont);
+            this.tabPage1.Controls.Add(this.buttonShowFont);
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
@@ -208,14 +208,36 @@ namespace AtariMapMaker
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Colors";
             this.tabPage1.UseVisualStyleBackColor = true;
-            this.tabPage1.Click += new System.EventHandler(this.tabPage1_Click);
+            // 
+            // checkBoxEditRows
+            // 
+            this.checkBoxEditRows.AutoSize = true;
+            this.checkBoxEditRows.Checked = true;
+            this.checkBoxEditRows.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxEditRows.Location = new System.Drawing.Point(17, 288);
+            this.checkBoxEditRows.Name = "checkBoxEditRows";
+            this.checkBoxEditRows.Size = new System.Drawing.Size(74, 17);
+            this.checkBoxEditRows.TabIndex = 3;
+            this.checkBoxEditRows.Text = "Edit Rows";
+            this.checkBoxEditRows.UseVisualStyleBackColor = true;
+            // 
+            // buttonRefreshFont
+            // 
+            this.buttonRefreshFont.Font = new System.Drawing.Font("Wingdings 3", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(2)));
+            this.buttonRefreshFont.Location = new System.Drawing.Point(112, 249);
+            this.buttonRefreshFont.Name = "buttonRefreshFont";
+            this.buttonRefreshFont.Size = new System.Drawing.Size(26, 23);
+            this.buttonRefreshFont.TabIndex = 11;
+            this.buttonRefreshFont.Text = "P";
+            this.buttonRefreshFont.UseVisualStyleBackColor = true;
+            this.buttonRefreshFont.Click += new System.EventHandler(this.ButtonRefreshFont_Click);
             // 
             // groupBox4
             // 
             this.groupBox4.Controls.Add(this.pictureBox2);
-            this.groupBox4.Location = new System.Drawing.Point(7, 279);
+            this.groupBox4.Location = new System.Drawing.Point(7, 323);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(216, 181);
+            this.groupBox4.Size = new System.Drawing.Size(216, 137);
             this.groupBox4.TabIndex = 10;
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Clipboard";
@@ -224,7 +246,7 @@ namespace AtariMapMaker
             // 
             this.pictureBox2.Location = new System.Drawing.Point(11, 19);
             this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(195, 156);
+            this.pictureBox2.Size = new System.Drawing.Size(195, 112);
             this.pictureBox2.TabIndex = 6;
             this.pictureBox2.TabStop = false;
             // 
@@ -236,7 +258,7 @@ namespace AtariMapMaker
             this.buttonLoadFont.TabIndex = 9;
             this.buttonLoadFont.Text = "Load Font";
             this.buttonLoadFont.UseVisualStyleBackColor = true;
-            this.buttonLoadFont.Click += new System.EventHandler(this.buttonLoadFont_Click);
+            this.buttonLoadFont.Click += new System.EventHandler(this.ButtonLoadFont_Click);
             // 
             // groupBox2
             // 
@@ -252,6 +274,7 @@ namespace AtariMapMaker
             // 
             this.listView1.FullRowSelect = true;
             this.listView1.GridLines = true;
+            this.listView1.HideSelection = false;
             this.listView1.Location = new System.Drawing.Point(12, 19);
             this.listView1.Margin = new System.Windows.Forms.Padding(0, 3, 3, 3);
             this.listView1.MultiSelect = false;
@@ -260,15 +283,14 @@ namespace AtariMapMaker
             this.listView1.TabIndex = 1;
             this.listView1.UseCompatibleStateImageBehavior = false;
             this.listView1.View = System.Windows.Forms.View.Details;
-            this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
-            this.listView1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.listView1_MouseDoubleClick);
-            this.listView1.MouseLeave += new System.EventHandler(this.listView1_MouseLeave);
+            this.listView1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.ListView1_MouseDoubleClick);
+            this.listView1.MouseLeave += new System.EventHandler(this.ListView1_MouseLeave);
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.cbDrawBorders);
-            this.groupBox1.Controls.Add(this.cbDrawGrid);
-            this.groupBox1.Controls.Add(this.tbZoom);
+            this.groupBox1.Controls.Add(this.comboBoxDrawBorders);
+            this.groupBox1.Controls.Add(this.comboBoxDrawGrid);
+            this.groupBox1.Controls.Add(this.trackBarZoom);
             this.groupBox1.Location = new System.Drawing.Point(6, 6);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(216, 54);
@@ -276,63 +298,63 @@ namespace AtariMapMaker
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Zoom";
             // 
-            // cbDrawBorders
+            // comboBoxDrawBorders
             // 
-            this.cbDrawBorders.AutoSize = true;
-            this.cbDrawBorders.Checked = true;
-            this.cbDrawBorders.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.cbDrawBorders.Location = new System.Drawing.Point(109, 31);
-            this.cbDrawBorders.Name = "cbDrawBorders";
-            this.cbDrawBorders.Size = new System.Drawing.Size(98, 17);
-            this.cbDrawBorders.TabIndex = 2;
-            this.cbDrawBorders.Text = "Screen borders";
-            this.cbDrawBorders.UseVisualStyleBackColor = true;
-            this.cbDrawBorders.CheckedChanged += new System.EventHandler(this.cbDrawBorders_CheckedChanged);
+            this.comboBoxDrawBorders.AutoSize = true;
+            this.comboBoxDrawBorders.Checked = true;
+            this.comboBoxDrawBorders.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.comboBoxDrawBorders.Location = new System.Drawing.Point(109, 31);
+            this.comboBoxDrawBorders.Name = "comboBoxDrawBorders";
+            this.comboBoxDrawBorders.Size = new System.Drawing.Size(98, 17);
+            this.comboBoxDrawBorders.TabIndex = 2;
+            this.comboBoxDrawBorders.Text = "Screen borders";
+            this.comboBoxDrawBorders.UseVisualStyleBackColor = true;
+            this.comboBoxDrawBorders.CheckedChanged += new System.EventHandler(this.ComboBoxDrawBorders_CheckedChanged);
             // 
-            // cbDrawGrid
+            // comboBoxDrawGrid
             // 
-            this.cbDrawGrid.AutoSize = true;
-            this.cbDrawGrid.Checked = true;
-            this.cbDrawGrid.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.cbDrawGrid.Location = new System.Drawing.Point(109, 13);
-            this.cbDrawGrid.Name = "cbDrawGrid";
-            this.cbDrawGrid.Size = new System.Drawing.Size(45, 17);
-            this.cbDrawGrid.TabIndex = 1;
-            this.cbDrawGrid.Text = "Grid";
-            this.cbDrawGrid.UseVisualStyleBackColor = true;
-            this.cbDrawGrid.CheckedChanged += new System.EventHandler(this.cbDrawGrid_CheckedChanged);
+            this.comboBoxDrawGrid.AutoSize = true;
+            this.comboBoxDrawGrid.Checked = true;
+            this.comboBoxDrawGrid.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.comboBoxDrawGrid.Location = new System.Drawing.Point(109, 13);
+            this.comboBoxDrawGrid.Name = "comboBoxDrawGrid";
+            this.comboBoxDrawGrid.Size = new System.Drawing.Size(45, 17);
+            this.comboBoxDrawGrid.TabIndex = 1;
+            this.comboBoxDrawGrid.Text = "Grid";
+            this.comboBoxDrawGrid.UseVisualStyleBackColor = true;
+            this.comboBoxDrawGrid.CheckedChanged += new System.EventHandler(this.ComboBoxDrawGrid_CheckedChanged);
             // 
-            // tbZoom
+            // trackBarZoom
             // 
-            this.tbZoom.AutoSize = false;
-            this.tbZoom.LargeChange = 1;
-            this.tbZoom.Location = new System.Drawing.Point(12, 13);
-            this.tbZoom.Maximum = 3;
-            this.tbZoom.Name = "tbZoom";
-            this.tbZoom.Size = new System.Drawing.Size(91, 35);
-            this.tbZoom.TabIndex = 0;
-            this.tbZoom.Value = 1;
-            this.tbZoom.Scroll += new System.EventHandler(this.tbZoom_Scroll);
+            this.trackBarZoom.AutoSize = false;
+            this.trackBarZoom.LargeChange = 1;
+            this.trackBarZoom.Location = new System.Drawing.Point(12, 13);
+            this.trackBarZoom.Maximum = 3;
+            this.trackBarZoom.Name = "trackBarZoom";
+            this.trackBarZoom.Size = new System.Drawing.Size(91, 35);
+            this.trackBarZoom.TabIndex = 0;
+            this.trackBarZoom.Value = 1;
+            this.trackBarZoom.Scroll += new System.EventHandler(this.TrackBarZoom_Scroll);
             // 
-            // btnShowFont
+            // buttonShowFont
             // 
-            this.btnShowFont.Location = new System.Drawing.Point(6, 249);
-            this.btnShowFont.Name = "btnShowFont";
-            this.btnShowFont.Size = new System.Drawing.Size(75, 23);
-            this.btnShowFont.TabIndex = 3;
-            this.btnShowFont.Text = "Show font";
-            this.btnShowFont.UseVisualStyleBackColor = true;
-            this.btnShowFont.Click += new System.EventHandler(this.button2_Click);
+            this.buttonShowFont.Location = new System.Drawing.Point(6, 249);
+            this.buttonShowFont.Name = "buttonShowFont";
+            this.buttonShowFont.Size = new System.Drawing.Size(75, 23);
+            this.buttonShowFont.TabIndex = 3;
+            this.buttonShowFont.Text = "Show font";
+            this.buttonShowFont.UseVisualStyleBackColor = true;
+            this.buttonShowFont.Click += new System.EventHandler(this.ButtonShowFont_Click);
             // 
             // tabPage2
             // 
-            this.tabPage2.Controls.Add(this.btnImport);
+            this.tabPage2.Controls.Add(this.buttonImport);
             this.tabPage2.Controls.Add(this.groupBox5);
             this.tabPage2.Controls.Add(this.groupBox3);
             this.tabPage2.Controls.Add(this.buttonExport);
-            this.tabPage2.Controls.Add(this.btnHOBOimport);
+            this.tabPage2.Controls.Add(this.buttonHoboImport);
             this.tabPage2.Controls.Add(this.buttonShiftChars);
-            this.tabPage2.Controls.Add(this.btn_hoboexport);
+            this.tabPage2.Controls.Add(this.buttonHoboExport);
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
@@ -341,22 +363,22 @@ namespace AtariMapMaker
             this.tabPage2.Text = "Load/Save/Export";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
-            // btnImport
+            // buttonImport
             // 
-            this.btnImport.Location = new System.Drawing.Point(116, 348);
-            this.btnImport.Name = "btnImport";
-            this.btnImport.Size = new System.Drawing.Size(75, 23);
-            this.btnImport.TabIndex = 19;
-            this.btnImport.Text = "Import";
-            this.btnImport.UseVisualStyleBackColor = true;
-            this.btnImport.Visible = false;
-            this.btnImport.Click += new System.EventHandler(this.btnImport_Click);
+            this.buttonImport.Location = new System.Drawing.Point(116, 348);
+            this.buttonImport.Name = "buttonImport";
+            this.buttonImport.Size = new System.Drawing.Size(75, 23);
+            this.buttonImport.TabIndex = 19;
+            this.buttonImport.Text = "Import";
+            this.buttonImport.UseVisualStyleBackColor = true;
+            this.buttonImport.Visible = false;
+            this.buttonImport.Click += new System.EventHandler(this.ButtonImport_Click);
             // 
             // groupBox5
             // 
             this.groupBox5.Controls.Add(this.numericUpDown6);
             this.groupBox5.Controls.Add(this.lblDataWidth);
-            this.groupBox5.Controls.Add(this.btnPerform);
+            this.groupBox5.Controls.Add(this.buttonPerform);
             this.groupBox5.Controls.Add(this.comboOperation);
             this.groupBox5.Controls.Add(this.lblScrToXY);
             this.groupBox5.Controls.Add(this.lblScrFromXY);
@@ -398,15 +420,15 @@ namespace AtariMapMaker
             this.lblDataWidth.TabIndex = 19;
             this.lblDataWidth.Text = "Dataline width";
             // 
-            // btnPerform
+            // buttonPerform
             // 
-            this.btnPerform.Location = new System.Drawing.Point(6, 216);
-            this.btnPerform.Name = "btnPerform";
-            this.btnPerform.Size = new System.Drawing.Size(200, 23);
-            this.btnPerform.TabIndex = 18;
-            this.btnPerform.Text = "Perform";
-            this.btnPerform.UseVisualStyleBackColor = true;
-            this.btnPerform.Click += new System.EventHandler(this.btnPerform_Click);
+            this.buttonPerform.Location = new System.Drawing.Point(6, 216);
+            this.buttonPerform.Name = "buttonPerform";
+            this.buttonPerform.Size = new System.Drawing.Size(200, 23);
+            this.buttonPerform.TabIndex = 18;
+            this.buttonPerform.Text = "Perform";
+            this.buttonPerform.UseVisualStyleBackColor = true;
+            this.buttonPerform.Click += new System.EventHandler(this.ButtonPerform_Click);
             // 
             // comboOperation
             // 
@@ -416,7 +438,7 @@ namespace AtariMapMaker
             this.comboOperation.Name = "comboOperation";
             this.comboOperation.Size = new System.Drawing.Size(200, 21);
             this.comboOperation.TabIndex = 15;
-            this.comboOperation.SelectedIndexChanged += new System.EventHandler(this.comboOperation_SelectedIndexChanged);
+            this.comboOperation.SelectedIndexChanged += new System.EventHandler(this.ComboBoxOperation_SelectedIndexChanged);
             // 
             // lblScrToXY
             // 
@@ -506,7 +528,7 @@ namespace AtariMapMaker
             this.buttonLoad.TabIndex = 0;
             this.buttonLoad.Text = "Load Map";
             this.buttonLoad.UseVisualStyleBackColor = true;
-            this.buttonLoad.Click += new System.EventHandler(this.buttonLoad_Click);
+            this.buttonLoad.Click += new System.EventHandler(this.ButtonLoad_Click);
             // 
             // buttonSave
             // 
@@ -516,7 +538,7 @@ namespace AtariMapMaker
             this.buttonSave.TabIndex = 1;
             this.buttonSave.Text = "Save Map";
             this.buttonSave.UseVisualStyleBackColor = true;
-            this.buttonSave.Click += new System.EventHandler(this.buttonSave_Click);
+            this.buttonSave.Click += new System.EventHandler(this.ButtonSave_Click);
             // 
             // buttonExport
             // 
@@ -527,19 +549,19 @@ namespace AtariMapMaker
             this.buttonExport.Text = "Export";
             this.buttonExport.UseVisualStyleBackColor = true;
             this.buttonExport.Visible = false;
-            this.buttonExport.Click += new System.EventHandler(this.buttonExport_Click);
+            this.buttonExport.Click += new System.EventHandler(this.ButtonExport_Click);
             // 
-            // btnHOBOimport
+            // buttonHoboImport
             // 
-            this.btnHOBOimport.Location = new System.Drawing.Point(116, 434);
-            this.btnHOBOimport.Margin = new System.Windows.Forms.Padding(2);
-            this.btnHOBOimport.Name = "btnHOBOimport";
-            this.btnHOBOimport.Size = new System.Drawing.Size(105, 23);
-            this.btnHOBOimport.TabIndex = 14;
-            this.btnHOBOimport.Text = "Column Import";
-            this.btnHOBOimport.UseVisualStyleBackColor = true;
-            this.btnHOBOimport.Visible = false;
-            this.btnHOBOimport.Click += new System.EventHandler(this.btnHOBOimport_Click);
+            this.buttonHoboImport.Location = new System.Drawing.Point(116, 434);
+            this.buttonHoboImport.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonHoboImport.Name = "buttonHoboImport";
+            this.buttonHoboImport.Size = new System.Drawing.Size(105, 23);
+            this.buttonHoboImport.TabIndex = 14;
+            this.buttonHoboImport.Text = "Column Import";
+            this.buttonHoboImport.UseVisualStyleBackColor = true;
+            this.buttonHoboImport.Visible = false;
+            this.buttonHoboImport.Click += new System.EventHandler(this.ButtonHoboImport_Click);
             // 
             // buttonShiftChars
             // 
@@ -550,19 +572,19 @@ namespace AtariMapMaker
             this.buttonShiftChars.Text = "Shift chars\r\n64-79 -> 80-95\r\n32-47 -> 64-79";
             this.buttonShiftChars.UseVisualStyleBackColor = true;
             this.buttonShiftChars.Visible = false;
-            this.buttonShiftChars.Click += new System.EventHandler(this.buttonShiftChars_Click);
+            this.buttonShiftChars.Click += new System.EventHandler(this.ButtonShiftChars_Click);
             // 
-            // btn_hoboexport
+            // buttonHoboExport
             // 
-            this.btn_hoboexport.Location = new System.Drawing.Point(116, 405);
-            this.btn_hoboexport.Margin = new System.Windows.Forms.Padding(2);
-            this.btn_hoboexport.Name = "btn_hoboexport";
-            this.btn_hoboexport.Size = new System.Drawing.Size(105, 23);
-            this.btn_hoboexport.TabIndex = 13;
-            this.btn_hoboexport.Text = "Column Export";
-            this.btn_hoboexport.UseVisualStyleBackColor = true;
-            this.btn_hoboexport.Visible = false;
-            this.btn_hoboexport.Click += new System.EventHandler(this.btn_hoboexport_Click);
+            this.buttonHoboExport.Location = new System.Drawing.Point(116, 405);
+            this.buttonHoboExport.Margin = new System.Windows.Forms.Padding(2);
+            this.buttonHoboExport.Name = "buttonHoboExport";
+            this.buttonHoboExport.Size = new System.Drawing.Size(105, 23);
+            this.buttonHoboExport.TabIndex = 13;
+            this.buttonHoboExport.Text = "Column Export";
+            this.buttonHoboExport.UseVisualStyleBackColor = true;
+            this.buttonHoboExport.Visible = false;
+            this.buttonHoboExport.Click += new System.EventHandler(this.ButtonHoboExport_Click);
             // 
             // tabPage3
             // 
@@ -573,7 +595,7 @@ namespace AtariMapMaker
             this.tabPage3.Controls.Add(this.nudScreenH);
             this.tabPage3.Controls.Add(this.lblScreenSize);
             this.tabPage3.Controls.Add(this.nudScreenW);
-            this.tabPage3.Controls.Add(this.btnNewMap);
+            this.tabPage3.Controls.Add(this.buttonNewMap);
             this.tabPage3.Location = new System.Drawing.Point(4, 22);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
@@ -596,6 +618,14 @@ namespace AtariMapMaker
             this.groupBox6.TabStop = false;
             this.groupBox6.Text = "About";
             // 
+            // labelAbout2
+            // 
+            this.labelAbout2.Location = new System.Drawing.Point(6, 39);
+            this.labelAbout2.Name = "labelAbout2";
+            this.labelAbout2.Size = new System.Drawing.Size(198, 36);
+            this.labelAbout2.TabIndex = 4;
+            this.labelAbout2.Text = "\nversion 1.1 - 18.08.2018";
+            // 
             // linkLabel2
             // 
             this.linkLabel2.AutoSize = true;
@@ -605,7 +635,7 @@ namespace AtariMapMaker
             this.linkLabel2.TabIndex = 3;
             this.linkLabel2.TabStop = true;
             this.linkLabel2.Text = "Sourceforge.net";
-            this.linkLabel2.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel2_LinkClicked);
+            this.linkLabel2.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabel2_LinkClicked);
             // 
             // label1
             // 
@@ -625,7 +655,7 @@ namespace AtariMapMaker
             this.linkLabel1.TabIndex = 1;
             this.linkLabel1.TabStop = true;
             this.linkLabel1.Text = "http://matosimi.atari.org";
-            this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel1_LinkClicked);
+            this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabel1_LinkClicked);
             // 
             // labelAbout
             // 
@@ -701,43 +731,24 @@ namespace AtariMapMaker
             0,
             0});
             // 
-            // btnNewMap
+            // buttonNewMap
             // 
-            this.btnNewMap.Location = new System.Drawing.Point(6, 149);
-            this.btnNewMap.Name = "btnNewMap";
-            this.btnNewMap.Size = new System.Drawing.Size(101, 30);
-            this.btnNewMap.TabIndex = 0;
-            this.btnNewMap.Text = "Create new map";
-            this.btnNewMap.UseVisualStyleBackColor = true;
-            this.btnNewMap.Click += new System.EventHandler(this.btnNewMap_Click);
+            this.buttonNewMap.Location = new System.Drawing.Point(6, 149);
+            this.buttonNewMap.Name = "buttonNewMap";
+            this.buttonNewMap.Size = new System.Drawing.Size(101, 30);
+            this.buttonNewMap.TabIndex = 0;
+            this.buttonNewMap.Text = "Create new map";
+            this.buttonNewMap.UseVisualStyleBackColor = true;
+            this.buttonNewMap.Click += new System.EventHandler(this.BtnNewMap_Click);
             // 
             // timer1
             // 
             this.timer1.Enabled = true;
-            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            this.timer1.Tick += new System.EventHandler(this.Timer1_Tick);
             // 
             // openFileDialog1
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
-            // 
-            // buttonRefreshFont
-            // 
-            this.buttonRefreshFont.Font = new System.Drawing.Font("Wingdings 3", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(2)));
-            this.buttonRefreshFont.Location = new System.Drawing.Point(112, 249);
-            this.buttonRefreshFont.Name = "buttonRefreshFont";
-            this.buttonRefreshFont.Size = new System.Drawing.Size(26, 23);
-            this.buttonRefreshFont.TabIndex = 11;
-            this.buttonRefreshFont.Text = "P";
-            this.buttonRefreshFont.UseVisualStyleBackColor = true;
-            this.buttonRefreshFont.Click += new System.EventHandler(this.buttonRefreshFont_Click);
-            // 
-            // labelAbout2
-            // 
-            this.labelAbout2.Location = new System.Drawing.Point(6, 39);
-            this.labelAbout2.Name = "labelAbout2";
-            this.labelAbout2.Size = new System.Drawing.Size(198, 36);
-            this.labelAbout2.TabIndex = 4;
-            this.labelAbout2.Text = "\nversion 1.1 - 18.08.2018";
             // 
             // MainForm
             // 
@@ -753,15 +764,16 @@ namespace AtariMapMaker
             this.splitContainer1.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxMap)).EndInit();
             this.tabControl1.ResumeLayout(false);
             this.tabPage1.ResumeLayout(false);
+            this.tabPage1.PerformLayout();
             this.groupBox4.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.groupBox2.ResumeLayout(false);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.tbZoom)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarZoom)).EndInit();
             this.tabPage2.ResumeLayout(false);
             this.groupBox5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown6)).EndInit();
@@ -786,11 +798,11 @@ namespace AtariMapMaker
         #endregion
 
         private System.Windows.Forms.SplitContainer splitContainer1;
-        private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.PictureBox pictureBoxMap;
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
-        private System.Windows.Forms.Button btnShowFont;
+        private System.Windows.Forms.Button buttonShowFont;
         private System.Windows.Forms.ListView listView1;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.GroupBox groupBox1;
@@ -811,8 +823,8 @@ namespace AtariMapMaker
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.NumericUpDown numericUpDown5;
         private System.Windows.Forms.Button buttonShiftChars;
-        private System.Windows.Forms.Button btn_hoboexport;
-        private System.Windows.Forms.Button btnHOBOimport;
+        private System.Windows.Forms.Button buttonHoboExport;
+        private System.Windows.Forms.Button buttonHoboImport;
         private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.NumericUpDown nudMapH;
         private System.Windows.Forms.NumericUpDown nudMapW;
@@ -820,10 +832,10 @@ namespace AtariMapMaker
         private System.Windows.Forms.NumericUpDown nudScreenH;
         private System.Windows.Forms.Label lblScreenSize;
         private System.Windows.Forms.NumericUpDown nudScreenW;
-        private System.Windows.Forms.Button btnNewMap;
-        private System.Windows.Forms.TrackBar tbZoom;
-        private System.Windows.Forms.CheckBox cbDrawBorders;
-        private System.Windows.Forms.CheckBox cbDrawGrid;
+        private System.Windows.Forms.Button buttonNewMap;
+        private System.Windows.Forms.TrackBar trackBarZoom;
+        private System.Windows.Forms.CheckBox comboBoxDrawBorders;
+        private System.Windows.Forms.CheckBox comboBoxDrawGrid;
         private System.Windows.Forms.Label labelChar;
         private System.Windows.Forms.Button buttonLoadFont;
         private System.Windows.Forms.GroupBox groupBox3;
@@ -831,10 +843,10 @@ namespace AtariMapMaker
         private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.GroupBox groupBox5;
         private System.Windows.Forms.Label lblScrToXY;
-        private System.Windows.Forms.Button btnPerform;
+        private System.Windows.Forms.Button buttonPerform;
         private System.Windows.Forms.NumericUpDown numericUpDown6;
         private System.Windows.Forms.Label lblDataWidth;
-        private System.Windows.Forms.Button btnImport;
+        private System.Windows.Forms.Button buttonImport;
         private System.Windows.Forms.GroupBox groupBox6;
         private System.Windows.Forms.LinkLabel linkLabel2;
         private System.Windows.Forms.Label label1;
@@ -843,6 +855,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.Button buttonRefreshFont;
         private System.Windows.Forms.Label labelAbout2;
         private System.Windows.Forms.ToolTip toolTip1;
+        private System.Windows.Forms.CheckBox checkBoxEditRows;
     }
 }
 

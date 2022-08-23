@@ -8,15 +8,15 @@ namespace AtariMapMaker
 {
     class AtariPictureTools
     {
-        AtariFontRenderer myRenderer;
+        readonly AtariFontRenderer myRenderer;
         AtariMap myMap;
         Graphics gr;
         Rectangle mouseSelection = new Rectangle();
         Bitmap destImage;
         Point prevMouseLoc;
-        Pen screenSeparatorPen = new Pen(Color.Red);
-        Pen selectionPen = new Pen(Color.Lime);
-        Color gridColor = Color.White;
+        readonly Pen screenSeparatorPen = new Pen(Color.Red);
+        readonly Pen selectionPen = new Pen(Color.Lime);
+        readonly Color gridColor = Color.White;
         int zoom;
         int charsize;
         bool drawScreenBorders = true;
