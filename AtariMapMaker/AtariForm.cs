@@ -15,7 +15,6 @@ namespace AtariMapMaker
         protected AtariMap myMap;
         protected Bitmap dataImage;
         protected PictureBox myPictureBox;
-        protected int zoom;
             
         /*
         protected AtariForm(AtariFontRenderer mainRenderer, AtariClipboard clipboard, AtariPalette palette, PictureBox outputPB, int zoom)
@@ -32,7 +31,7 @@ namespace AtariMapMaker
         {
             return this.pictureBox1;
         }
-
+        /*
         public void SetZoom(int zoom)
         {
             this.zoom = zoom;
@@ -40,6 +39,7 @@ namespace AtariMapMaker
             pictureBox1.Height = zoom * 128;
             AtariForm_VisibleChanged(null, null);
         }
+        */
 
         private void PictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
@@ -72,7 +72,7 @@ namespace AtariMapMaker
         {
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
-            AtariPictureTools.Initialize((Bitmap)pictureBox1.Image, myMap, zoom);
+            AtariPictureTools.Initialize((Bitmap)pictureBox1.Image, myMap);
             
             dataImage = new Bitmap(128, 128, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
 

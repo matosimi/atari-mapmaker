@@ -14,12 +14,10 @@ namespace AtariMapMaker
         private readonly AtariMap myMap;
         private Bitmap dataImage;
         private readonly PictureBox myPictureBox;
-        private int zoom;
-
-        public FontCharPicker(PictureBox outputPB, int zoom)
+    
+        public FontCharPicker(PictureBox outputPB)
         {
             this.myPictureBox = outputPB;
-            this.zoom = zoom;
             this.myMap = new AtariMap(new Size(1, 1), new Size(16, 16));
             for (int a = 0; a < 256; a++)
                 myMap.Data[a] = (byte)a;
@@ -33,11 +31,10 @@ namespace AtariMapMaker
             return this.pictureBox1;
         }
 
-        public void SetZoom(int zoom)
+        public void SetZoom()
         {
-            this.zoom = zoom;
-            pictureBox1.Width = zoom * 128;
-            pictureBox1.Height = zoom * 128;
+            pictureBox1.Width = Globals.Zoom * 128;
+            pictureBox1.Height = Globals.Zoom * 128;
             FontCharPicker_VisibleChanged(null, null);
         }
 
@@ -60,8 +57,8 @@ namespace AtariMapMaker
                 pictureBox1.Invalidate();
             }
 
-            int xx = (AtariFontRenderer.OffsetX + e.X / (zoom * 8));
-            int yy = (AtariFontRenderer.OffsetY + e.Y / (zoom * 8));
+            int xx = AtariFontRenderer.OffsetX + e.X / Globals.CharSize;
+            int yy = AtariFontRenderer.OffsetY + e.Y / Globals.CharSize;
             if (xx < myMap.Stride && yy < myMap.Screens.Height * myMap.ScreenSize.Height)
             {
                 byte charVal = myMap.Data[xx + yy * myMap.Stride];
@@ -100,7 +97,7 @@ namespace AtariMapMaker
         {
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
-            AtariPictureTools.Initialize((Bitmap)pictureBox1.Image, myMap, zoom);
+            AtariPictureTools.Initialize((Bitmap)pictureBox1.Image, myMap);
             //myRenderer = new AtariFontRenderer("default.fnt");
             
             

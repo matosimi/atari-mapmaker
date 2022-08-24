@@ -61,7 +61,7 @@ namespace AtariMapMaker
             
         }
 
-        public static void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset, int zoom)
+        public static void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset)
         {
             if (dataSource == null)
                 return;
@@ -77,11 +77,11 @@ namespace AtariMapMaker
             gr.Dispose();
 
             //datova cast
-            clipboardWidth = mouseSelection.Width / (8 * zoom);
-            clipboardHeight = mouseSelection.Height / (8 * zoom);
+            clipboardWidth = mouseSelection.Width / Globals.CharSize;
+            clipboardHeight = mouseSelection.Height / Globals.CharSize;
             data = new byte[clipboardWidth, clipboardHeight];
-            int xo = mouseSelection.X / (8*zoom);
-            int yo = mouseSelection.Y / (8 * zoom);
+            int xo = mouseSelection.X / Globals.CharSize;
+            int yo = mouseSelection.Y / Globals.CharSize;
             for (int y = 0; y < clipboardHeight; y++)
                 for (int x = 0; x < clipboardWidth; x++)
                     data[x, y] = dataSource.Data[offset + x + xo + (y + yo) * dataSource.Stride];            
