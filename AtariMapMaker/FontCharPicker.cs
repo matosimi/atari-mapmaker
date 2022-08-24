@@ -11,20 +11,13 @@ namespace AtariMapMaker
 {
     public partial class FontCharPicker : Form
     {
-        private AtariPictureTools fontPickerPictureTools;
-        private AtariFontRenderer myRenderer;
-        private AtariMap myMap;
+        private readonly AtariMap myMap;
         private Bitmap dataImage;
-        private AtariClipboard clipboard;
-        private AtariPalette palette;
-        private PictureBox myPictureBox;
+        private readonly PictureBox myPictureBox;
         private int zoom;
 
-        public FontCharPicker(AtariFontRenderer mainRenderer, AtariClipboard clipboard, AtariPalette palette, PictureBox outputPB, int zoom)
+        public FontCharPicker(PictureBox outputPB, int zoom)
         {
-            this.myRenderer = mainRenderer;
-            this.clipboard = clipboard;
-            this.palette = palette;
             this.myPictureBox = outputPB;
             this.zoom = zoom;
             this.myMap = new AtariMap(new Size(1, 1), new Size(16, 16));
@@ -40,12 +33,6 @@ namespace AtariMapMaker
             return this.pictureBox1;
         }
 
-   
-        public AtariFontRenderer GetRenderer()
-        {
-            return myRenderer;
-        }
-
         public void SetZoom(int zoom)
         {
             this.zoom = zoom;
@@ -59,22 +46,22 @@ namespace AtariMapMaker
  
         }
 
-        private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
+        private void PictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
-            fontPickerPictureTools.PreviousMouseLocation = e.Location;
-            fontPickerPictureTools.SelectionStart(e.Location);
+            AtariPictureTools.PreviousMouseLocation = e.Location;
+            AtariPictureTools.SelectionStart(e.Location);
         }
 
-        private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
+        private void PictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
-                fontPickerPictureTools.SelectionChange(dataImage, e.Location);
+                AtariPictureTools.SelectionChange(dataImage, e.Location);
                 pictureBox1.Invalidate();
             }
 
-            int xx = (myRenderer.OffsetX + e.X / (zoom * 8));
-            int yy = (myRenderer.OffsetY + e.Y / (zoom * 8));
+            int xx = (AtariFontRenderer.OffsetX + e.X / (zoom * 8));
+            int yy = (AtariFontRenderer.OffsetY + e.Y / (zoom * 8));
             if (xx < myMap.Stride && yy < myMap.Screens.Height * myMap.ScreenSize.Height)
             {
                 byte charVal = myMap.Data[xx + yy * myMap.Stride];
@@ -82,10 +69,10 @@ namespace AtariMapMaker
             }
         }
 
-        private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
+        private void PictureBox1_MouseUp(object sender, MouseEventArgs e)
         {
-            clipboard.isValid = fontPickerPictureTools.SelectionEnd(clipboard, dataImage);
-            myPictureBox.Image = clipboard.GetImage();
+            AtariClipboard.IsValid = AtariPictureTools.SelectionEnd(dataImage);
+            myPictureBox.Image = AtariClipboard.GetImage();
         }
 
         private void FontCharPicker_FormClosing(object sender, FormClosingEventArgs e)
@@ -99,9 +86,9 @@ namespace AtariMapMaker
 
         private void FontCharPicker_Shown(object sender, EventArgs e)
         {
-            pictureBox1.Image.Palette = palette.GetPalette();
-            myRenderer.RedrawFont();
-            myRenderer.RenderData(myMap, 0, dataImage);
+            pictureBox1.Image.Palette = AtariPalette.GetPalette();
+            AtariFontRenderer.RedrawFont();
+            AtariFontRenderer.RenderData(myMap, 0, dataImage);
         }
 
         public void RedrawFontWindow()
@@ -113,16 +100,16 @@ namespace AtariMapMaker
         {
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
-            fontPickerPictureTools = new AtariPictureTools((Bitmap)pictureBox1.Image, myRenderer, myMap, zoom);
+            AtariPictureTools.Initialize((Bitmap)pictureBox1.Image, myMap, zoom);
             //myRenderer = new AtariFontRenderer("default.fnt");
             
             
             dataImage = new Bitmap(128, 128, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-            
-            myRenderer.RedrawFont();
-            myRenderer.RenderData(myMap, 0, dataImage);
-            pictureBox1.Image.Palette = palette.GetPalette();
-            fontPickerPictureTools.Redraw(dataImage, true, false, true);
+
+            AtariFontRenderer.RedrawFont();
+            AtariFontRenderer.RenderData(myMap, 0, dataImage);
+            pictureBox1.Image.Palette = AtariPalette.GetPalette();
+            AtariPictureTools.Redraw(dataImage, true, false, true);
         }
 
     }

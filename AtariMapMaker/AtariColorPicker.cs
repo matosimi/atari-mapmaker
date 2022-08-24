@@ -15,16 +15,9 @@ namespace AtariMapMaker
     {
         private byte selectedColorIndex;
         private Color selectedColor;
-        private readonly AtariPalette myPalette;
 
-       /* public AtariColorPicker()
+        public AtariColorPicker()
         {
-            InitializeComponent();
-        }*/
-
-        public AtariColorPicker(AtariPalette myPalette)
-        {
-            this.myPalette = myPalette;
             InitializeComponent();
         }
 
@@ -51,7 +44,7 @@ namespace AtariMapMaker
             {
                 gr.DrawString(String.Format("{0:X}", y), this.Font, new SolidBrush(this.ForeColor), 16 * 8 + 2, y * 16);
                 for (int x = 0; x < 8; x++)
-                    gr.FillRectangle(new SolidBrush(myPalette.GetColor(y * 16 + x * 2)), x * 16, y * 16, 16, 16);
+                    gr.FillRectangle(new SolidBrush(AtariPalette.GetColor(y * 16 + x * 2)), x * 16, y * 16, 16, 16);
             }
             gr.DrawRectangle(new Pen(new SolidBrush(Color.White)), (selectedColorIndex % 16) * 8, (selectedColorIndex / 16) * 16, 15, 15);
             
@@ -73,8 +66,8 @@ namespace AtariMapMaker
             labelNewCol.Text = "$" + String.Format("{0:X2}", newColor) + " - " + newColor.ToString();
             Bitmap clr = new Bitmap(w, h);
             Graphics gr = Graphics.FromImage(clr);
-            gr.FillRectangle(new SolidBrush(myPalette.GetColor(oldColor)), 0, 0, w, h / 2);
-            gr.FillRectangle(new SolidBrush(myPalette.GetColor(newColor)), 0, h / 2, w, h / 2);
+            gr.FillRectangle(new SolidBrush(AtariPalette.GetColor(oldColor)), 0, 0, w, h / 2);
+            gr.FillRectangle(new SolidBrush(AtariPalette.GetColor(newColor)), 0, h / 2, w, h / 2);
             gr.Dispose();
             if (pictureBox2.Image != null)
                 pictureBox2.Image.Dispose();
@@ -86,7 +79,7 @@ namespace AtariMapMaker
             if (e.Button == MouseButtons.Left)
             {
                 selectedColorIndex = (byte)((e.X / 16)*2 + (e.Y / 16) * 16);
-                selectedColor = myPalette.GetColor(selectedColorIndex);
+                selectedColor = AtariPalette.GetColor(selectedColorIndex);
                 this.Close();
             }
         }

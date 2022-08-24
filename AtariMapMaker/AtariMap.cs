@@ -14,7 +14,7 @@ namespace AtariMapMaker
         private Size dataSize;      //velkost dat v znakoch
         private Size screens;       //pocet screenov v datach (velkost mapy)
         //private Point origin;       //vztazny bod screenu [0,0]
-
+        private readonly byte[,,] colorData;   //screenNumber,linenumber,colorNumber
 
         public AtariMap(Size screens, Size screenSize)
         {
@@ -22,9 +22,7 @@ namespace AtariMapMaker
             this.dataSize = new Size(screens.Width * screenSize.Width, screens.Height * screenSize.Height);
             this.data = new byte[dataSize.Width * dataSize.Height];
             this.screenSize = screenSize;
-
-            //new Random().NextBytes(data);
-            
+            this.colorData = new byte[screens.Width * screens.Height, screenSize.Height, 5];
         }
 
         /// <summary>
@@ -37,6 +35,20 @@ namespace AtariMapMaker
             {
                 return this.screenSize.Width * this.screens.Width;
             }
+        }
+
+        //set single color
+        public void SetColorData(int screenx, int screeny, byte lineNumber, byte colorNumber, byte colorIndexFromPalette)
+        {
+            this.colorData[screeny * screens.Width + screenx, lineNumber, colorNumber] = colorIndexFromPalette;
+        }
+
+        //set all colors multiple lines based on the given 5 colors
+        public void SetColorData(int screenx, int screeny, byte startingLine, byte[] color5)
+        {
+            for (int j = startingLine; j < screenSize.Height; j++)
+                for (int i = 0; i < 5; i++)
+                    this.colorData[screeny * screens.Width + screenx, j, i] = color5[i];
         }
 
         public Size ScreenSize

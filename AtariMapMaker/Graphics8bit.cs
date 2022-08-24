@@ -9,7 +9,7 @@ namespace AtariMapMaker
 {
     class Graphics8bit 
     {
-        private Bitmap bmp;
+        private readonly Bitmap bmp;
         private BitmapData bmd;
 
         /// <summary>
@@ -57,11 +57,9 @@ namespace AtariMapMaker
 
             if (y1 > y2)
             {
-                int y = y2;
-                y2 = y1;
-                y1 = y;
+                (y1, y2) = (y2, y1);
             }
-            
+
             unsafe
             {
                 byte* row = (byte*)bmd.Scan0 + y1 * bmd.Stride;
@@ -96,9 +94,7 @@ namespace AtariMapMaker
 
             if (x1 > x2)
             {
-                int x = x1;
-                x1 = x2;
-                x2 = x;
+                (x2, x1) = (x1, x2);
             }
 
             unsafe

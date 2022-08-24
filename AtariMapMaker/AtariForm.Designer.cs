@@ -1,6 +1,6 @@
 ﻿namespace AtariMapMaker
 {
-    partial class FontCharPicker
+    partial class AtariForm
     {
         /// <summary>
         /// Required designer variable.
@@ -36,31 +36,18 @@
             // 
             this.pictureBox1.Location = new System.Drawing.Point(0, 0);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(256, 256);
+            this.pictureBox1.Size = new System.Drawing.Size(100, 50);
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
-            this.pictureBox1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PictureBox1_MouseDown);
-            this.pictureBox1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.PictureBox1_MouseMove);
-            this.pictureBox1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.PictureBox1_MouseUp);
             // 
-            // FontCharPicker
+            // AtariForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.AutoSize = true;
-            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.ClientSize = new System.Drawing.Size(265, 261);
+            this.ClientSize = new System.Drawing.Size(800, 450);
             this.Controls.Add(this.pictureBox1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.Name = "FontCharPicker";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "FontCharPicker";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FontCharPicker_FormClosing);
-            this.Load += new System.EventHandler(this.FontCharPicker_Load);
-            this.Shown += new System.EventHandler(this.FontCharPicker_Shown);
-            this.VisibleChanged += new System.EventHandler(this.FontCharPicker_VisibleChanged);
+            this.Name = "AtariForm";
+            this.Text = "AtariForm";
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
 

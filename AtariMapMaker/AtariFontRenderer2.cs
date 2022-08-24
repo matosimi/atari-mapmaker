@@ -8,39 +8,38 @@ using System.Drawing.Imaging;
 namespace AtariMapMaker
 {
     [Serializable]
-    public class AtariFontRenderer
+    public static class AtariFontRenderer
     {
-        private byte[] fontData;
-        private Bitmap fontBmp;
-        private AtariPalette myPalette;
-        private byte[] color5 = {40,202,148,70,0};
-        public int offset = 0;
-        private int offsetX = 0, offsetY = 0;
-        private readonly bool graphicsMode = true;
-        private string lastFontFile;
+        private static byte[] fontData;
+        private static Bitmap fontBmp;
+        private static byte[] color5 = {40,202,148,70,0};
+        public static int offset = 0;
+        private static int offsetX = 0, offsetY = 0;
+        private static readonly bool graphicsMode = true;
+        private static string lastFontFile;
 
-        public AtariFontRenderer(byte[] fontData)
+        public static void SetFontData(byte[] _fontData)
         {
-            this.fontData = fontData;
+            fontData = _fontData;
         }
 
-        public int OffsetX
+        public static int OffsetX
         {
-            get { return this.offsetX; }
+            get { return offsetX; }
         }
 
-        public int OffsetY
+        public static int OffsetY
         {
-            get { return this.offsetY; }
+            get { return offsetY; }
         }
 
-        public string LastFontFile
+        public static string LastFontFile
         {
             get { return lastFontFile; }
             set { lastFontFile = value; }
         }
 
-        public byte[] FontData
+        public static byte[] FontData
         {
             get
             {
@@ -52,7 +51,7 @@ namespace AtariMapMaker
             }
         }
 
-        public byte[] Color5
+        public static byte[] Color5
         {
             get
             {
@@ -64,7 +63,7 @@ namespace AtariMapMaker
             }
         }
 
-        public void LoadFont(String fontname)
+        public static void LoadFont(String fontname)
         {    
                 FileStream fs = new FileStream(fontname, FileMode.Open);
                 fs.Read(fontData, 0, 1024);
@@ -76,24 +75,18 @@ namespace AtariMapMaker
             lastFontFile = fontname;    
         }
 
-        public void SetPalette(AtariPalette yourPalette)
+        public static void RedrawFont()
         {
-            this.myPalette = yourPalette;
-            RedrawFont();
+            CreateFontImage(graphicsMode);
         }
 
-        public void RedrawFont()
-        {
-            CreateFontImage(this.graphicsMode);
-        }
-
-        public Bitmap GetFontImage()
+        public static Bitmap GetFontImage()
         {
             return fontBmp;
         }
 
         //vypocitaj novy offset
-        public bool CalculateOffset(int deltaX, int deltaY, AtariMap myMap)
+        public static bool CalculateOffset(int deltaX, int deltaY, AtariMap myMap)
         {
             if (deltaX == 0 && deltaY == 0) //maly pohyb
                 return false;
@@ -117,11 +110,11 @@ namespace AtariMapMaker
         }
 
         //8bpp indexed
-        private void CreateFontImage(bool colorMode) //2 or 4
+        private static void CreateFontImage(bool colorMode) //2 or 4
         {
             fontBmp = new Bitmap(256 * 8, 8, PixelFormat.Format8bppIndexed)
             {
-                Palette = myPalette.GetPalette()
+                Palette = AtariPalette.GetPalette()
             };
 
             BitmapData bmd = fontBmp.LockBits(new Rectangle(0, 0, 8 * 256, 8), System.Drawing.Imaging.ImageLockMode.WriteOnly, fontBmp.PixelFormat);
@@ -172,7 +165,7 @@ namespace AtariMapMaker
             fontBmp.UnlockBits(bmd);
         }
 
-        public void RenderData(AtariMap myMap, int adrOffset, Bitmap bmp)
+        public static void RenderData(AtariMap myMap, int adrOffset, Bitmap bmp)
         {
             byte[] data = myMap.Data;
 
@@ -190,7 +183,7 @@ namespace AtariMapMaker
                 height = myMap.ScreenSize.Height * myMap.Screens.Height - offsetY;
 
             //Bitmap bmp = new Bitmap(bmpSize.Width, bmpSize.Height, PixelFormat.Format8bppIndexed);
-            bmp.Palette = myPalette.GetPalette();
+            bmp.Palette = AtariPalette.GetPalette();
             BitmapData bmd = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
             BitmapData fntd = fontBmp.LockBits(new Rectangle(0, 0, fontBmp.Width, fontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
             int index;

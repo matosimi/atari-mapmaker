@@ -89,9 +89,21 @@
       <DependentUpon>AtariColorPicker.cs</DependentUpon>
     </Compile>
     <Compile Include="AtariFontRenderer2.cs" />
+    <Compile Include="AtariForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AtariForm.Designer.cs">
+      <DependentUpon>AtariForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="AtariMap.cs" />
     <Compile Include="AtariPalette.cs" />
     <Compile Include="AtariPictureTools.cs" />
+    <Compile Include="DliForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DliForm.Designer.cs">
+      <DependentUpon>DliForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="FontCharPicker.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -110,6 +122,12 @@
     <EmbeddedResource Include="AtariColorPicker.resx">
       <SubType>Designer</SubType>
       <DependentUpon>AtariColorPicker.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AtariForm.resx">
+      <DependentUpon>AtariForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DliForm.resx">
+      <DependentUpon>DliForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FontCharPicker.resx">
       <DependentUpon>FontCharPicker.cs</DependentUpon>

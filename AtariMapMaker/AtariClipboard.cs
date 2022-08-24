@@ -7,33 +7,23 @@ using System.Drawing;
 
 namespace AtariMapMaker
 {
-    public class AtariClipboard
+    public static class AtariClipboard
     {
-        private Bitmap clipboard;
-        private byte[,] data;
-        private AtariMap dataSource;
-        private Graphics gr;
-        private int clipboardWidth;
-        private int clipboardHeight;
-        private int zoom;
-        private bool valid = false;
-        private Bitmap underClipBoardImage;
-        private Graphics gruc;  //underclipboardimage gfx
+        private static Bitmap clipboard;
+        private static byte[,] data;
+        private static AtariMap dataSource;
+        private static Graphics gr;
+        private static int clipboardWidth;
+        private static int clipboardHeight;
+        private static bool valid = false;
+        private static Bitmap underClipBoardImage;
+        private static Graphics gruc;  //underclipboardimage gfx
 
-        public AtariClipboard()
-        { 
-        }
-
-        public void SetZoom(int zoom)
-        {
-            this.zoom = zoom;
-        }
-
-        public Bitmap UnderClipBoardImage
+        public static Bitmap UnderClipBoardImage
         {
             get
             {
-                return this.underClipBoardImage;
+                return underClipBoardImage;
             }
             set
             {
@@ -41,7 +31,7 @@ namespace AtariMapMaker
             }
         }
 
-        public Graphics UnderImageGraphics
+        public static Graphics UnderImageGraphics
         {
             get
             {
@@ -53,7 +43,7 @@ namespace AtariMapMaker
             }
         }
 
-        public bool isValid
+        public static bool IsValid
         {
             get
             {
@@ -61,22 +51,21 @@ namespace AtariMapMaker
             }
             set
             {
-                this.valid = value;
+                valid = value;
             }
         }
 
-        public void SetDataSource(AtariMap myMap)
+        public static void SetDataSource(AtariMap myMap)
         {
-            this.dataSource = myMap;
+            dataSource = myMap;
             
         }
 
-        public void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset, int zoom)
+        public static void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset, int zoom)
         {
             if (dataSource == null)
                 return;
-            this.zoom = zoom;
-
+            
             //graficka cast
             if (clipboard != null)
             {
@@ -98,7 +87,7 @@ namespace AtariMapMaker
                     data[x, y] = dataSource.Data[offset + x + xo + (y + yo) * dataSource.Stride];            
         }
 
-        public void Paste(int offset)
+        public static void Paste(int offset)
         {
             if (offset + (clipboardWidth - 1) + (clipboardHeight - 1) * dataSource.Stride < dataSource.Data.Length)
             {
@@ -111,7 +100,7 @@ namespace AtariMapMaker
             }
         }
 
-        public Bitmap GetImage()
+        public static Bitmap GetImage()
         {
             return clipboard;
         }
