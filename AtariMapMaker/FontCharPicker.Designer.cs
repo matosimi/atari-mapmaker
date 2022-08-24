@@ -28,20 +28,20 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            this.pictureBoxFontPicker = new System.Windows.Forms.PictureBox();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxFontPicker)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
             // 
-            this.pictureBox1.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(256, 256);
-            this.pictureBox1.TabIndex = 0;
-            this.pictureBox1.TabStop = false;
-            this.pictureBox1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PictureBox1_MouseDown);
-            this.pictureBox1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.PictureBox1_MouseMove);
-            this.pictureBox1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.PictureBox1_MouseUp);
+            this.pictureBoxFontPicker.Location = new System.Drawing.Point(0, 0);
+            this.pictureBoxFontPicker.Name = "pictureBox1";
+            this.pictureBoxFontPicker.Size = new System.Drawing.Size(256, 256);
+            this.pictureBoxFontPicker.TabIndex = 0;
+            this.pictureBoxFontPicker.TabStop = false;
+            this.pictureBoxFontPicker.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PictureBoxFontPicker_MouseDown);
+            this.pictureBoxFontPicker.MouseMove += new System.Windows.Forms.MouseEventHandler(this.PictureBoxFontPicker_MouseMove);
+            this.pictureBoxFontPicker.MouseUp += new System.Windows.Forms.MouseEventHandler(this.PictureBoxFontPicker_MouseUp);
             // 
             // FontCharPicker
             // 
@@ -50,7 +50,7 @@
             this.AutoSize = true;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.ClientSize = new System.Drawing.Size(265, 261);
-            this.Controls.Add(this.pictureBox1);
+            this.Controls.Add(this.pictureBoxFontPicker);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -61,13 +61,13 @@
             this.Load += new System.EventHandler(this.FontCharPicker_Load);
             this.Shown += new System.EventHandler(this.FontCharPicker_Shown);
             this.VisibleChanged += new System.EventHandler(this.FontCharPicker_VisibleChanged);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxFontPicker)).EndInit();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.PictureBox pictureBoxFontPicker;
     }
 }

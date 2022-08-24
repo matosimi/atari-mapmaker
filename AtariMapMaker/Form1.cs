@@ -11,22 +11,6 @@ using System.Reflection;
 
 namespace AtariMapMaker
 {
-    public static class Globals
-    {
-        public enum FontType { Screen, Dli };
-        public static Size editorWindowSizeInChars;
-        private static readonly int[] zoomMultiplier = new int[] { 1, 2, 3, 4 };    //100%,200%,400%
-        private static int zoomIndex = 1;
-        public static int Zoom
-        {
-            get { return zoomMultiplier[zoomIndex]; }
-            set { zoomIndex = value; }
-        }
-        public static int CharSize
-        {
-            get { return 8 * Zoom; }
-        }
-    }
     public partial class MainForm : Form
     {
         private AtariColorPicker colorPicker;
@@ -182,6 +166,7 @@ namespace AtariMapMaker
             {
                 if (AtariClipboard.IsValid)  //copy mode (shows alpha blended clipBoard)
                 {
+                    AtariPictureTools.Initialize((Bitmap)pictureBoxMap.Image, myMap);
                     AtariPictureTools.DrawClipBoard(e.Location);
                     pictureBoxMap.Refresh();
                     AtariPictureTools.DrawUnderClipBoard(e.Location);
@@ -335,6 +320,7 @@ namespace AtariMapMaker
             gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             AtariFontRenderer.RenderData(myMap, AtariFontRenderer.offset, dataImage);
             AtariPictureTools.SetDestImage((Bitmap)pictureBoxMap.Image, gr);   //update of new image in picturebox
+            AtariPictureTools.Initialize((Bitmap)pictureBoxMap.Image, myMap);
             AtariPictureTools.Redraw(dataImage);
             pictureBoxMap.Invalidate();
         }

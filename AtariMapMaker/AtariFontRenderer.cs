@@ -73,7 +73,8 @@ namespace AtariMapMaker
                 {
                     fontData[a + 1024] = (byte)(fontData[a] ^ 0xFF);
                 }
-            lastFontFile = fontname;    
+            lastFontFile = fontname;
+            SetFontData(fontData, Globals.FontType.Screen);
         }
 
         public static void RedrawFont()
