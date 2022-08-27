@@ -10,11 +10,17 @@ using System.Windows.Forms;
 
 namespace AtariMapMaker
 {
-    public abstract partial class AtariForm : Form
+    public partial class AtariForm : Form
     {
-        protected AtariMap myMap;
-        protected Bitmap dataImage;
-        protected PictureBox myPictureBox;
+        //protected AtariMap myMap;
+        //protected Bitmap dataImage;
+        //protected PictureBox myPictureBox;
+        protected Globals.WindowType window;
+
+        public AtariForm(Globals.WindowType window)
+        {
+            this.window = window;
+        }
             
         /*
         protected AtariForm(AtariFontRenderer mainRenderer, AtariClipboard clipboard, AtariPalette palette, PictureBox outputPB, int zoom)
@@ -44,7 +50,7 @@ namespace AtariMapMaker
         private void PictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
             AtariPictureTools.PreviousMouseLocation = e.Location;
-            AtariPictureTools.SelectionStart(e.Location);
+            AtariPictureTools.SelectionStart(e.Location, this.window);
         }
 
         private void AtariForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -58,9 +64,11 @@ namespace AtariMapMaker
 
         private void AtariForm_Shown(object sender, EventArgs e)
         {
-            pictureBox1.Image.Palette = AtariPalette.GetPalette();
-            AtariFontRenderer.RedrawFont();
-            AtariFontRenderer.RenderData(myMap, 0, dataImage);
+            //pictureBox1.Image.Palette = AtariPalette.GetPalette();
+            /*AtariFontRenderer.RedrawFont(); */
+            //AtariPictureTools.AssignWindow();
+            //AtariFontRenderer.RenderMapData(myMap, 0, dataImage);
+            
         }
 
         public void RedrawFontWindow()
@@ -70,16 +78,18 @@ namespace AtariMapMaker
 
         private void AtariForm_VisibleChanged(object sender, EventArgs e)
         {
+            /*
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
-            AtariPictureTools.Initialize((Bitmap)pictureBox1.Image, myMap);
+            AtariPictureTools.AssignWindow((Bitmap)pictureBox1.Image, myMap);
             
             dataImage = new Bitmap(128, 128, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
 
             AtariFontRenderer.RedrawFont();
-            AtariFontRenderer.RenderData(myMap, 0, dataImage);
+            AtariFontRenderer.RenderMapData(myMap, 0, dataImage);
             pictureBox1.Image.Palette = AtariPalette.GetPalette();
             AtariPictureTools.Redraw(dataImage, true, false, true);
+            */
         }
 
     }

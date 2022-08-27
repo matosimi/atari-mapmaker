@@ -8,16 +8,22 @@ using System.Drawing.Imaging;
 namespace AtariMapMaker
 {
     [Serializable]
+
+    public struct AtariFont
+    {
+        public byte[] data;
+        public Bitmap bitmap;
+    } 
     public static class AtariFontRenderer
     {
         private static byte[] fontData;
-        private static Bitmap fontBmp;
+        //private static Bitmap fontBmp;
         private static byte[] color5 = { 40, 202, 148, 70, 0 };
         public static int offset = 0;
         private static int offsetX = 0, offsetY = 0;
         private static readonly bool graphicsMode = true;
         private static string lastFontFile;
-        private static readonly Dictionary<Globals.FontType, byte[]> font = new Dictionary<Globals.FontType, byte[]>();
+        public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
         public static int OffsetX
         {
             get { return offsetX; }
@@ -34,22 +40,17 @@ namespace AtariMapMaker
             set { lastFontFile = value; }
         }
 
-        public static void SetFontData(byte[] data, Globals.FontType type)
+        public static void SetFontData(byte[] data, Globals.FontType fontType)
         {
-            if (font.ContainsKey(type))
-                font.Remove(type);
-            
-            font.Add(type, data);
-            SelectFont(type);
-            CreateFontImage(true);
-        }
+            if (fonts.ContainsKey(fontType))
+                fonts.Remove(fontType);
 
-        public static void SelectFont(Globals.FontType type)
-        {
-            if (font.ContainsKey(type))
-                fontData = font[type];
-            else
-                throw new ApplicationException($"FontType {Enum.GetName(typeof(Globals.FontType), type)} not initialized.");
+            AtariFont atariFont = new AtariFont
+            {
+                data = data,
+                bitmap = CreateFontImage(true, data)
+            };
+            fonts.Add(fontType, atariFont);
         }
 
         public static byte[] Color5
@@ -64,7 +65,7 @@ namespace AtariMapMaker
             }
         }
 
-        public static void LoadFont(String fontname)
+        public static void LoadFont(String fontname, Globals.FontType fontType)
         {    
                 FileStream fs = new FileStream(fontname, FileMode.Open);
                 fs.Read(fontData, 0, 1024);
@@ -74,17 +75,7 @@ namespace AtariMapMaker
                     fontData[a + 1024] = (byte)(fontData[a] ^ 0xFF);
                 }
             lastFontFile = fontname;
-            SetFontData(fontData, Globals.FontType.Screen);
-        }
-
-        public static void RedrawFont()
-        {
-            CreateFontImage(graphicsMode);
-        }
-
-        public static Bitmap GetFontImage()
-        {
-            return fontBmp;
+            SetFontData(fontData, fontType);
         }
 
         //vypocitaj novy offset
@@ -112,14 +103,14 @@ namespace AtariMapMaker
         }
 
         //8bpp indexed
-        private static void CreateFontImage(bool colorMode) //2 or 4
+        private static Bitmap CreateFontImage(bool colorMode, byte[] data) //2 or 4
         {
-            fontBmp = new Bitmap(256 * 8, 8, PixelFormat.Format8bppIndexed)
+            Bitmap bmp = new Bitmap(256 * 8, 8, PixelFormat.Format8bppIndexed)
             {
                 Palette = AtariPalette.GetPalette()
             };
 
-            BitmapData bmd = fontBmp.LockBits(new Rectangle(0, 0, 8 * 256, 8), System.Drawing.Imaging.ImageLockMode.WriteOnly, fontBmp.PixelFormat);
+            BitmapData bmd = bmp.LockBits(new Rectangle(0, 0, 8 * 256, 8), System.Drawing.Imaging.ImageLockMode.WriteOnly, bmp.PixelFormat);
 
             for (int y = 0; y < bmd.Height; y++)
             {
@@ -164,10 +155,19 @@ namespace AtariMapMaker
                 }
 
             }
-            fontBmp.UnlockBits(bmd);
+            bmp.UnlockBits(bmd);
+            return bmp;
         }
 
-        public static void RenderData(AtariMap myMap, int adrOffset, Bitmap outBmp)
+        /// <summary>
+        /// Try avoid calling this method outside AtariPictureTools
+        /// outBmp has to already be properly sized (windowCharsHorizontal*8, windowCharsVertical*8)
+        /// </summary>
+        /// <param name="myMap"></param>
+        /// <param name="adrOffset"></param>
+        /// <param name="font"></param>
+        /// <param name="outBmp"></param>
+        public static void RenderMapData(AtariMap myMap, int adrOffset, AtariFont font, Bitmap outBmp)
         {
             byte[] data = myMap.Data;
 
@@ -176,8 +176,7 @@ namespace AtariMapMaker
                 return;
             }
             
-            int width = 
-                outBmp.Width / 8;
+            int width = outBmp.Width / 8;
             int height = outBmp.Height / 8;
 
             if (offsetX + width > myMap.Stride)
@@ -186,9 +185,9 @@ namespace AtariMapMaker
                 height = myMap.ScreenSize.Height * myMap.Screens.Height - offsetY;
 
             //Bitmap bmp = new Bitmap(bmpSize.Width, bmpSize.Height, PixelFormat.Format8bppIndexed);
-            outBmp.Palette = AtariPalette.GetPalette();
+            //outBmp.Palette = AtariPalette.GetPalette();
             BitmapData bmd = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-            BitmapData fntd = fontBmp.LockBits(new Rectangle(0, 0, fontBmp.Width, fontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            BitmapData fntd = font.bitmap.LockBits(new Rectangle(0, 0, font.bitmap.Width, font.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
             int index;
 
             unsafe
@@ -211,7 +210,7 @@ namespace AtariMapMaker
                     adrOffset += myMap.Stride; 
                 }
             }
-            fontBmp.UnlockBits(fntd);
+            font.bitmap.UnlockBits(fntd);
             outBmp.UnlockBits(bmd);
             return;
         }

@@ -45,16 +45,16 @@ namespace AtariMapMaker
 
         private void PictureBoxFontPicker_MouseDown(object sender, MouseEventArgs e)
         {
-            AtariPictureTools.Initialize((Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
+            //AtariPictureTools.AssignWindow((Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
             AtariPictureTools.PreviousMouseLocation = e.Location;
-            AtariPictureTools.SelectionStart(e.Location);
+            AtariPictureTools.SelectionStart(e.Location, Globals.WindowType.CharPicker);
         }
 
         private void PictureBoxFontPicker_MouseMove(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
-                AtariPictureTools.SelectionChange(dataImage, e.Location);
+                AtariPictureTools.SelectionChange(e.Location, Globals.WindowType.CharPicker);
                 pictureBoxFontPicker.Invalidate();
             }
 
@@ -69,7 +69,7 @@ namespace AtariMapMaker
 
         private void PictureBoxFontPicker_MouseUp(object sender, MouseEventArgs e)
         {
-            AtariClipboard.IsValid = AtariPictureTools.SelectionEnd(dataImage);
+            AtariClipboard.IsValid = AtariPictureTools.SelectionEnd(Globals.WindowType.CharPicker);
             myPictureBox.Image = AtariClipboard.GetImage();
         }
 
@@ -84,9 +84,11 @@ namespace AtariMapMaker
 
         private void FontCharPicker_Shown(object sender, EventArgs e)
         {
+            /*
             pictureBoxFontPicker.Image.Palette = AtariPalette.GetPalette();
+            AtariFontRenderer.SelectFont(Globals.FontType.Screen);
             AtariFontRenderer.RedrawFont();
-            AtariFontRenderer.RenderData(fontPickerMap, 0, dataImage);
+            AtariFontRenderer.RenderMapData(fontPickerMap, 0, dataImage);*/
         }
 
         public void RedrawFontWindow()
@@ -98,16 +100,16 @@ namespace AtariMapMaker
         {
             pictureBoxFontPicker.Image = new Bitmap(pictureBoxFontPicker.Width, pictureBoxFontPicker.Height);
 
-            AtariPictureTools.Initialize((Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
+            //AtariPictureTools.AssignWindow((Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
             //myRenderer = new AtariFontRenderer("default.fnt");
             
             
             dataImage = new Bitmap(128, 128, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
 
-            AtariFontRenderer.RedrawFont();
-            AtariFontRenderer.RenderData(fontPickerMap, 0, dataImage);
-            pictureBoxFontPicker.Image.Palette = AtariPalette.GetPalette();
-            AtariPictureTools.Redraw(dataImage, true, false, true);
+            //AtariFontRenderer.RedrawFont();
+            //AtariFontRenderer.RenderMapData(fontPickerMap, 0, dataImage);
+            //pictureBoxFontPicker.Image.Palette = AtariPalette.GetPalette();
+            AtariPictureTools.Redraw(Globals.WindowType.CharPicker, true, false, true);
         }
 
     }

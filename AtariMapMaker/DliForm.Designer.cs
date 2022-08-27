@@ -28,17 +28,18 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.pictureBoxColors = new System.Windows.Forms.PictureBox();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxColors)).BeginInit();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
-            // pictureBoxColors
+            // pictureBox1
             // 
-            this.pictureBoxColors.Location = new System.Drawing.Point(0, 0);
-            this.pictureBoxColors.Name = "pictureBoxColors";
-            this.pictureBoxColors.Size = new System.Drawing.Size(125, 342);
-            this.pictureBoxColors.TabIndex = 0;
-            this.pictureBoxColors.TabStop = false;
+            this.pictureBox1.Location = new System.Drawing.Point(1, 0);
+            this.pictureBox1.Margin = new System.Windows.Forms.Padding(0);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(77, 80);
+            this.pictureBox1.TabIndex = 0;
+            this.pictureBox1.TabStop = false;
             // 
             // DliForm
             // 
@@ -48,18 +49,18 @@
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.ClientSize = new System.Drawing.Size(594, 450);
             this.ControlBox = false;
-            this.Controls.Add(this.pictureBoxColors);
+            this.Controls.Add(this.pictureBox1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "DliForm";
             this.ShowInTaskbar = false;
             this.Text = "DliForm";
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxColors)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.PictureBox pictureBoxColors;
+        private System.Windows.Forms.PictureBox pictureBox1;
     }
 }

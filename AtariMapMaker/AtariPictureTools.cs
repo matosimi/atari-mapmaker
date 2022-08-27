@@ -6,12 +6,20 @@ using System.Drawing;
 
 namespace AtariMapMaker
 {
+    public struct AtariWindow
+    {
+        public AtariMap map;
+        public Bitmap fontRendererDataImage;
+        public Bitmap destinationImage;
+        public Graphics graphics;
+        public int mapOffset;
+    }
     public static class AtariPictureTools
     {
-        private static AtariMap myMap;
-        private static Graphics gr;
+        //private static AtariMap myMap;
+        //private static Graphics gr;
         private static Rectangle mouseSelection = new Rectangle();
-        private static Bitmap destImage;
+        //private static Bitmap destImage;
         private static Point prevMouseLoc;
         private static readonly Pen screenSeparatorPen = new Pen(Color.Red);
         private static readonly Pen selectionPen = new Pen(Color.Lime);
@@ -19,13 +27,21 @@ namespace AtariMapMaker
         private static bool drawScreenBorders = true;
         private static bool drawGrid = true;
         private static Point dliFormOrigin;
+        public static Dictionary<Globals.WindowType, AtariWindow> windows = new Dictionary<Globals.WindowType, AtariWindow>();
 
-        public static void Initialize(Bitmap _destImage, AtariMap _myMap)
+        public static void AssignWindow(Globals.WindowType windowType, Bitmap destintationImage, AtariMap windowMap)
         {
-            myMap = _myMap;
-            destImage = _destImage;
-            gr = Graphics.FromImage(destImage);
-            gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            AtariWindow window = windows.ContainsKey(windowType) ? windows[windowType] : new AtariWindow();
+            window.map = windowMap;
+            window.destinationImage = destintationImage;
+            window.graphics = Graphics.FromImage(destintationImage);
+            window.graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+        }
+
+        public static void SetMap(Globals.WindowType window, AtariMap map)
+        {
+            windows[window].map = map;
+            windows[window].mapOffset = 0;
         }
 
         public static void SetGridVisibility(bool _drawScreenBorders, bool _drawGrid)
@@ -33,22 +49,17 @@ namespace AtariMapMaker
             drawGrid = _drawGrid;
             drawScreenBorders = _drawScreenBorders;
         }
-
-        public static void SetMap(AtariMap _myMap)
-        {
-            myMap = _myMap;
-        }
-
-        public static void SelectionStart(Point firstCorner)
+ 
+        public static void SelectionStart(Point firstCorner, Globals.WindowType window)
         {
             mouseSelection.X = firstCorner.X - (firstCorner.X % Globals.CharSize);
             mouseSelection.Y = firstCorner.Y - (firstCorner.Y % Globals.CharSize);
             mouseSelection.Width = Globals.CharSize;
             mouseSelection.Height = Globals.CharSize;
-            DrawSelection();
+            DrawSelection(window);
         }
 
-        public static void SelectionChange(Bitmap dataImage, Point newCorner)
+        public static void SelectionChange(Point newCorner, Globals.WindowType window)
         {
             int mx = newCorner.X - (newCorner.X % Globals.CharSize);
             int my = newCorner.Y - (newCorner.Y % Globals.CharSize);
@@ -59,8 +70,8 @@ namespace AtariMapMaker
                 mouseSelection.Width = Globals.CharSize + mx - mouseSelection.X;
                 mouseSelection.Height = Globals.CharSize + my - mouseSelection.Y;
 
-                if (mouseSelection.Width + mouseSelection.X > dataImage.Width * Globals.Zoom ||
-                    mouseSelection.Height + mouseSelection.Y > dataImage.Height * Globals.Zoom)
+                if (mouseSelection.Width + mouseSelection.X > windows[window].fontRendererDataImage.Width * Globals.Zoom ||
+                    mouseSelection.Height + mouseSelection.Y > windows[window].fontRendererDataImage.Height * Globals.Zoom)
                 {
                     //selection out of bounds - do not copy, do not draw selection
                     mouseSelection.Width = 0;
@@ -68,13 +79,13 @@ namespace AtariMapMaker
                 }
 
                 // gr.DrawImage(dataImage, 0, 0, dataImage.Width * zoom, dataImage.Height * zoom);
-                Redraw(dataImage);
+                Redraw(window);
 
-                DrawSelection();
+                DrawSelection(window);
             }
         }
 
-        public static bool SelectionEnd(Bitmap dataImage)
+        public static bool SelectionEnd(Globals.WindowType window)
         {
             if (mouseSelection.Width == 0 || mouseSelection.Height == 0)
                 return false;
@@ -95,11 +106,11 @@ namespace AtariMapMaker
                 mouseSelection.Height = -mouseSelection.Height;
             }
 
-            AtariClipboard.SetDataSource(myMap);
-            Redraw(dataImage, true, false, false);
-            AtariClipboard.Copy(destImage, mouseSelection, AtariFontRenderer.offset);
+            AtariClipboard.SetDataSource(windows[window].map);
+            Redraw(window, true, false, false);
+            AtariClipboard.Copy(windows[window].destinationImage, mouseSelection, AtariFontRenderer.offset);
             
-            Redraw(dataImage, false, true, true);
+            Redraw(window, false, true, true);
             AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.GetImage());
             AtariClipboard.UnderImageGraphics = Graphics.FromImage(AtariClipboard.UnderClipBoardImage);
             return true;
@@ -117,17 +128,17 @@ namespace AtariMapMaker
             }
         }
 
-        private static void DrawSelection()
+        private static void DrawSelection(Globals.WindowType window)
         {
-            gr.DrawLine(selectionPen, mouseSelection.X, mouseSelection.Y, mouseSelection.X + mouseSelection.Width, mouseSelection.Y);
-            gr.DrawLine(selectionPen, mouseSelection.X + mouseSelection.Width, mouseSelection.Y, mouseSelection.X + mouseSelection.Width, mouseSelection.Y + mouseSelection.Height);
-            gr.DrawLine(selectionPen, mouseSelection.X, mouseSelection.Y + mouseSelection.Height, mouseSelection.X + mouseSelection.Width, mouseSelection.Y + mouseSelection.Height);
-            gr.DrawLine(selectionPen, mouseSelection.X, mouseSelection.Y, mouseSelection.X, mouseSelection.Y + mouseSelection.Height);
+            windows[window].graphics.DrawLine(selectionPen, mouseSelection.X, mouseSelection.Y, mouseSelection.X + mouseSelection.Width, mouseSelection.Y);
+            windows[window].graphics.DrawLine(selectionPen, mouseSelection.X + mouseSelection.Width, mouseSelection.Y, mouseSelection.X + mouseSelection.Width, mouseSelection.Y + mouseSelection.Height);
+            windows[window].graphics.DrawLine(selectionPen, mouseSelection.X, mouseSelection.Y + mouseSelection.Height, mouseSelection.X + mouseSelection.Width, mouseSelection.Y + mouseSelection.Height);
+            windows[window].graphics.DrawLine(selectionPen, mouseSelection.X, mouseSelection.Y, mouseSelection.X, mouseSelection.Y + mouseSelection.Height);
         }
 
-        public static void Redraw(Bitmap dataImage)
+        public static void Redraw(Globals.WindowType windowType)
         {
-            Redraw(dataImage, true, drawScreenBorders, drawGrid);
+            Redraw(windowType, true, drawScreenBorders, drawGrid);
         }
 
         public static Point GetDliFormOrigin()
@@ -135,10 +146,14 @@ namespace AtariMapMaker
             return dliFormOrigin;
         }
 
-        public static void Redraw(Bitmap dataImage, bool drawData, bool drawScreenBorders, bool drawGrid)
+        public static void Redraw(Globals.WindowType window, bool drawData, bool drawScreenBorders, bool drawGrid)
         {
+            Bitmap destImage = windows[window].destinationImage;
+            AtariMap myMap = windows[window].map;
+            Graphics gr = windows[window].graphics;
+
             if (drawData)
-                gr.DrawImage(dataImage, 0, 0, dataImage.Width * Globals.Zoom, dataImage.Height * Globals.Zoom);
+                gr.DrawImage(windows[window].fontRendererDataImage, 0, 0, windows[window].fontRendererDataImage.Width * Globals.Zoom, windows[window].fontRendererDataImage.Height * Globals.Zoom);
 
             //separatory screenov
             if (drawScreenBorders)
@@ -164,10 +179,10 @@ namespace AtariMapMaker
                             destImage.SetPixel(x * Globals.CharSize, y * Globals.CharSize, gridColor);
         }
 
-        public static void Scroll(Bitmap dataImage, Point newMouseLoc)
+        public static void Scroll(Point newMouseLoc, Globals.WindowType window)
         {
            
-            bool newoffset = AtariFontRenderer.CalculateOffset((newMouseLoc.X - prevMouseLoc.X) / Globals.CharSize, (newMouseLoc.Y - prevMouseLoc.Y) / Globals.CharSize, myMap);
+            bool newoffset = AtariFontRenderer.CalculateOffset((newMouseLoc.X - prevMouseLoc.X) / Globals.CharSize, (newMouseLoc.Y - prevMouseLoc.Y) / Globals.CharSize, windows[window].map);
 
             if (newoffset)
             {
@@ -175,8 +190,8 @@ namespace AtariMapMaker
                 prevMouseLoc.X = newMouseLoc.X;
                 prevMouseLoc.Y = newMouseLoc.Y;
 
-                AtariFontRenderer.RenderData(myMap, AtariFontRenderer.offset, dataImage);
-                Redraw(dataImage);
+                AtariFontRenderer.RenderMapData(windows[window].map, windows[window].mapOffset, AtariFontRenderer.fonts[Globals.FontType.Screen], windows[window].fontRendererDataImage);
+                Redraw(window);
             }
         }
 

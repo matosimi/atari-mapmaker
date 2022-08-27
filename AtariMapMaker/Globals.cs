@@ -10,6 +10,7 @@ namespace AtariMapMaker
     public static class Globals
     {
         public enum FontType { Screen, Dli };
+        public enum WindowType { Editor, CharPicker, Dli};
         public static Size editorWindowSizeInChars;
         private static readonly int[] zoomMultiplier = new int[] { 1, 2, 3, 4 };    //100%,200%,400%
         private static int zoomIndex = 1;
