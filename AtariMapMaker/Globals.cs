@@ -19,6 +19,9 @@ namespace AtariMapMaker
             get { return zoomMultiplier[zoomIndex]; }
             set { zoomIndex = value; }
         }
+        /// <summary>
+        /// Size of character in pixels based on selected Zoom
+        /// </summary>
         public static int CharSize
         {
             get { return 8 * Zoom; }

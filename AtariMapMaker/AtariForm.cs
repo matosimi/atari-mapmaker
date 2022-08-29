@@ -17,11 +17,7 @@ namespace AtariMapMaker
         //protected PictureBox myPictureBox;
         protected Globals.WindowType window;
 
-        public AtariForm(Globals.WindowType window)
-        {
-            this.window = window;
-        }
-            
+           
         /*
         protected AtariForm(AtariFontRenderer mainRenderer, AtariClipboard clipboard, AtariPalette palette, PictureBox outputPB, int zoom)
         {

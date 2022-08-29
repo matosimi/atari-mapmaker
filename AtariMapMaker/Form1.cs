@@ -17,7 +17,7 @@ namespace AtariMapMaker
         private AtariMap myMap;
         private string mouseStatus = "";
         //private Bitmap dataImage;                                   //picture with map (data only, no zoom)
-        private Graphics gr;
+        //private Graphics gr;
         private FontCharPicker myCharPicker;
         private DliForm dliForm;
 
@@ -56,7 +56,7 @@ namespace AtariMapMaker
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
 
-            myCharPicker = new FontCharPicker(pictureBox2);
+            myCharPicker = new FontCharPicker(); // pictureBoxClipboard);
 
             comboOperation.Items.AddRange(new String[4] { "Export", "Import", "Column Export", "Column Import" });
             comboOperation.SelectedIndex = 0;
@@ -136,10 +136,15 @@ namespace AtariMapMaker
                 colorPickerForm.Pick(index);
 
                 AtariFontRenderer.Color5[colorIndex] = (byte)colorPickerForm.PickedColorIndex();
-                //myCharPicker.GetRenderer().Color5[colorIndex] = (byte)colorPicker.PickedColorIndex();
                 FillFontColorList();
+                AtariFontRenderer.RedrawFontImage(Globals.FontType.Screen);
                 AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                pictureBoxMap.Invalidate();
+                myCharPicker.Invalidate();
+                myCharPicker.GetPictureBox().Invalidate();
+                //pictureBoxClipboard.Image = AtariPictureTools.windows[Globals.WindowType.Editor].destinationImage;
+
                 //AtariFontRenderer.RedrawFont();
                 //pictureBoxMap.Invalidate();
                 //myCharPicker.GetRenderer().RedrawFont();
@@ -177,8 +182,8 @@ namespace AtariMapMaker
                     AtariPictureTools.DrawUnderClipBoard(e.Location);
                 }
             }
-            int xx = AtariFontRenderer.OffsetX + e.X / Globals.CharSize;
-            int yy = AtariFontRenderer.OffsetY + e.Y / Globals.CharSize;
+            int xx = myMap.OffsetX + e.X / Globals.CharSize;
+            int yy = myMap.OffsetY + e.Y / Globals.CharSize;
             int scrx = xx / myMap.ScreenSize.Width;
             int scry = yy / myMap.ScreenSize.Height;
             int posx = xx % myMap.ScreenSize.Width;
@@ -191,22 +196,26 @@ namespace AtariMapMaker
                 byte charVal = myMap.Data[xx + yy * myMap.Stride];
                 labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
 
-                Point dliPoint = DliFormOrigin(scrx, scry);
-                if (dliPoint.X != -1)
+                if (checkBoxEditRows.Checked)
                 {
-                    //dliForm.Left = this.Left + this.ClientRectangle.Left + pictureBoxMap.Left + dliPoint.X * Globals.CharSize;
-                    //dliForm.Top = this.Top + this.ClientRectangle.Top + pictureBoxMap.Top + dliPoint.Y * Globals.CharSize;
-                    Rectangle r = this.RectangleToScreen(this.ClientRectangle);
-                    dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
-                    dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
-                    //dliForm.ZoomResize();
-                    dliForm.TopMost = true;
-                    dliForm.Show();
-                }
-                else
-                {
+                    Point dliPoint = DliFormOrigin(scrx, scry);
+                    if (dliPoint.X != -1)
+                    {
+                        //dliForm.Left = this.Left + this.ClientRectangle.Left + pictureBoxMap.Left + dliPoint.X * Globals.CharSize;
+                        //dliForm.Top = this.Top + this.ClientRectangle.Top + pictureBoxMap.Top + dliPoint.Y * Globals.CharSize;
+                        Rectangle r = this.RectangleToScreen(this.ClientRectangle);
+                        dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
+                        dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
+                        //dliForm.ZoomResize();
+                        dliForm.TopMost = true;
+                        dliForm.Show();
+                    }
+                    else
+                    {
+                        dliForm.Hide();
+                    }
+                } else
                     dliForm.Hide();
-                }
             }
         }
 
@@ -217,9 +226,9 @@ namespace AtariMapMaker
             int ymin = scry * myMap.ScreenSize.Height;
             int ymax = (scry + 1) * myMap.ScreenSize.Height;
 
-            Rectangle visibleArea = new Rectangle(AtariFontRenderer.OffsetX, AtariFontRenderer.OffsetY, Globals.editorWindowSizeInChars.Width, Globals.editorWindowSizeInChars.Height);
+            Rectangle visibleArea = new Rectangle(myMap.OffsetX, myMap.OffsetY, Globals.editorWindowSizeInChars.Width, Globals.editorWindowSizeInChars.Height);
             if (visibleArea.Contains(new Rectangle(xmin, ymin, xmax - xmin, ymax - ymin)))
-                return new Point(xmin + 1 - AtariFontRenderer.OffsetX, ymin - AtariFontRenderer.OffsetY);
+                return new Point(xmin + 1 - myMap.OffsetX, ymin - myMap.OffsetY);
             else
                 return new Point(-1, -1);
         }
@@ -234,7 +243,7 @@ namespace AtariMapMaker
                 {
                     AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
                     int addoffset = (e.X / Globals.CharSize) + myMap.Stride * (e.Y / Globals.CharSize);
-                    AtariClipboard.Paste(AtariFontRenderer.offset + addoffset);
+                    AtariClipboard.Paste(myMap.Offset + addoffset);
                     RedrawEditorWindow();
                 }
                 else
@@ -265,7 +274,7 @@ namespace AtariMapMaker
                 {
                     AtariPictureTools.SelectionEnd(Globals.WindowType.Editor);
                     AtariClipboard.IsValid = true;
-                    pictureBox2.Image = AtariClipboard.GetImage();
+                    pictureBoxClipboard.Image = AtariClipboard.GetImage();
                     pictureBoxMap.Invalidate();
                     mouseStatus = "";
                 }
@@ -315,7 +324,10 @@ namespace AtariMapMaker
 
             if (myMap == null)
                 return;
-
+            pictureBoxMap.Image = new Bitmap(pictureBoxMap.Width, pictureBoxMap.Height);
+            AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
+            AtariPictureTools.Redraw(Globals.WindowType.Editor);
+            /*
             if (dataImage != null)
                 dataImage.Dispose();
             dataImage = new Bitmap(pictureBoxMap.Width / Globals.Zoom, pictureBoxMap.Height / Globals.Zoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
@@ -331,10 +343,10 @@ namespace AtariMapMaker
             gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             AtariFontRenderer.SelectFont(Globals.FontType.Screen);
             AtariFontRenderer.RenderMapData(myMap, AtariFontRenderer.offset, dataImage);
-            AtariPictureTools.SetDestImage((Bitmap)pictureBoxMap.Image, gr);   //update of new image in picturebox
+            //AtariPictureTools.SetDestImage((Bitmap)pictureBoxMap.Image, gr);   //update of new image in picturebox
             AtariPictureTools.AssignWindow((Bitmap)pictureBoxMap.Image, myMap);
             AtariPictureTools.Redraw(dataImage);
-            pictureBoxMap.Invalidate();
+            pictureBoxMap.Invalidate();*/
         }
 
         private void ButtonSave_Click(object sender, EventArgs e)
@@ -383,7 +395,8 @@ namespace AtariMapMaker
                     //myRenderer = (AtariFontRenderer)bf.Deserialize(fs);
                     //buttonLoad.Text = myMap.ScreenSize.Height.ToString();
                     //AtariPictureTools.AssignWindow((Bitmap)pictureBoxMap.Image, myMap);
-                    AtariPictureTools.SetMap(Globals.WindowType.Editor, myMap);
+                    //AtariPictureTools.SetMap(Globals.WindowType.Editor, myMap);
+                    AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                     AtariPictureTools.SetGridVisibility(comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked);
                   
                     fs.Close();
@@ -611,7 +624,7 @@ namespace AtariMapMaker
             {
                
                 myMap = new AtariMap(new Size((int)nudMapW.Value, (int)nudMapH.Value), new Size((int)nudScreenW.Value, (int)nudScreenH.Value));
-                AtariPictureTools.SetMap(Globals.WindowType.Editor, myMap);
+                AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                 numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.Screens.Width;
                 RedrawEditorWindow();
             }
@@ -622,6 +635,7 @@ namespace AtariMapMaker
         {
             Globals.Zoom = trackBarZoom.Value;
             PictureBoxMap_ClientSizeChanged(null, null);
+            myCharPicker.SetZoom();
         }
 
         private void ComboBoxDrawGrid_CheckedChanged(object sender, EventArgs e)

@@ -13,7 +13,7 @@ namespace AtariMapMaker
         private Size screenSize;    //velkost obrazovky v znakoch
         private Size dataSize;      //velkost dat v znakoch
         private Size screens;       //pocet screenov v datach (velkost mapy)
-        //private Point origin;       //vztazny bod screenu [0,0]
+        private int offset;
         private readonly byte[,,] colorData;   //screenNumber,linenumber,colorNumber
 
         public AtariMap(Size screens, Size screenSize)
@@ -23,6 +23,22 @@ namespace AtariMapMaker
             this.data = new byte[dataSize.Width * dataSize.Height];
             this.screenSize = screenSize;
             this.colorData = new byte[screens.Width * screens.Height, screenSize.Height, 5];
+        }
+
+        public int Offset
+        {
+            get { return offset; }
+            set { offset = value; }
+        }
+
+        public int OffsetX
+        {
+            get { return offset % Stride; }
+        }
+
+        public int OffsetY
+        {
+            get { return offset / Stride; }
         }
 
         /// <summary>

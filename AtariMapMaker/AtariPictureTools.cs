@@ -12,7 +12,7 @@ namespace AtariMapMaker
         public Bitmap fontRendererDataImage;
         public Bitmap destinationImage;
         public Graphics graphics;
-        public int mapOffset;
+        public Globals.FontType fontType;
     }
     public static class AtariPictureTools
     {
@@ -29,21 +29,30 @@ namespace AtariMapMaker
         private static Point dliFormOrigin;
         public static Dictionary<Globals.WindowType, AtariWindow> windows = new Dictionary<Globals.WindowType, AtariWindow>();
 
-        public static void AssignWindow(Globals.WindowType windowType, Bitmap destintationImage, AtariMap windowMap)
+        public static void AssignWindow(Globals.WindowType windowType, Bitmap destinationPictureBoxImage, AtariMap windowMap)
         {
-            AtariWindow window = windows.ContainsKey(windowType) ? windows[windowType] : new AtariWindow();
-            window.map = windowMap;
-            window.destinationImage = destintationImage;
-            window.graphics = Graphics.FromImage(destintationImage);
+            Globals.FontType myFontType = windowType == Globals.WindowType.Dli ? Globals.FontType.Dli : Globals.FontType.Screen;
+            //int myMapOffset = 0;
+
+            if (windows.ContainsKey(windowType))
+            {
+                //myMapOffset = windows[windowType].mapOffset;
+                windows.Remove(windowType);
+            }
+
+            AtariWindow window = new AtariWindow()
+            {
+                destinationImage = new Bitmap(destinationPictureBoxImage.Width, destinationPictureBoxImage.Height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed),
+                graphics = Graphics.FromImage(destinationPictureBoxImage),
+                map = windowMap,
+                fontType = myFontType,
+                fontRendererDataImage = AtariFontRenderer.fonts[myFontType].bitmap
+            };
+            window.destinationImage.Palette = AtariPalette.GetPalette();
             window.graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            windows.Add(windowType, window);
         }
-
-        public static void SetMap(Globals.WindowType window, AtariMap map)
-        {
-            windows[window].map = map;
-            windows[window].mapOffset = 0;
-        }
-
+       
         public static void SetGridVisibility(bool _drawScreenBorders, bool _drawGrid)
         {
             drawGrid = _drawGrid;
@@ -108,7 +117,7 @@ namespace AtariMapMaker
 
             AtariClipboard.SetDataSource(windows[window].map);
             Redraw(window, true, false, false);
-            AtariClipboard.Copy(windows[window].destinationImage, mouseSelection, AtariFontRenderer.offset);
+            AtariClipboard.Copy(windows[window].destinationImage, mouseSelection, windows[window].map.Offset);
             
             Redraw(window, false, true, true);
             AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.GetImage());
@@ -153,30 +162,36 @@ namespace AtariMapMaker
             Graphics gr = windows[window].graphics;
 
             if (drawData)
-                gr.DrawImage(windows[window].fontRendererDataImage, 0, 0, windows[window].fontRendererDataImage.Width * Globals.Zoom, windows[window].fontRendererDataImage.Height * Globals.Zoom);
-
+            {
+                AtariFontRenderer.RenderMapData(myMap, windows[window].fontType, destImage);
+                gr.DrawImage(destImage, 0, 0, destImage.Width * Globals.Zoom, destImage.Height * Globals.Zoom);
+            }
             //separatory screenov
             if (drawScreenBorders)
             {
                 for (int x = 0; x <= (destImage.Size.Width / Globals.CharSize) / myMap.ScreenSize.Width; x++)
-                    gr.DrawLine(screenSeparatorPen, (-AtariFontRenderer.OffsetX % myMap.ScreenSize.Width + (x + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
-                                                 0, (-AtariFontRenderer.OffsetX % myMap.ScreenSize.Width + (x + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
+                    gr.DrawLine(screenSeparatorPen, (-myMap.OffsetX % myMap.ScreenSize.Width + (x + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
+                                                 0, (-myMap.OffsetX % myMap.ScreenSize.Width + (x + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
                                                  destImage.Size.Height);
-                dliFormOrigin = new Point((-AtariFontRenderer.OffsetX % myMap.ScreenSize.Width + (0 + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
-                (-AtariFontRenderer.OffsetY % myMap.ScreenSize.Height + (0 + 1) * myMap.ScreenSize.Height) * Globals.CharSize);
+                dliFormOrigin = new Point((-myMap.OffsetX % myMap.ScreenSize.Width + (0 + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
+                (-myMap.OffsetY % myMap.ScreenSize.Height + (0 + 1) * myMap.ScreenSize.Height) * Globals.CharSize);
 
 
 
                 for (int y = 0; y <= (destImage.Size.Height / Globals.CharSize) / myMap.ScreenSize.Height; y++)
-                    gr.DrawLine(screenSeparatorPen, 0, (-AtariFontRenderer.OffsetY % myMap.ScreenSize.Height + (y + 1) * myMap.ScreenSize.Height) * Globals.CharSize,
-                                      destImage.Width, (-AtariFontRenderer.OffsetY % myMap.ScreenSize.Height + (y + 1) * myMap.ScreenSize.Height) * Globals.CharSize);
+                    gr.DrawLine(screenSeparatorPen, 0, (-myMap.OffsetY % myMap.ScreenSize.Height + (y + 1) * myMap.ScreenSize.Height) * Globals.CharSize,
+                                      destImage.Width, (-myMap.OffsetY % myMap.ScreenSize.Height + (y + 1) * myMap.ScreenSize.Height) * Globals.CharSize);
             }
             //grid
             if (drawGrid)
+            {
+                Brush gridBrush = new SolidBrush(gridColor);
                 for (int x = 0; x < (destImage.Size.Width / Globals.CharSize); x++)
                     for (int y = 0; y < (destImage.Size.Height / Globals.CharSize); y++)
-                        if (AtariFontRenderer.OffsetX + x < myMap.Stride && AtariFontRenderer.OffsetY + y < myMap.Screens.Height * myMap.ScreenSize.Height)
-                            destImage.SetPixel(x * Globals.CharSize, y * Globals.CharSize, gridColor);
+                        if (myMap.OffsetX + x < myMap.Stride && myMap.OffsetY + y < myMap.Screens.Height * myMap.ScreenSize.Height)
+                            gr.FillRectangle(gridBrush, x * Globals.CharSize, y * Globals.CharSize, 1, 1);
+                            //destImage.SetPixel(x * Globals.CharSize, y * Globals.CharSize, gridColor);
+            }
         }
 
         public static void Scroll(Point newMouseLoc, Globals.WindowType window)
@@ -186,30 +201,29 @@ namespace AtariMapMaker
 
             if (newoffset)
             {
-
                 prevMouseLoc.X = newMouseLoc.X;
                 prevMouseLoc.Y = newMouseLoc.Y;
 
-                AtariFontRenderer.RenderMapData(windows[window].map, windows[window].mapOffset, AtariFontRenderer.fonts[Globals.FontType.Screen], windows[window].fontRendererDataImage);
+                //AtariFontRenderer.RenderMapData(windows[window].map, windows[window].mapOffset, windows[window].fontType, windows[window].destinationImage);
                 Redraw(window);
             }
         }
 
         public static void DrawClipBoard(Point location)
         {
-            AtariClipboard.UnderImageGraphics.DrawImage(destImage, 0, 0, new Rectangle(location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize, AtariClipboard.GetImage().Width, AtariClipboard.GetImage().Height), GraphicsUnit.Pixel);
-            gr.DrawImage(AtariClipboard.GetImage(), location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize);
+            AtariClipboard.UnderImageGraphics.DrawImage(windows[Globals.WindowType.Editor].destinationImage, 0, 0, new Rectangle(location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize, AtariClipboard.GetImage().Width, AtariClipboard.GetImage().Height), GraphicsUnit.Pixel);
+            windows[Globals.WindowType.Editor].graphics.DrawImage(AtariClipboard.GetImage(), location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize);
         }
 
         public static void DrawUnderClipBoard(Point location)
         {
-            gr.DrawImage(AtariClipboard.UnderClipBoardImage, location.X - location .X % Globals.CharSize, location .Y - location .Y % Globals.CharSize);
+            windows[Globals.WindowType.Editor].graphics.DrawImage(AtariClipboard.UnderClipBoardImage, location.X - location .X % Globals.CharSize, location .Y - location .Y % Globals.CharSize);
         }
-
+        /*
         public static void SetDestImage(Bitmap _destImage, Graphics _gr)
         {
             destImage = _destImage;
             gr = _gr;
-        }
+        }*/
     }
 }

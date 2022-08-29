@@ -39,7 +39,7 @@ namespace AtariMapMaker
             this.checkBoxEditRows = new System.Windows.Forms.CheckBox();
             this.buttonRefreshFont = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
+            this.pictureBoxClipboard = new System.Windows.Forms.PictureBox();
             this.buttonLoadFont = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.listView1 = new System.Windows.Forms.ListView();
@@ -96,7 +96,7 @@ namespace AtariMapMaker
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.groupBox4.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxClipboard)).BeginInit();
             this.groupBox2.SuspendLayout();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarZoom)).BeginInit();
@@ -212,8 +212,6 @@ namespace AtariMapMaker
             // checkBoxEditRows
             // 
             this.checkBoxEditRows.AutoSize = true;
-            this.checkBoxEditRows.Checked = true;
-            this.checkBoxEditRows.CheckState = System.Windows.Forms.CheckState.Checked;
             this.checkBoxEditRows.Location = new System.Drawing.Point(17, 288);
             this.checkBoxEditRows.Name = "checkBoxEditRows";
             this.checkBoxEditRows.Size = new System.Drawing.Size(74, 17);
@@ -234,7 +232,7 @@ namespace AtariMapMaker
             // 
             // groupBox4
             // 
-            this.groupBox4.Controls.Add(this.pictureBox2);
+            this.groupBox4.Controls.Add(this.pictureBoxClipboard);
             this.groupBox4.Location = new System.Drawing.Point(7, 323);
             this.groupBox4.Name = "groupBox4";
             this.groupBox4.Size = new System.Drawing.Size(216, 137);
@@ -242,13 +240,13 @@ namespace AtariMapMaker
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Clipboard";
             // 
-            // pictureBox2
+            // pictureBoxClipboard
             // 
-            this.pictureBox2.Location = new System.Drawing.Point(11, 19);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(195, 112);
-            this.pictureBox2.TabIndex = 6;
-            this.pictureBox2.TabStop = false;
+            this.pictureBoxClipboard.Location = new System.Drawing.Point(11, 19);
+            this.pictureBoxClipboard.Name = "pictureBoxClipboard";
+            this.pictureBoxClipboard.Size = new System.Drawing.Size(195, 112);
+            this.pictureBoxClipboard.TabIndex = 6;
+            this.pictureBoxClipboard.TabStop = false;
             // 
             // buttonLoadFont
             // 
@@ -769,7 +767,7 @@ namespace AtariMapMaker
             this.tabPage1.ResumeLayout(false);
             this.tabPage1.PerformLayout();
             this.groupBox4.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxClipboard)).EndInit();
             this.groupBox2.ResumeLayout(false);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
@@ -807,7 +805,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.Timer timer1;
-        private System.Windows.Forms.PictureBox pictureBox2;
+        private System.Windows.Forms.PictureBox pictureBoxClipboard;
         private System.Windows.Forms.Button buttonSave;
         private System.Windows.Forms.Button buttonLoad;
         private System.Windows.Forms.Button buttonExport;

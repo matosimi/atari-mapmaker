@@ -30,8 +30,10 @@ namespace AtariMapMaker
                 dliFormFontData[i + 16] = 0b11111111;
             }
             AtariFontRenderer.SetFontData(dliFormFontData, Globals.FontType.Dli);
-            AtariPictureTools.AssignWindow(Globals.WindowType.Dli, (Bitmap)pictureBox1.Image, myMap);
             InitializeComponent();
+            pictureBox1.Image = new Bitmap(5 * Globals.CharSize, lines * Globals.CharSize);
+            AtariPictureTools.AssignWindow(Globals.WindowType.Dli, (Bitmap)pictureBox1.Image, myMap);
+            
         }
 
         public void RenderData()

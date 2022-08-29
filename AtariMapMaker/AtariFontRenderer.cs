@@ -16,14 +16,15 @@ namespace AtariMapMaker
     } 
     public static class AtariFontRenderer
     {
-        private static byte[] fontData;
+        //private static byte[] fontData;
         //private static Bitmap fontBmp;
         private static byte[] color5 = { 40, 202, 148, 70, 0 };
-        public static int offset = 0;
-        private static int offsetX = 0, offsetY = 0;
-        private static readonly bool graphicsMode = true;
+        //public static int offset = 0;
+        //private static int offsetX = 0, offsetY = 0;
+        //private static readonly bool graphicsMode = true;
         private static string lastFontFile;
         public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
+        /*
         public static int OffsetX
         {
             get { return offsetX; }
@@ -32,7 +33,7 @@ namespace AtariMapMaker
         public static int OffsetY
         {
             get { return offsetY; }
-        }
+        }*/
 
         public static string LastFontFile
         {
@@ -40,6 +41,12 @@ namespace AtariMapMaker
             set { lastFontFile = value; }
         }
 
+        public static void RedrawFontImage(Globals.FontType fontType)
+        {
+            AtariFont font = fonts[fontType];
+            font.bitmap = CreateFontImage(true, font.data);
+            fonts[fontType] = font;
+        }
         public static void SetFontData(byte[] data, Globals.FontType fontType)
         {
             if (fonts.ContainsKey(fontType))
@@ -66,14 +73,15 @@ namespace AtariMapMaker
         }
 
         public static void LoadFont(String fontname, Globals.FontType fontType)
-        {    
-                FileStream fs = new FileStream(fontname, FileMode.Open);
-                fs.Read(fontData, 0, 1024);
-                fs.Close();
-                for (int a = 0; a < 1024; a++)
-                {
-                    fontData[a + 1024] = (byte)(fontData[a] ^ 0xFF);
-                }
+        {
+            byte[] fontData = new byte[1024*2];
+            FileStream fs = new FileStream(fontname, FileMode.Open);
+            fs.Read(fontData, 0, 1024);
+            fs.Close();
+            for (int a = 0; a < 1024; a++)
+            {
+                fontData[a + 1024] = (byte)(fontData[a] ^ 0x80);
+            }
             lastFontFile = fontname;
             SetFontData(fontData, fontType);
         }
@@ -84,8 +92,8 @@ namespace AtariMapMaker
             if (deltaX == 0 && deltaY == 0) //maly pohyb
                 return false;
             
-            int subX = offsetX - deltaX;
-            int subY = offsetY - deltaY;
+            int subX = myMap.OffsetX - deltaX;
+            int subY = myMap.OffsetY - deltaY;
             
             if (subX < 0)
                 return false;
@@ -95,15 +103,15 @@ namespace AtariMapMaker
                 return false;
             if (subY > (myMap.Screens.Height - 1) * myMap.ScreenSize.Height)
                 return false;
-            
-            offsetX = subX;
-            offsetY = subY;
-            offset = offset - deltaX - deltaY * myMap.Stride;
+
+            //offsetX = subX;
+            //offsetY = subY;
+            myMap.Offset -= deltaX + deltaY * myMap.Stride;
             return true;
         }
 
         //8bpp indexed
-        private static Bitmap CreateFontImage(bool colorMode, byte[] data) //2 or 4
+        private static Bitmap CreateFontImage(bool colorMode, byte[] fontData) //2 or 4
         {
             Bitmap bmp = new Bitmap(256 * 8, 8, PixelFormat.Format8bppIndexed)
             {
@@ -161,16 +169,21 @@ namespace AtariMapMaker
 
         /// <summary>
         /// Try avoid calling this method outside AtariPictureTools
-        /// outBmp has to already be properly sized (windowCharsHorizontal*8, windowCharsVertical*8)
+        /// outBmp has to be already properly sized (windowCharsHorizontal*8, windowCharsVertical*8)
         /// </summary>
         /// <param name="myMap"></param>
         /// <param name="adrOffset"></param>
         /// <param name="font"></param>
         /// <param name="outBmp"></param>
-        public static void RenderMapData(AtariMap myMap, int adrOffset, AtariFont font, Bitmap outBmp)
+        public static void RenderMapData(AtariMap myMap, Globals.FontType fontType, Bitmap outBmp)
         {
-            byte[] data = myMap.Data;
+            if (outBmp.PixelFormat != PixelFormat.Format8bppIndexed)
+                throw new Exception("Output bitmap of RenderMapData MUST be 8bppIndexed palette!");
+            
+            AtariFont font = fonts[fontType];
 
+            byte[] data = myMap.Data;
+            int adrOffset = myMap.Offset;
             if (adrOffset < 0)
             {
                 return;
@@ -179,10 +192,10 @@ namespace AtariMapMaker
             int width = outBmp.Width / 8;
             int height = outBmp.Height / 8;
 
-            if (offsetX + width > myMap.Stride)
-                width = myMap.Stride - offsetX;
-            if (offsetY + height > myMap.Screens.Height * myMap.ScreenSize.Height)
-                height = myMap.ScreenSize.Height * myMap.Screens.Height - offsetY;
+            if (myMap.OffsetX + width > myMap.Stride)
+                width = myMap.Stride - myMap.OffsetX;
+            if (myMap.OffsetY + height > myMap.Screens.Height * myMap.ScreenSize.Height)
+                height = myMap.ScreenSize.Height * myMap.Screens.Height - myMap.OffsetY;
 
             //Bitmap bmp = new Bitmap(bmpSize.Width, bmpSize.Height, PixelFormat.Format8bppIndexed);
             //outBmp.Palette = AtariPalette.GetPalette();
