@@ -86,26 +86,27 @@ namespace AtariMapMaker
             SetFontData(fontData, fontType);
         }
 
-        //vypocitaj novy offset
+        /// <summary>
+        /// Calculate new offset based on the difference of mouse down and mouse move coordinates 
+        /// </summary>
+        /// <param name="deltaX"></param>
+        /// <param name="deltaY"></param>
+        /// <param name="myMap"></param>
+        /// <returns></returns>
         public static bool CalculateOffset(int deltaX, int deltaY, AtariMap myMap)
         {
-            if (deltaX == 0 && deltaY == 0) //maly pohyb
+            if (deltaX == 0 && deltaY == 0) //small movement (no movement)
                 return false;
             
             int subX = myMap.OffsetX - deltaX;
             int subY = myMap.OffsetY - deltaY;
             
+            //compensation of top/left bounds
             if (subX < 0)
-                return false;
-            if (subY < 0)
-                return false;
-            if (subX > myMap.Stride-myMap.ScreenSize.Width)
-                return false;
-            if (subY > (myMap.Screens.Height - 1) * myMap.ScreenSize.Height)
-                return false;
+                deltaX = myMap.OffsetX;
+            if (subY < 0)   
+                deltaY = myMap.OffsetY;
 
-            //offsetX = subX;
-            //offsetY = subY;
             myMap.Offset -= deltaX + deltaY * myMap.Stride;
             return true;
         }

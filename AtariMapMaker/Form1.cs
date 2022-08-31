@@ -74,7 +74,7 @@ namespace AtariMapMaker
         private void ButtonShowFont_Click(object sender, EventArgs e)
         {
             myCharPicker.SetZoom();
-            myCharPicker.Invalidate();
+            myCharPicker.Refresh();
             myCharPicker.Show();
             myCharPicker.BringToFront();
         }
@@ -140,9 +140,9 @@ namespace AtariMapMaker
                 AtariFontRenderer.RedrawFontImage(Globals.FontType.Screen);
                 AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
-                pictureBoxMap.Invalidate();
-                myCharPicker.Invalidate();
-                myCharPicker.GetPictureBox().Invalidate();
+                pictureBoxMap.Refresh();
+                myCharPicker.Refresh();
+                myCharPicker.GetPictureBox().Refresh();
                 //pictureBoxClipboard.Image = AtariPictureTools.windows[Globals.WindowType.Editor].destinationImage;
 
                 //AtariFontRenderer.RedrawFont();
@@ -155,11 +155,10 @@ namespace AtariMapMaker
 
         private void PictureBoxMap_MouseMove(object sender, MouseEventArgs e)
         {
-            
             if (e.Button == MouseButtons.Right)     //SCROLL
             {
-                AtariPictureTools.Scroll(e.Location, Globals.WindowType.Editor);
-                pictureBoxMap.Invalidate();
+                if (AtariPictureTools.Scroll(e.Location, Globals.WindowType.Editor))
+                    pictureBoxMap.Refresh();
             }
 
 
@@ -168,7 +167,7 @@ namespace AtariMapMaker
                 if (mouseStatus == "SELECTION")
                 {
                     AtariPictureTools.SelectionChange(e.Location, Globals.WindowType.Editor);
-                    pictureBoxMap.Invalidate();
+                    pictureBoxMap.Refresh();
                 }
             }
 
@@ -178,7 +177,7 @@ namespace AtariMapMaker
                 {
                     //AtariPictureTools.AssignWindow((Bitmap)pictureBoxMap.Image, myMap);
                     
-                    AtariPictureTools.DrawClipBoard(e.Location); //TODO: to where?
+                    AtariPictureTools.DrawClipBoard(e.Location, (Bitmap)pictureBoxMap.Image); //TODO: to where?
                     pictureBoxMap.Refresh();
                     AtariPictureTools.DrawUnderClipBoard(e.Location);
                 }
@@ -245,7 +244,8 @@ namespace AtariMapMaker
                     AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
                     int addoffset = (e.X / Globals.CharSize) + myMap.Stride * (e.Y / Globals.CharSize);
                     AtariClipboard.Paste(myMap.Offset + addoffset);
-                    RedrawEditorWindow();
+                    //RedrawEditorWindow();
+                    AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 }
                 else
                 {
@@ -263,6 +263,7 @@ namespace AtariMapMaker
             {
                 if (mouseStatus == "SELECTION")
                     mouseStatus = "";
+                AtariPictureTools.PreviousOffset = myMap.Offset;
             }
         }
 
@@ -275,8 +276,8 @@ namespace AtariMapMaker
                 {
                     AtariPictureTools.SelectionEnd(Globals.WindowType.Editor);
                     AtariClipboard.IsValid = true;
-                    pictureBoxClipboard.Image = AtariClipboard.GetImage();
-                    pictureBoxMap.Invalidate();
+                    pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                    pictureBoxMap.Refresh();
                     mouseStatus = "";
                 }
         }
@@ -287,7 +288,7 @@ namespace AtariMapMaker
             {
                 AtariClipboard.IsValid = false;
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
-                pictureBoxMap.Invalidate();
+                pictureBoxMap.Refresh();
             }
         }
 
@@ -551,6 +552,8 @@ namespace AtariMapMaker
                     AtariFontRenderer.LoadFont(openFileDialog1.FileName, Globals.FontType.Screen);
                     AtariPictureTools.Redraw(Globals.WindowType.Editor);
                     AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
+                    pictureBoxMap.Refresh();
+                    myCharPicker.Refresh();
                     //myCharPicker.GetRenderer().LoadFont(openFileDialog1.FileName);
                     //myCharPicker.GetRenderer().RedrawFont();
                     //myCharPicker.RedrawFontWindow();
@@ -655,7 +658,7 @@ namespace AtariMapMaker
         {
             //AtariFontRenderer.RenderMapData(myMap, AtariFontRenderer.offset, dataImage); //redraw data
             AtariPictureTools.Redraw(Globals.WindowType.Editor); //dataImage);                         //redraw grids
-            pictureBoxMap.Invalidate();
+            pictureBoxMap.Refresh();
         }
 
         private void ComboBoxOperation_SelectedIndexChanged(object sender, EventArgs e)

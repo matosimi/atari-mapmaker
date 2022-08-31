@@ -101,9 +101,13 @@ namespace AtariMapMaker
             }
         }
 
-        public static Bitmap GetImage()
+        public static Bitmap ClipboardImage
+
         {
-            return clipboard;
+            get
+            {
+                return clipboard;
+            }
         }
     }
 }

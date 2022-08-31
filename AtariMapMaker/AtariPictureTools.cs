@@ -21,6 +21,7 @@ namespace AtariMapMaker
         private static Rectangle mouseSelection = new Rectangle();
         //private static Bitmap destImage;
         private static Point prevMouseLoc;
+        private static int previousOffset;
         private static readonly Pen screenSeparatorPen = new Pen(Color.Red);
         private static readonly Pen selectionPen = new Pen(Color.Lime);
         private static readonly Color gridColor = Color.White;
@@ -131,7 +132,7 @@ namespace AtariMapMaker
             AtariClipboard.Copy(windows[window].fontRendererMapImage, mouseSelection, windows[window].map.Offset);
             
             //Redraw(window, false, true, true);
-            AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.GetImage());
+            AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.ClipboardImage);
             AtariClipboard.UnderImageGraphics = Graphics.FromImage(AtariClipboard.UnderClipBoardImage);
             return true;
         }
@@ -146,6 +147,11 @@ namespace AtariMapMaker
             {
                 prevMouseLoc = value;
             }
+        }
+
+        public static int PreviousOffset
+        {
+            set { previousOffset = value; }
         }
 
         private static void DrawSelection(Globals.WindowType window)
@@ -204,32 +210,34 @@ namespace AtariMapMaker
                             //destImage.SetPixel(x * Globals.CharSize, y * Globals.CharSize, gridColor);
             }
         }
-
-        public static void Scroll(Point newMouseLoc, Globals.WindowType window)
+        /// <summary>
+        /// Performs scroll of a window.
+        /// </summary>
+        /// <param name="newMouseLoc"></param>
+        /// <param name="window"></param>
+        /// <returns>True if scrolled.</returns>
+        public static bool Scroll(Point newMouseLoc, Globals.WindowType window)
         {
-           
-            bool newoffset = AtariFontRenderer.CalculateOffset((newMouseLoc.X - prevMouseLoc.X) / Globals.CharSize, (newMouseLoc.Y - prevMouseLoc.Y) / Globals.CharSize, windows[window].map);
+            windows[window].map.Offset = previousOffset;
+            bool newOffset = AtariFontRenderer.CalculateOffset((newMouseLoc.X - prevMouseLoc.X) / Globals.CharSize, (newMouseLoc.Y - prevMouseLoc.Y) / Globals.CharSize, windows[window].map);
 
-            if (newoffset)
-            {
-                prevMouseLoc.X = newMouseLoc.X;
-                prevMouseLoc.Y = newMouseLoc.Y;
-
-                //AtariFontRenderer.RenderMapData(windows[window].map, windows[window].mapOffset, windows[window].fontType, windows[window].destinationImage);
+            if (newOffset)
                 Redraw(window);
-            }
+
+            return newOffset;
         }
 
-        public static void DrawClipBoard(Point location)
+        public static void DrawClipBoard(Point location, Bitmap pictureBoxImage)
         {
-            AtariClipboard.UnderImageGraphics.DrawImage(windows[Globals.WindowType.Editor].fontRendererMapImage, 0, 0, new Rectangle(location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize, AtariClipboard.GetImage().Width, AtariClipboard.GetImage().Height), GraphicsUnit.Pixel);
-            AtariClipboard.UnderImageGraphics.DrawImage(windows[Globals.WindowType.Editor].fontRendererMapImage, 0, 0, new Rectangle(location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize, AtariClipboard.GetImage().Width, AtariClipboard.GetImage().Height), GraphicsUnit.Pixel);
-            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(AtariClipboard.GetImage(), location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize);
+            //store contents editor window contents under the current clipboard position -> underimage
+            AtariClipboard.UnderImageGraphics.DrawImage(pictureBoxImage, 0, 0, new Rectangle(location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height), GraphicsUnit.Pixel);
+            //draw clipboard -> location inside editor window 
+            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(AtariClipboard.ClipboardImage, location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize);
         }
 
         public static void DrawUnderClipBoard(Point location)
         {
-            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(AtariClipboard.UnderClipBoardImage, location.X - location .X % Globals.CharSize, location .Y - location .Y % Globals.CharSize);
+            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(AtariClipboard.UnderClipBoardImage, location.X - location .X % Globals.CharSize, location .Y - location .Y % Globals.CharSize, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height);
         }
         /*
         public static void SetDestImage(Bitmap _destImage, Graphics _gr)

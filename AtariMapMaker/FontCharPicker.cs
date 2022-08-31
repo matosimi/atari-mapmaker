@@ -57,7 +57,7 @@ namespace AtariMapMaker
             {
                 AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
                 AtariPictureTools.SelectionChange(e.Location, Globals.WindowType.CharPicker);
-                pictureBoxFontPicker.Invalidate();
+                pictureBoxFontPicker.Refresh();
             }
 
             int xx = fontPickerMap.OffsetX + e.X / Globals.CharSize;
@@ -72,7 +72,7 @@ namespace AtariMapMaker
         private void PictureBoxFontPicker_MouseUp(object sender, MouseEventArgs e)
         {
             AtariClipboard.IsValid = AtariPictureTools.SelectionEnd(Globals.WindowType.CharPicker);
-            clipboardPictureBox.Image = AtariClipboard.GetImage();
+            clipboardPictureBox.Image = AtariClipboard.ClipboardImage;
         }
 
         private void FontCharPicker_FormClosing(object sender, FormClosingEventArgs e)
