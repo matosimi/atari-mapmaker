@@ -26,5 +26,25 @@ namespace AtariMapMaker
         {
             get { return 8 * Zoom; }
         }
+
+        /// <summary>
+        /// Divide rectangle coordinates by zoom amount
+        /// </summary>
+        /// <param name="sourceRect"></param>
+        /// <returns></returns>
+        public static Rectangle UnzoomRectangle(Rectangle sourceRect)
+        {
+            return new Rectangle(sourceRect.X / Zoom, sourceRect.Y / Zoom, sourceRect.Width / Zoom, sourceRect.Height / Zoom);
+        }
+
+        /// <summary>
+        /// Change rectangle origin to 0,0
+        /// </summary>
+        /// <param name="sourceRect"></param>
+        /// <returns></returns>
+        public static Rectangle OriginateRectangle(Rectangle sourceRect)
+        {
+            return new Rectangle(0, 0, sourceRect.Width, sourceRect.Height); 
+        }
     }
 }

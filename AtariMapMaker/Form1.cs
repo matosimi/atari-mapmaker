@@ -56,7 +56,7 @@ namespace AtariMapMaker
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
 
-            myCharPicker = new FontCharPicker(); // pictureBoxClipboard);
+            myCharPicker = new FontCharPicker(pictureBoxClipboard);
 
             comboOperation.Items.AddRange(new String[4] { "Export", "Import", "Column Export", "Column Import" });
             comboOperation.SelectedIndex = 0;
@@ -177,6 +177,7 @@ namespace AtariMapMaker
                 if (AtariClipboard.IsValid)  //copy mode (shows alpha blended clipBoard)
                 {
                     //AtariPictureTools.AssignWindow((Bitmap)pictureBoxMap.Image, myMap);
+                    
                     AtariPictureTools.DrawClipBoard(e.Location); //TODO: to where?
                     pictureBoxMap.Refresh();
                     AtariPictureTools.DrawUnderClipBoard(e.Location);

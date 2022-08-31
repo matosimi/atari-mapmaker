@@ -12,12 +12,11 @@ namespace AtariMapMaker
     public partial class FontCharPicker : Form
     {
         private readonly AtariMap fontPickerMap;
-        //private readonly PictureBox myPictureBox;
+        private readonly PictureBox clipboardPictureBox;
         public const Globals.WindowType window = Globals.WindowType.CharPicker;
 
-        public FontCharPicker()//PictureBox outputPB)
+        public FontCharPicker(PictureBox clipboardPictureBox)
         {
-            //myPictureBox = outputPB;
             fontPickerMap = new AtariMap(new Size(1, 1), new Size(16, 16));
             for (int a = 0; a < 256; a++)
                 fontPickerMap.Data[a] = (byte)a;
@@ -25,7 +24,7 @@ namespace AtariMapMaker
             InitializeComponent();
             pictureBoxFontPicker.Image = new Bitmap(16 * Globals.CharSize, 16 * Globals.CharSize);
             AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
-
+            this.clipboardPictureBox = clipboardPictureBox;
         }
 
         public PictureBox GetPictureBox()
@@ -56,13 +55,14 @@ namespace AtariMapMaker
         {
             if (e.Button == MouseButtons.Left)
             {
+                AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
                 AtariPictureTools.SelectionChange(e.Location, Globals.WindowType.CharPicker);
                 pictureBoxFontPicker.Invalidate();
             }
 
             int xx = fontPickerMap.OffsetX + e.X / Globals.CharSize;
             int yy = fontPickerMap.OffsetY + e.Y / Globals.CharSize;
-            if (xx < fontPickerMap.Stride && yy < fontPickerMap.Screens.Height * fontPickerMap.ScreenSize.Height)
+            if (xx < fontPickerMap.Stride && yy < fontPickerMap.Screens.Height * fontPickerMap.ScreenSize.Height && xx >= 0 && yy >= 0)
             {
                 byte charVal = fontPickerMap.Data[xx + yy * fontPickerMap.Stride];
                 this.Text = "FontCharPicker - Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
@@ -72,7 +72,7 @@ namespace AtariMapMaker
         private void PictureBoxFontPicker_MouseUp(object sender, MouseEventArgs e)
         {
             AtariClipboard.IsValid = AtariPictureTools.SelectionEnd(Globals.WindowType.CharPicker);
-            //myPictureBox.Image = AtariClipboard.GetImage();
+            clipboardPictureBox.Image = AtariClipboard.GetImage();
         }
 
         private void FontCharPicker_FormClosing(object sender, FormClosingEventArgs e)

@@ -73,7 +73,8 @@ namespace AtariMapMaker
             }
             clipboard = new Bitmap(mouseSelection.Width, mouseSelection.Height);
             gr = Graphics.FromImage(clipboard);
-            gr.DrawImage(srcBmp, new Rectangle(0, 0, mouseSelection.Width, mouseSelection.Height), mouseSelection, GraphicsUnit.Pixel);
+            gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            gr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
             gr.Dispose();
 
             //datova cast
