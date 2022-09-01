@@ -28,18 +28,19 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            this.pictureBoxDli = new System.Windows.Forms.PictureBox();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxDli)).BeginInit();
             this.SuspendLayout();
             // 
-            // pictureBox1
+            // pictureBoxDli
             // 
-            this.pictureBox1.Location = new System.Drawing.Point(1, 0);
-            this.pictureBox1.Margin = new System.Windows.Forms.Padding(0);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(77, 80);
-            this.pictureBox1.TabIndex = 0;
-            this.pictureBox1.TabStop = false;
+            this.pictureBoxDli.Location = new System.Drawing.Point(1, 0);
+            this.pictureBoxDli.Margin = new System.Windows.Forms.Padding(0);
+            this.pictureBoxDli.Name = "pictureBoxDli";
+            this.pictureBoxDli.Size = new System.Drawing.Size(80, 320);
+            this.pictureBoxDli.TabIndex = 0;
+            this.pictureBoxDli.TabStop = false;
+            this.pictureBoxDli.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PictureBoxDli_MouseDown);
             // 
             // DliForm
             // 
@@ -47,20 +48,20 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.ClientSize = new System.Drawing.Size(594, 450);
+            this.ClientSize = new System.Drawing.Size(162, 336);
             this.ControlBox = false;
-            this.Controls.Add(this.pictureBox1);
+            this.Controls.Add(this.pictureBoxDli);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "DliForm";
             this.ShowInTaskbar = false;
             this.Text = "DliForm";
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxDli)).EndInit();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.PictureBox pictureBoxDli;
     }
 }

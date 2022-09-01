@@ -10,17 +10,20 @@ using System.Windows.Forms;
 
 namespace AtariMapMaker
 {
-    public partial class DliForm : AtariForm
+    public partial class DliForm : Form
     {
+        private readonly AtariMap dliMap;
+        public const Globals.WindowType window = Globals.WindowType.Dli;
+        private AtariColorPicker colorPicker;
+
         public DliForm(int lines)
         {
 
-            this.window = Globals.WindowType.Dli;
-            AtariMap myMap = new AtariMap(new Size(1, 1), new Size(5, lines));
+            dliMap = new AtariMap(new Size(1, 1), new Size(5, lines));
             byte[] dliFormFontData = new byte[1024];
 
             for (int a = 0; a < lines*5; a++)
-                myMap.Data[a] = (a % 5) == 3 ? (byte)0x82 : (byte)(a % 5);
+                dliMap.Data[a] = (a % 5) == 3 ? (byte)0x82 : (byte)(a % 5);
 
             
             for (int i = 0; i < 8; i++)
@@ -31,28 +34,24 @@ namespace AtariMapMaker
             }
             AtariFontRenderer.SetFontData(dliFormFontData, Globals.FontType.Dli);
             InitializeComponent();
-            pictureBox1.Image = new Bitmap(5 * Globals.CharSize, lines * Globals.CharSize);
-            AtariPictureTools.AssignWindow(Globals.WindowType.Dli, (Bitmap)pictureBox1.Image, myMap);
-            
+            pictureBoxDli.Image = new Bitmap(5 * Globals.CharSize, lines * Globals.CharSize);
+            this.Refresh();
+            AtariPictureTools.AssignWindow(Globals.WindowType.Dli, (Bitmap)pictureBoxDli.Image, dliMap);
+            colorPicker = new AtariColorPicker();
         }
 
         public void RenderData()
         {
-            /*
-            Bitmap dliBmp = new Bitmap(5 * 8, myMap.ScreenSize.Height * 8, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-            AtariFontRenderer.SelectFont(Globals.FontType.Dli);
-            AtariFontRenderer.RenderMapData(myMap, 0, dliBmp);
-            pictureBox1.Width = dliBmp.Width * Globals.Zoom;
-            pictureBox1.Height = dliBmp.Height * Globals.Zoom;
-            pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
-            AtariPictureTools.AssignWindow((Bitmap)pictureBox1.Image, myMap);
-            AtariPictureTools.Redraw(dliBmp, true, false, true);*/
             AtariPictureTools.Redraw(Globals.WindowType.Dli);
+            pictureBoxDli.Refresh();
         }
         public void ZoomResize()
         {
-            this.Width = 5 * Globals.CharSize;
-            this.Height = AtariPictureTools.windows[window].map.ScreenSize.Height * Globals.CharSize;
+            pictureBoxDli.Width = 5 * Globals.CharSize;
+            pictureBoxDli.Height = AtariPictureTools.windows[window].map.ScreenSize.Height * Globals.CharSize;
+            pictureBoxDli.Image = new Bitmap(pictureBoxDli.Width, pictureBoxDli.Height);
+            AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxDli.Image, dliMap);
+            AtariPictureTools.Redraw(Globals.WindowType.Dli, true, false, true);
         }
         public void Initialize()
         {
@@ -60,5 +59,14 @@ namespace AtariMapMaker
             //AtariFontRenderer.FontData = dliFormFontData;
         }
 
+        private void PictureBoxDli_MouseDown(object sender, MouseEventArgs e)
+        {
+            int xchar = e.X / Globals.CharSize;
+            int ychar = e.Y / Globals.CharSize;
+            colorPicker.Pick(dliMap.GetColorData(xchar + ychar*dliMap.Stride)[xchar]);
+            dliMap.SetColor(0, 0, ychar, xchar, colorPicker.PickedColorIndex());
+            AtariPictureTools.Redraw(window);
+            pictureBoxDli.Refresh();
+        }
     }
 }

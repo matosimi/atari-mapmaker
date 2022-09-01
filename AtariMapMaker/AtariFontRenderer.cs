@@ -16,25 +16,11 @@ namespace AtariMapMaker
     } 
     public static class AtariFontRenderer
     {
-        //private static byte[] fontData;
-        //private static Bitmap fontBmp;
-        private static byte[] color5 = { 40, 202, 148, 70, 0 };
-        //public static int offset = 0;
-        //private static int offsetX = 0, offsetY = 0;
-        //private static readonly bool graphicsMode = true;
+        private static readonly byte[] COLOR5 = { 40, 202, 148, 70, 0 };
+        private static byte[] color5 = COLOR5;
         private static string lastFontFile;
         public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
-        /*
-        public static int OffsetX
-        {
-            get { return offsetX; }
-        }
-
-        public static int OffsetY
-        {
-            get { return offsetY; }
-        }*/
-
+        
         public static string LastFontFile
         {
             get { return lastFontFile; }
@@ -143,8 +129,8 @@ namespace AtariMapMaker
                                 if (x > 127 && point == 2)
                                     point = 3;
 
-                                row[(x << 3) + (o << 1)] = color5[point];
-                                row[(x << 3) + (o << 1) + 1] = color5[point];
+                                row[(x << 3) + (o << 1)] = COLOR5[point];
+                                row[(x << 3) + (o << 1) + 1] = COLOR5[point];
                             }
                         }
                     } else {
@@ -157,7 +143,7 @@ namespace AtariMapMaker
                             {
                                 point = (byte)(value & 0x01);
                                 value >>= 1;
-                                row[(x << 3) + o] = color5[point];
+                                row[(x << 3) + o] = COLOR5[point];
                             }
                         }
                     }
@@ -215,8 +201,9 @@ namespace AtariMapMaker
                         for (int x = 0; x < width; x++)
                         {
                             index = adrOffset + x; // +y * width; //index znaku co sa ma kreslit v data
+                            byte[] dliColor5 = myMap.GetColorData(index);
                             for (int c = 0; c < 8; c++)
-                                row[x*8+c] = (index < data.Length) ? (fntRow[data[index] * 8 + c ]) : (byte)0;
+                                row[x*8+c] = (index < data.Length) ? SwapColor(fntRow[data[index] * 8 + c ], dliColor5) : (byte)0;
                         }
                         fntRow += fntd.Stride;
                         row += bmd.Stride;
@@ -227,6 +214,27 @@ namespace AtariMapMaker
             font.bitmap.UnlockBits(fntd);
             outBmp.UnlockBits(bmd);
             return;
+        }
+
+        private static byte SwapColor(byte paletteIndex)
+        {
+            for (int i = 0; i < COLOR5.Length; i++)
+                if (paletteIndex == COLOR5[i]) return color5[i];
+            throw new Exception("Messed up font.bitmap!");
+        }
+
+        private static byte SwapColor(byte paletteIndex, byte[] dliColor5)
+        {
+            for (int i = 0; i < COLOR5.Length; i++)
+                if (paletteIndex == COLOR5[i]) return dliColor5[i];
+            throw new Exception("Messed up font.bitmap!");
+        }
+
+        private static byte SwapColor(byte paletteIndex, int offset, AtariMap myMap)
+        {
+            for (int i = 0; i < COLOR5.Length; i++)
+                if (paletteIndex == COLOR5[i]) return myMap.GetColorData(offset)[i]; // color5[i];
+            throw new Exception("Messed up font.bitmap!");
         }
     }
 }

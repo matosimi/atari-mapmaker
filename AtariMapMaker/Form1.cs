@@ -201,12 +201,9 @@ namespace AtariMapMaker
                     Point dliPoint = DliFormOrigin(scrx, scry);
                     if (dliPoint.X != -1)
                     {
-                        //dliForm.Left = this.Left + this.ClientRectangle.Left + pictureBoxMap.Left + dliPoint.X * Globals.CharSize;
-                        //dliForm.Top = this.Top + this.ClientRectangle.Top + pictureBoxMap.Top + dliPoint.Y * Globals.CharSize;
                         Rectangle r = this.RectangleToScreen(this.ClientRectangle);
                         dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
                         dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
-                        //dliForm.ZoomResize();
                         dliForm.TopMost = true;
                         dliForm.Show();
                     }
@@ -640,6 +637,8 @@ namespace AtariMapMaker
             Globals.Zoom = trackBarZoom.Value;
             PictureBoxMap_ClientSizeChanged(null, null);
             myCharPicker.SetZoom();
+            dliForm.ZoomResize();
+            dliForm.Hide();
         }
 
         private void ComboBoxDrawGrid_CheckedChanged(object sender, EventArgs e)
