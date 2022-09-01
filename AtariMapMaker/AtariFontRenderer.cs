@@ -102,7 +102,7 @@ namespace AtariMapMaker
         {
             Bitmap bmp = new Bitmap(256 * 8, 8, PixelFormat.Format8bppIndexed)
             {
-                Palette = AtariPalette.GetPalette()
+                Palette = AtariPalette.GetIndexedColor5Palette()
             };
 
             BitmapData bmd = bmp.LockBits(new Rectangle(0, 0, 8 * 256, 8), System.Drawing.Imaging.ImageLockMode.WriteOnly, bmp.PixelFormat);
@@ -129,8 +129,8 @@ namespace AtariMapMaker
                                 if (x > 127 && point == 2)
                                     point = 3;
 
-                                row[(x << 3) + (o << 1)] = COLOR5[point];
-                                row[(x << 3) + (o << 1) + 1] = COLOR5[point];
+                                row[(x << 3) + (o << 1)] = point; //COLOR5[point];
+                                row[(x << 3) + (o << 1) + 1] = point; //COLOR5[point];
                             }
                         }
                     } else {

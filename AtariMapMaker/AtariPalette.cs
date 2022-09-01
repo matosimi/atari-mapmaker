@@ -26,6 +26,20 @@ namespace AtariMapMaker
             return myPalette;
         }
 
+        /// <summary>
+        /// This palette is used in AtariFontRenderer to show the font data, where there are taken 5 atari default colors and moved to palette indices 0..4.
+        /// This way it helps to easily translate font data color (0..4) to given dli color just by indexing without matching.
+        /// </summary>
+        /// <returns></returns>
+        public static ColorPalette GetIndexedColor5Palette()
+        {
+            Bitmap bmp = new Bitmap(1, 1, PixelFormat.Format8bppIndexed);
+            ColorPalette pal = bmp.Palette;
+            bmp.Dispose();
+            for (int i = 0; i < 5; i++)
+                pal.Entries[i] = myPalette.Entries[AtariFontRenderer.Color5[i]];
+            return pal;
+        }
         public static Color GetColor(int index)
         {
             return myPalette.Entries[index];

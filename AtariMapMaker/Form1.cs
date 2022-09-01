@@ -391,7 +391,7 @@ namespace AtariMapMaker
                     System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open); //test.dat
                     myMap = (AtariMap)bf.Deserialize(fs);
                     //buttonLoad.Text = fs.Position.ToString();
-                    //myRenderer = (AtariFontRenderer)bf.Deserialize(fs);
+                    //AtariFontRenderer.SetFontData() = (AtariFontRenderer)bf.Deserialize(fs);
                     //buttonLoad.Text = myMap.ScreenSize.Height.ToString();
                     //AtariPictureTools.AssignWindow((Bitmap)pictureBoxMap.Image, myMap);
                     //AtariPictureTools.SetMap(Globals.WindowType.Editor, myMap);
@@ -400,6 +400,7 @@ namespace AtariMapMaker
                   
                     fs.Close();
                     this.FillFontColorList();
+                    myMap.InitColorData();  //fill all screens with current colors
                     RedrawEditorWindow();
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;

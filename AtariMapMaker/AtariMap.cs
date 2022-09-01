@@ -14,7 +14,7 @@ namespace AtariMapMaker
         private Size dataSize;      //velkost dat v znakoch
         private Size screens;       //pocet screenov v datach (velkost mapy)
         private int offset;
-        private readonly byte[,,] colorData;   //screenNumber,linenumber,colorNumber
+        private byte[,,] colorData;   //screenNumber,linenumber,colorNumber
 
         public AtariMap(Size screens, Size screenSize)
         {
@@ -22,6 +22,11 @@ namespace AtariMapMaker
             this.dataSize = new Size(screens.Width * screenSize.Width, screens.Height * screenSize.Height);
             this.data = new byte[dataSize.Width * dataSize.Height];
             this.screenSize = screenSize;
+            InitColorData();
+        }
+
+        public void InitColorData()
+        {
             this.colorData = new byte[screens.Width * screens.Height, screenSize.Height, 5];
             for (int i = 0; i < screens.Width * screens.Height; i++)
                 for (int j = 0; j < screenSize.Height; j++)
@@ -71,7 +76,7 @@ namespace AtariMapMaker
         {
             int row = offset / Stride;
             int column = offset % Stride;
-            int line = row % screens.Height;
+            int line = row % screenSize.Height;
             int screenNumber = column / screenSize.Width + (row / screenSize.Height)*screens.Width;
             byte[] retValue = new byte[5];
             
