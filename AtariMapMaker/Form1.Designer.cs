@@ -29,6 +29,7 @@ namespace AtariMapMaker
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.pictureBoxMap = new System.Windows.Forms.PictureBox();
             this.labelChar = new System.Windows.Forms.Label();
@@ -36,7 +37,7 @@ namespace AtariMapMaker
             this.labelScreen = new System.Windows.Forms.Label();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.checkBoxEditRows = new System.Windows.Forms.CheckBox();
+            this.checkBoxEditDli = new System.Windows.Forms.CheckBox();
             this.buttonRefreshFont = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.pictureBoxClipboard = new System.Windows.Forms.PictureBox();
@@ -88,6 +89,7 @@ namespace AtariMapMaker
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+            this.checkBoxShowDli = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -194,7 +196,8 @@ namespace AtariMapMaker
             // 
             // tabPage1
             // 
-            this.tabPage1.Controls.Add(this.checkBoxEditRows);
+            this.tabPage1.Controls.Add(this.checkBoxShowDli);
+            this.tabPage1.Controls.Add(this.checkBoxEditDli);
             this.tabPage1.Controls.Add(this.buttonRefreshFont);
             this.tabPage1.Controls.Add(this.groupBox4);
             this.tabPage1.Controls.Add(this.buttonLoadFont);
@@ -209,15 +212,16 @@ namespace AtariMapMaker
             this.tabPage1.Text = "Colors";
             this.tabPage1.UseVisualStyleBackColor = true;
             // 
-            // checkBoxEditRows
+            // checkBoxEditDli
             // 
-            this.checkBoxEditRows.AutoSize = true;
-            this.checkBoxEditRows.Location = new System.Drawing.Point(17, 288);
-            this.checkBoxEditRows.Name = "checkBoxEditRows";
-            this.checkBoxEditRows.Size = new System.Drawing.Size(74, 17);
-            this.checkBoxEditRows.TabIndex = 3;
-            this.checkBoxEditRows.Text = "Edit Rows";
-            this.checkBoxEditRows.UseVisualStyleBackColor = true;
+            this.checkBoxEditDli.AutoSize = true;
+            this.checkBoxEditDli.Location = new System.Drawing.Point(112, 288);
+            this.checkBoxEditDli.Name = "checkBoxEditDli";
+            this.checkBoxEditDli.Size = new System.Drawing.Size(64, 17);
+            this.checkBoxEditDli.TabIndex = 3;
+            this.checkBoxEditDli.Text = "Edit DLI";
+            this.checkBoxEditDli.UseVisualStyleBackColor = true;
+            this.checkBoxEditDli.CheckedChanged += new System.EventHandler(this.CheckBoxEditDli_CheckedChanged);
             // 
             // buttonRefreshFont
             // 
@@ -748,12 +752,24 @@ namespace AtariMapMaker
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // checkBoxShowDli
+            // 
+            this.checkBoxShowDli.AutoSize = true;
+            this.checkBoxShowDli.Location = new System.Drawing.Point(18, 288);
+            this.checkBoxShowDli.Name = "checkBoxShowDli";
+            this.checkBoxShowDli.Size = new System.Drawing.Size(73, 17);
+            this.checkBoxShowDli.TabIndex = 12;
+            this.checkBoxShowDli.Text = "Show DLI";
+            this.checkBoxShowDli.UseVisualStyleBackColor = true;
+            this.checkBoxShowDli.CheckedChanged += new System.EventHandler(this.CheckBoxShowDli_CheckedChanged);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(914, 542);
             this.Controls.Add(this.splitContainer1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "MainForm";
             this.Text = "AtariMapMaker v1.0 by Martin Simecek";
             this.Load += new System.EventHandler(this.MainForm_Load);
@@ -853,7 +869,8 @@ namespace AtariMapMaker
         private System.Windows.Forms.Button buttonRefreshFont;
         private System.Windows.Forms.Label labelAbout2;
         private System.Windows.Forms.ToolTip toolTip1;
-        private System.Windows.Forms.CheckBox checkBoxEditRows;
+        private System.Windows.Forms.CheckBox checkBoxEditDli;
+        private System.Windows.Forms.CheckBox checkBoxShowDli;
     }
 }
 

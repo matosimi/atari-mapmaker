@@ -30,8 +30,9 @@ namespace AtariMapMaker
             this.colorData = new byte[screens.Width * screens.Height, screenSize.Height, 5];
             for (int i = 0; i < screens.Width * screens.Height; i++)
                 for (int j = 0; j < screenSize.Height; j++)
-                    for (int k = 0; k < 5; k++)
-                        colorData[i, j, k] = AtariFontRenderer.Color5[k];
+                    colorData[i, j, 0] = Globals.DEFAULT_COLOR; //indicates that no DLI was used 
+                    //for (int k = 0; k < 5; k++)
+                    //    colorData[i, j, k] = AtariFontRenderer.Color5[k];
         }
 
         public int Offset
@@ -62,10 +63,13 @@ namespace AtariMapMaker
             }
         }
 
-        //set single color
-        public void SetColorData(int screenx, int screeny, byte lineNumber, byte colorNumber, byte colorIndexFromPalette)
+        //set single color for multiple lines
+        public void SetColorData(int screenx, int screeny, int startingLine, int lines, int colorNumber, byte colorIndexFromPalette)
         {
-            this.colorData[screeny * screens.Width + screenx, lineNumber, colorNumber] = colorIndexFromPalette;
+            if (lines < 0) lines = screenSize.Height - startingLine;
+            if (startingLine + lines > screenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
+            for (int j = 0; j < lines; j++)
+                this.colorData[screeny * screens.Width + screenx, startingLine + j, colorNumber] = colorIndexFromPalette;
         }
         /// <summary>
         /// Get byte[5] color structure for given offset (char in AtariMap)
@@ -85,12 +89,20 @@ namespace AtariMapMaker
             return retValue;
         }
 
-        //set all colors multiple lines based on the given 5 colors
-        public void SetColorData(int screenx, int screeny, byte startingLine, byte[] color5)
+        public byte[] GetColorData(Point clickedChar)
         {
-            for (int j = startingLine; j < screenSize.Height; j++)
+            int offset = clickedChar.X + Stride*clickedChar.Y;
+            return GetColorData(offset);
+        }
+
+        //set all colors multiple lines based on the given 5 colors
+        public void SetColorData(int screenx, int screeny, int startingLine, int lines, byte[] color5)
+        {
+            if (lines < 0) lines = screenSize.Height - startingLine;
+            if (startingLine + lines > screenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
+            for (int j = 0; j < lines; j++)
                 for (int i = 0; i < 5; i++)
-                    this.colorData[screeny * screens.Width + screenx, j, i] = color5[i];
+                    this.colorData[screeny * screens.Width + screenx, startingLine + j, i] = color5[i];
         }
 
         public void SetColor(int screenx, int screeny, int line, int colorNumber, byte colorIndex)

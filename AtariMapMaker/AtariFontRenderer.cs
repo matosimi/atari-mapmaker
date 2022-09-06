@@ -20,12 +20,14 @@ namespace AtariMapMaker
         private static byte[] color5 = COLOR5;
         private static string lastFontFile;
         public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
-        
+        private static bool useDli;        
         public static string LastFontFile
         {
             get { return lastFontFile; }
             set { lastFontFile = value; }
         }
+
+        public static bool UseDli { get { return useDli; }  set { useDli = value; } }
 
         public static void RedrawFontImage(Globals.FontType fontType)
         {
@@ -201,9 +203,10 @@ namespace AtariMapMaker
                         for (int x = 0; x < width; x++)
                         {
                             index = adrOffset + x; // +y * width; //index znaku co sa ma kreslit v data
-                            byte[] dliColor5 = myMap.GetColorData(index);
+                            byte[] dliColor5 = useDli ? myMap.GetColorData(index) : color5; //defines if use DLI or common colors
+                            if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
                             for (int c = 0; c < 8; c++)
-                                row[x*8+c] = (index < data.Length) ? SwapColor(fntRow[data[index] * 8 + c ], dliColor5) : (byte)0;
+                                row[x*8+c] = (index < data.Length) ? dliColor5[fntRow[data[index] * 8 + c ]] : (byte)0;
                         }
                         fntRow += fntd.Stride;
                         row += bmd.Stride;

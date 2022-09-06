@@ -14,6 +14,8 @@ namespace AtariMapMaker
         public static Size editorWindowSizeInChars;
         private static readonly int[] zoomMultiplier = new int[] { 1, 2, 3, 4 };    //100%,200%,400%
         private static int zoomIndex = 1;
+        public enum ClipBoardEnum { none, color, color5, colorAll };
+        public const byte DEFAULT_COLOR = 255;
         public static int Zoom
         {
             get { return zoomMultiplier[zoomIndex]; }

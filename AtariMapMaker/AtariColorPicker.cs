@@ -14,6 +14,7 @@ namespace AtariMapMaker
     public partial class AtariColorPicker : Form
     {
         private byte selectedColorIndex;
+        private byte oldColorIndex;
         private Color selectedColor;
 
         public AtariColorPicker()
@@ -21,13 +22,13 @@ namespace AtariMapMaker
             InitializeComponent();
         }
 
-        public byte PickedColorIndex()
-        {
-            return selectedColorIndex;
-        }
+        public byte PickedColorIndex { get { return selectedColorIndex; } }
+
+        public bool PickedNewColor { get { return selectedColorIndex != oldColorIndex; } }
 
         public Color Pick(byte oldColorIndex)
         {
+            this.oldColorIndex = oldColorIndex;
             this.selectedColorIndex = oldColorIndex;
             this.RenderPalette();
             this.DrawSelection(selectedColorIndex, selectedColorIndex);

@@ -61,7 +61,7 @@ namespace AtariMapMaker
             comboOperation.Items.AddRange(new String[4] { "Export", "Import", "Column Export", "Column Import" });
             comboOperation.SelectedIndex = 0;
 
-            dliForm = new DliForm(myMap.ScreenSize.Height);
+            dliForm = new DliForm(myMap, pictureBoxMap);
             dliForm.RenderData();
 
         }
@@ -135,7 +135,7 @@ namespace AtariMapMaker
                 colorPickerForm.TopMost = true;
                 colorPickerForm.Pick(index);
 
-                AtariFontRenderer.Color5[colorIndex] = (byte)colorPickerForm.PickedColorIndex();
+                AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
                 FillFontColorList();
                 AtariFontRenderer.RedrawFontImage(Globals.FontType.Screen);
                 AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
@@ -196,7 +196,7 @@ namespace AtariMapMaker
                 byte charVal = myMap.Data[xx + yy * myMap.Stride];
                 labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
 
-                if (checkBoxEditRows.Checked)
+                if (checkBoxEditDli.Checked)
                 {
                     Point dliPoint = DliFormOrigin(scrx, scry);
                     if (dliPoint.X != -1)
@@ -205,7 +205,8 @@ namespace AtariMapMaker
                         dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
                         dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
                         dliForm.TopMost = true;
-                        dliForm.Show();
+                        AtariPictureTools.Redraw(Globals.WindowType.Dli);
+                        dliForm.Show(scrx + scry*myMap.Screens.Width);
                     }
                     else
                     {
@@ -405,6 +406,9 @@ namespace AtariMapMaker
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
                     myCharPicker.RedrawFontWindow();
+                    dliForm.Dispose();
+                    dliForm = new DliForm(myMap, pictureBoxMap);
+                    dliForm.RenderData();
                     break;
             }
         }
@@ -746,6 +750,22 @@ namespace AtariMapMaker
                 //myCharPicker.RedrawFontWindow();
                 //RedrawEditorWindow();
             }
+        }
+
+        private void CheckBoxEditDli_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBoxEditDli.Checked) checkBoxShowDli.Checked = true;
+            AtariFontRenderer.UseDli = checkBoxShowDli.Checked;
+            AtariPictureTools.Redraw(Globals.WindowType.Editor);
+            pictureBoxMap.Refresh();
+        }
+
+        private void CheckBoxShowDli_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!checkBoxShowDli.Checked) checkBoxEditDli.Checked = false;
+            AtariFontRenderer.UseDli = checkBoxShowDli.Checked;
+            AtariPictureTools.Redraw(Globals.WindowType.Editor);
+            pictureBoxMap.Refresh();
         }
     }
 }
