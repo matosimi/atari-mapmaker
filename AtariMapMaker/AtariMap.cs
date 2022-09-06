@@ -25,6 +25,17 @@ namespace AtariMapMaker
             InitColorData();
         }
 
+        public void CopyColorData(int localScreenNumber, AtariMap targetMap, int targetScreenNumber)
+        {
+            byte[] color5 = new byte[5];
+            for (int i = 0; i < this.ScreenSize.Height; i++)
+            {
+                for (int j = 0; j < 5; j++)
+                    color5[j] = colorData[localScreenNumber, i, j];
+                targetMap.SetColorData(targetScreenNumber % targetMap.ScreenSize.Width, targetScreenNumber / targetMap.screenSize.Width, i, 1, color5);
+            }
+        }
+
         public void InitColorData()
         {
             this.colorData = new byte[screens.Width * screens.Height, screenSize.Height, 5];

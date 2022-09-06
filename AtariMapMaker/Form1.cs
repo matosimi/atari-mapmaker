@@ -205,8 +205,10 @@ namespace AtariMapMaker
                         dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
                         dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
                         dliForm.TopMost = true;
-                        AtariPictureTools.Redraw(Globals.WindowType.Dli);
+                        myMap.CopyColorData(scrx + scry * myMap.Screens.Width, dliForm.DliMap, 0);  //copy screen colors to DLI color editor
+                        dliForm.RenderData();
                         dliForm.Show(scrx + scry*myMap.Screens.Width);
+                        
                     }
                     else
                     {

@@ -49,6 +49,7 @@ namespace AtariMapMaker
             colorPicker = new AtariColorPicker();
         }
 
+        public AtariMap DliMap { get { return dliMap; } }
         public void Show(int screenNumber)
         {
             this.screenNumber = screenNumber;
@@ -223,7 +224,7 @@ namespace AtariMapMaker
             for (int j = 0; j < dliMap.ScreenSize.Height; j++)
             {
                 for (int i = 0; i < 5; i++)
-                    color5[i] = clipBoard[0, i];
+                    color5[i] = clipBoard[j, i];
                 dliMap.SetColorData(0, 0, j, 1, color5);
                 screenMap.SetColorData(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, j, 1, color5);
             }
