@@ -62,7 +62,7 @@ namespace AtariMapMaker
 
             int xx = fontPickerMap.OffsetX + e.X / Globals.CharSize;
             int yy = fontPickerMap.OffsetY + e.Y / Globals.CharSize;
-            if (xx < fontPickerMap.Stride && yy < fontPickerMap.Screens.Height * fontPickerMap.ScreenSize.Height && xx >= 0 && yy >= 0)
+            if (xx < fontPickerMap.Stride && yy < fontPickerMap.MapSize.Height * fontPickerMap.ScreenSize.Height && xx >= 0 && yy >= 0)
             {
                 byte charVal = fontPickerMap.Data[xx + yy * fontPickerMap.Stride];
                 this.Text = "FontCharPicker - Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";

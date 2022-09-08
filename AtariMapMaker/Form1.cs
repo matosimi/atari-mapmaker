@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 using System.Reflection;
+using System.Linq;
 
 namespace AtariMapMaker
 {
@@ -38,7 +39,7 @@ namespace AtariMapMaker
             AtariFontRenderer.SetFontData(Properties.Resources.Default, Globals.FontType.Screen);
 
             myMap = new AtariMap(new Size(4, 4), new Size(32, 20));
-            numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.Screens.Width;
+            numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
 
             this.FillFontColorList();
             pictureBoxMap.Image = new Bitmap(pictureBoxMap.Width, pictureBoxMap.Height)
@@ -132,7 +133,7 @@ namespace AtariMapMaker
             {
                 int colorIndex = listView1.SelectedItems[0].Index;
                 byte index = AtariFontRenderer.Color5[colorIndex];
-                colorPickerForm.TopMost = true;
+                colorPickerForm.Owner = this;
                 colorPickerForm.Pick(index);
 
                 AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
@@ -189,7 +190,7 @@ namespace AtariMapMaker
             int posx = xx % myMap.ScreenSize.Width;
             int posy = yy % myMap.ScreenSize.Height;
 
-            if (xx < myMap.Stride && yy < myMap.Screens.Height * myMap.ScreenSize.Height)
+            if (xx < myMap.Stride && yy < myMap.MapSize.Height * myMap.ScreenSize.Height)
             {
                 labelScreen.Text = "Screen: " + scrx.ToString() + ":" + scry.ToString();
                 labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
@@ -204,10 +205,10 @@ namespace AtariMapMaker
                         Rectangle r = this.RectangleToScreen(this.ClientRectangle);
                         dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
                         dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
-                        dliForm.TopMost = true;
-                        myMap.CopyColorData(scrx + scry * myMap.Screens.Width, dliForm.DliMap, 0);  //copy screen colors to DLI color editor
+                        dliForm.Owner = this;
+                        myMap.CopyDliColorsFullScreen(scrx + scry * myMap.MapSize.Width, dliForm.DliMap, 0);  //copy screen colors to DLI color editor
                         dliForm.RenderData();
-                        dliForm.Show(scrx + scry*myMap.Screens.Width);
+                        dliForm.Show(scrx + scry*myMap.MapSize.Width);
                         
                     }
                     else
@@ -357,7 +358,7 @@ namespace AtariMapMaker
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    Save(saveFileDialog1.FileName); //test.dat
+                    SaveMap(saveFileDialog1.FileName); //test.dat
                     break;
             }
             //saveFileDialog1.Filter = "AtariMap (*.amp)|*.amp";
@@ -366,22 +367,18 @@ namespace AtariMapMaker
 
         }
 
-        private void Save(string filename)
+        private void SaveMap(string filename)
         {
-            System.IO.MemoryStream ms = new System.IO.MemoryStream();
-            BinaryFormatter bf = new BinaryFormatter();
-            bf.Serialize(ms, myMap);
-            //bf.Serialize(ms, AtariFontRenderer);
-            byte[] bb = ms.ToArray();
-            System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Create);
-            //fs.Write(bb, 0, bb.Length);
-
-            fs.Write(bb, 0, bb.Length);
-            fs.Close();
-            ms.Close();
-            ms.Dispose();
-
-            //save
+            AtariJson.Atrmap atrmap = new AtariJson.Atrmap
+            {
+                MapData = myMap.Data.Select(i => (int)i).ToArray(),
+                MapSize = myMap.MapSize,
+                MapScreenSize = myMap.ScreenSize,
+                FontData = AtariFontRenderer.fonts[Globals.FontType.Screen].data.Select(i => (int)i).ToArray(),
+                Color5 = AtariFontRenderer.Color5.Select(i => (int)i).ToArray(),
+                DliData = myMap.ColorData.Select(i => (int)i).ToArray()
+            };
+            AtariJson.SaveAtrMap(atrmap,filename);
         }
 
         private void ButtonLoad_Click(object sender, EventArgs e)
@@ -390,20 +387,13 @@ namespace AtariMapMaker
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    BinaryFormatter bf = new BinaryFormatter();
-                    System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open); //test.dat
-                    myMap = (AtariMap)bf.Deserialize(fs);
-                    //buttonLoad.Text = fs.Position.ToString();
-                    //AtariFontRenderer.SetFontData() = (AtariFontRenderer)bf.Deserialize(fs);
-                    //buttonLoad.Text = myMap.ScreenSize.Height.ToString();
-                    //AtariPictureTools.AssignWindow((Bitmap)pictureBoxMap.Image, myMap);
-                    //AtariPictureTools.SetMap(Globals.WindowType.Editor, myMap);
+                    LoadMap(openFileDialog1.FileName);
+                    
                     AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                     AtariPictureTools.SetGridVisibility(comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked);
                   
-                    fs.Close();
+                    checkBoxShowDli.Checked = true;
                     this.FillFontColorList();
-                    myMap.InitColorData();  //fill all screens with current colors
                     RedrawEditorWindow();
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
@@ -413,6 +403,25 @@ namespace AtariMapMaker
                     dliForm.RenderData();
                     break;
             }
+        }
+
+        private void LoadMap(string fileName)
+        {
+            AtariJson.ParseAtrmap(fileName);
+            myMap = new AtariMap(AtariJson.ParsedData.MapSize, AtariJson.ParsedData.MapScreenSize)
+            {
+                Data = AtariJson.ParsedData.MapData.Select(i => (byte)i).ToArray()
+            };
+            
+            AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
+            AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
+            
+            if (AtariJson.ParsedData.DliData == null)
+                myMap.InitDliColorFullMap();
+            else
+                myMap.ColorData = AtariJson.ParsedData.DliData.Select(i => (byte)i).ToArray();
+
+
         }
 
         private void ButtonExport_Click(object sender, EventArgs e)
@@ -534,7 +543,7 @@ namespace AtariMapMaker
 
                 }
                 y++;
-                if (y == myMap.Screens.Height * myMap.ScreenSize.Height)
+                if (y == myMap.MapSize.Height * myMap.ScreenSize.Height)
                 {
                     MessageBox.Show("Reading aborted! Reached bottom edge of map.");
                     break;
@@ -633,7 +642,7 @@ namespace AtariMapMaker
                
                 myMap = new AtariMap(new Size((int)nudMapW.Value, (int)nudMapH.Value), new Size((int)nudScreenW.Value, (int)nudScreenH.Value));
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
-                numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.Screens.Width;
+                numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                 RedrawEditorWindow();
             }
 

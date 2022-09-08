@@ -7,27 +7,25 @@ using System.Drawing.Imaging;
 
 namespace AtariMapMaker
 {
-    [Serializable]
-
     public struct AtariFont
     {
         public byte[] data;
         public Bitmap bitmap;
-    } 
+    }
     public static class AtariFontRenderer
     {
         private static readonly byte[] COLOR5 = { 40, 202, 148, 70, 0 };
         private static byte[] color5 = COLOR5;
         private static string lastFontFile;
         public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
-        private static bool useDli;        
+        private static bool useDli;
         public static string LastFontFile
         {
             get { return lastFontFile; }
             set { lastFontFile = value; }
         }
 
-        public static bool UseDli { get { return useDli; }  set { useDli = value; } }
+        public static bool UseDli { get { return useDli; } set { useDli = value; } }
 
         public static void RedrawFontImage(Globals.FontType fontType)
         {
@@ -62,7 +60,7 @@ namespace AtariMapMaker
 
         public static void LoadFont(String fontname, Globals.FontType fontType)
         {
-            byte[] fontData = new byte[1024*2];
+            byte[] fontData = new byte[1024 * 2];
             FileStream fs = new FileStream(fontname, FileMode.Open);
             fs.Read(fontData, 0, 1024);
             fs.Close();
@@ -85,14 +83,14 @@ namespace AtariMapMaker
         {
             if (deltaX == 0 && deltaY == 0) //small movement (no movement)
                 return false;
-            
+
             int subX = myMap.OffsetX - deltaX;
             int subY = myMap.OffsetY - deltaY;
-            
+
             //compensation of top/left bounds
             if (subX < 0)
                 deltaX = myMap.OffsetX;
-            if (subY < 0)   
+            if (subY < 0)
                 deltaY = myMap.OffsetY;
 
             myMap.Offset -= deltaX + deltaY * myMap.Stride;
@@ -135,10 +133,12 @@ namespace AtariMapMaker
                                 row[(x << 3) + (o << 1) + 1] = point; //COLOR5[point];
                             }
                         }
-                    } else {
+                    }
+                    else
+                    {
                         //mono gr.0 (dl 2)
                         for (int x = 0; x < (bmd.Stride >> 3); x++) // /8
-                        {   
+                        {
                             byte value = fontData[(x << 3) + y]; // /8 
                             byte point;
                             for (byte o = 7; o != 255; o--)
@@ -168,7 +168,7 @@ namespace AtariMapMaker
         {
             if (outBmp.PixelFormat != PixelFormat.Format8bppIndexed)
                 throw new Exception("Output bitmap of RenderMapData MUST be 8bppIndexed palette!");
-            
+
             AtariFont font = fonts[fontType];
 
             byte[] data = myMap.Data;
@@ -177,14 +177,14 @@ namespace AtariMapMaker
             {
                 return;
             }
-            
+
             int width = outBmp.Width / 8;
             int height = outBmp.Height / 8;
 
             if (myMap.OffsetX + width > myMap.Stride)
                 width = myMap.Stride - myMap.OffsetX;
-            if (myMap.OffsetY + height > myMap.Screens.Height * myMap.ScreenSize.Height)
-                height = myMap.ScreenSize.Height * myMap.Screens.Height - myMap.OffsetY;
+            if (myMap.OffsetY + height > myMap.MapSize.Height * myMap.ScreenSize.Height)
+                height = myMap.ScreenSize.Height * myMap.MapSize.Height - myMap.OffsetY;
 
             //Bitmap bmp = new Bitmap(bmpSize.Width, bmpSize.Height, PixelFormat.Format8bppIndexed);
             //outBmp.Palette = AtariPalette.GetPalette();
@@ -203,15 +203,15 @@ namespace AtariMapMaker
                         for (int x = 0; x < width; x++)
                         {
                             index = adrOffset + x; // +y * width; //index znaku co sa ma kreslit v data
-                            byte[] dliColor5 = useDli ? myMap.GetColorData(index) : color5; //defines if use DLI or common colors
+                            byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : color5; //defines if use DLI or common colors
                             if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
                             for (int c = 0; c < 8; c++)
-                                row[x*8+c] = (index < data.Length) ? dliColor5[fntRow[data[index] * 8 + c ]] : (byte)0;
+                                row[x * 8 + c] = (index < data.Length) ? dliColor5[fntRow[data[index] * 8 + c]] : (byte)0;
                         }
                         fntRow += fntd.Stride;
                         row += bmd.Stride;
                     }
-                    adrOffset += myMap.Stride; 
+                    adrOffset += myMap.Stride;
                 }
             }
             font.bitmap.UnlockBits(fntd);
@@ -236,7 +236,7 @@ namespace AtariMapMaker
         private static byte SwapColor(byte paletteIndex, int offset, AtariMap myMap)
         {
             for (int i = 0; i < COLOR5.Length; i++)
-                if (paletteIndex == COLOR5[i]) return myMap.GetColorData(offset)[i]; // color5[i];
+                if (paletteIndex == COLOR5[i]) return myMap.GetDliColor5(offset)[i]; // color5[i];
             throw new Exception("Messed up font.bitmap!");
         }
     }

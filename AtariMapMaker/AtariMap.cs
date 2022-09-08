@@ -9,41 +9,36 @@ namespace AtariMapMaker
     [Serializable]
     public class AtariMap
     {
-        private byte[] data;
-        private Size screenSize;    //velkost obrazovky v znakoch
+        public byte[] Data { get; set; }
+        public Size ScreenSize { get; }    //velkost obrazovky v znakoch
         private Size dataSize;      //velkost dat v znakoch
-        private Size screens;       //pocet screenov v datach (velkost mapy)
+        public Size MapSize { get; }       //pocet screenov v datach (velkost mapy)
         private int offset;
-        private byte[,,] colorData;   //screenNumber,linenumber,colorNumber
-
-        public AtariMap(Size screens, Size screenSize)
+        public byte[] ColorData { get; set; }   //screens*lines*5 colors
+        public AtariMap(Size mapSize, Size screenSize)
         {
-            this.screens = screens;
-            this.dataSize = new Size(screens.Width * screenSize.Width, screens.Height * screenSize.Height);
-            this.data = new byte[dataSize.Width * dataSize.Height];
-            this.screenSize = screenSize;
-            InitColorData();
+            this.MapSize = mapSize;
+            this.ScreenSize = screenSize;
+            this.dataSize = new Size(mapSize.Width * screenSize.Width, mapSize.Height * screenSize.Height);
+            this.Data = new byte[dataSize.Width * dataSize.Height];
+            InitDliColorFullMap();
         }
 
-        public void CopyColorData(int localScreenNumber, AtariMap targetMap, int targetScreenNumber)
+        public void CopyDliColorsFullScreen(int localScreenNumber, AtariMap targetMap, int targetScreenNumber)
         {
-            byte[] color5 = new byte[5];
-            for (int i = 0; i < this.ScreenSize.Height; i++)
-            {
-                for (int j = 0; j < 5; j++)
-                    color5[j] = colorData[localScreenNumber, i, j];
-                targetMap.SetColorData(targetScreenNumber % targetMap.ScreenSize.Width, targetScreenNumber / targetMap.screenSize.Width, i, 1, color5);
-            }
+            int length = this.ScreenSize.Height * 5;
+            int sourceOffset = localScreenNumber * length;
+            int destOffset = targetScreenNumber * length;
+            for (int i = 0; i < length; i++)
+                targetMap.ColorData[destOffset + i] = ColorData[sourceOffset + i];
         }
 
-        public void InitColorData()
+        public void InitDliColorFullMap()
         {
-            this.colorData = new byte[screens.Width * screens.Height, screenSize.Height, 5];
-            for (int i = 0; i < screens.Width * screens.Height; i++)
-                for (int j = 0; j < screenSize.Height; j++)
-                    colorData[i, j, 0] = Globals.DEFAULT_COLOR; //indicates that no DLI was used 
-                    //for (int k = 0; k < 5; k++)
-                    //    colorData[i, j, k] = AtariFontRenderer.Color5[k];
+            int totalLength = MapSize.Width * MapSize.Height * ScreenSize.Height * 5;
+            this.ColorData = new byte[totalLength];
+            for (int i = 0; i < totalLength; i+=5)
+                ColorData[i] = Globals.DEFAULT_COLOR; //0.color in each row indicates that no DLI was used 
         }
 
         public int Offset
@@ -70,85 +65,61 @@ namespace AtariMapMaker
         {
             get
             {
-                return this.screenSize.Width * this.screens.Width;
+                return this.ScreenSize.Width * this.MapSize.Width;
             }
         }
 
         //set single color for multiple lines
-        public void SetColorData(int screenx, int screeny, int startingLine, int lines, int colorNumber, byte colorIndexFromPalette)
+        public void SetDliColorMultiple(int screenx, int screeny, int startingLine, int lines, int colorNumber, byte colorIndexFromPalette)
         {
-            if (lines < 0) lines = screenSize.Height - startingLine;
-            if (startingLine + lines > screenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
+            int screenOffset = (screeny * MapSize.Width + screenx) * ScreenSize.Height * 5;
+            if (lines < 0) lines = ScreenSize.Height - startingLine;
+            if (startingLine + lines > ScreenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
             for (int j = 0; j < lines; j++)
-                this.colorData[screeny * screens.Width + screenx, startingLine + j, colorNumber] = colorIndexFromPalette;
+                this.ColorData[screenOffset + (startingLine + j) * 5 + colorNumber] = colorIndexFromPalette;
         }
         /// <summary>
         /// Get byte[5] color structure for given offset (char in AtariMap)
         /// </summary>
-        /// <param name="offset"></param>
+        /// <param name="charOffset"></param>
         /// <returns></returns>
-        public byte[] GetColorData(int offset)
+        public byte[] GetDliColor5(int charOffset)
         {
-            int row = offset / Stride;
-            int column = offset % Stride;
-            int line = row % screenSize.Height;
-            int screenNumber = column / screenSize.Width + (row / screenSize.Height)*screens.Width;
-            byte[] retValue = new byte[5];
+            int row = charOffset / Stride;
+            int column = charOffset % Stride;
+            int line = row % ScreenSize.Height;
+            int screenNumber = column / ScreenSize.Width + (row / ScreenSize.Height)*MapSize.Width;
             
+            int dliOffset = screenNumber * ScreenSize.Height * 5 + line * 5;
+
+            byte[] retValue = new byte[5];
             for (int i = 0; i < 5; i++)
-                retValue[i] = colorData[screenNumber, line, i];
+                retValue[i] = ColorData[dliOffset + i];
             return retValue;
         }
 
-        public byte[] GetColorData(Point clickedChar)
+        public byte[] GetDliColor5(Point clickedChar)
         {
-            int offset = clickedChar.X + Stride*clickedChar.Y;
-            return GetColorData(offset);
+            int charOffset = clickedChar.X + Stride*clickedChar.Y;
+            return GetDliColor5(charOffset);
         }
 
         //set all colors multiple lines based on the given 5 colors
-        public void SetColorData(int screenx, int screeny, int startingLine, int lines, byte[] color5)
+        public void SetDliColor5Multiple(int screenx, int screeny, int startingLine, int lines, byte[] color5)
         {
-            if (lines < 0) lines = screenSize.Height - startingLine;
-            if (startingLine + lines > screenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
+            int screenOffset = (screeny * MapSize.Width + screenx) * ScreenSize.Height * 5;
+            if (lines < 0) lines = ScreenSize.Height - startingLine;
+            if (startingLine + lines > ScreenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
             for (int j = 0; j < lines; j++)
                 for (int i = 0; i < 5; i++)
-                    this.colorData[screeny * screens.Width + screenx, startingLine + j, i] = color5[i];
+                    this.ColorData[screenOffset + (startingLine + j) * 5 + i] = color5[i];
         }
 
-        public void SetColor(int screenx, int screeny, int line, int colorNumber, byte colorIndex)
+        public void SetDliColor(int screenx, int screeny, int line, int colorNumber, byte colorIndex)
         {
-            this.colorData[screeny * screens.Width + screenx, line, colorNumber] = colorIndex;
+            int screenOffset = (screeny * MapSize.Width + screenx) * ScreenSize.Height * 5;
+            this.ColorData[screenOffset + line * 5 + colorNumber] = colorIndex;
         }
-
-        public Size ScreenSize
-        {
-            get
-            {
-                return this.screenSize;
-            }
-
-        }
-
-        public Size Screens
-        {
-            get
-            {
-                return this.screens;
-            }
-        }
-
-        public byte[] Data
-        {
-            get 
-            {
-                    return data;
-            }
-            set 
-            {
-                    data = value;
-            }
-
-        }
+          
     }
 }

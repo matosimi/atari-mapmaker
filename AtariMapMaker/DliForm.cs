@@ -84,15 +84,15 @@ namespace AtariMapMaker
             switch (e.Button)
             {
                 case MouseButtons.Left:
-                    byte[] color5 = dliMap.GetColorData(xchar + ychar * dliMap.Stride);
+                    byte[] color5 = dliMap.GetDliColor5(xchar + ychar * dliMap.Stride);
                     colorPicker.Pick(color5[0] == Globals.DEFAULT_COLOR ? AtariFontRenderer.Color5[xchar] : color5[xchar]);
                     if (colorPicker.PickedNewColor)
                     {
                         if (color5[0] == Globals.DEFAULT_COLOR)
                             InitializeDliDataForSelectedScreen();   //initialize DLI data
 
-                        dliMap.SetColor(0, 0, ychar, xchar, colorPicker.PickedColorIndex);
-                        screenMap.SetColor(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, ychar, xchar, colorPicker.PickedColorIndex);
+                        dliMap.SetDliColor(0, 0, ychar, xchar, colorPicker.PickedColorIndex);
+                        screenMap.SetDliColor(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, ychar, xchar, colorPicker.PickedColorIndex);
                         RedrawDliAndMap();
                     }
                     break;
@@ -108,8 +108,8 @@ namespace AtariMapMaker
         /// </summary>
         private void InitializeDliDataForSelectedScreen()
         {
-            dliMap.SetColorData(0, 0, 0, -1, AtariFontRenderer.Color5);
-            screenMap.SetColorData(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, 0, -1, AtariFontRenderer.Color5);
+            dliMap.SetDliColor5Multiple(0, 0, 0, -1, AtariFontRenderer.Color5);
+            screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, 0, -1, AtariFontRenderer.Color5);
         }
 
         private void FillContextMenu()
@@ -144,18 +144,18 @@ namespace AtariMapMaker
 
         private void FillDown(bool wholeLine, int lines)
         {
-            byte[] color5 = dliMap.GetColorData(clickedChar.X + 5*clickedChar.Y);
+            byte[] color5 = dliMap.GetDliColor5(clickedChar.X + 5*clickedChar.Y);
             int startingLine = clickedChar.Y;
 
             if (wholeLine)
             {
-                dliMap.SetColorData(0, 0, startingLine, lines, color5);
-                screenMap.SetColorData(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, startingLine, lines, color5);
+                dliMap.SetDliColor5Multiple(0, 0, startingLine, lines, color5);
+                screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, startingLine, lines, color5);
             }
             else
             {
-                dliMap.SetColorData(0, 0, startingLine, lines, clickedChar.X, color5[clickedChar.X]);
-                screenMap.SetColorData(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, startingLine, lines, clickedChar.X, color5[clickedChar.X]);
+                dliMap.SetDliColorMultiple(0, 0, startingLine, lines, clickedChar.X, color5[clickedChar.X]);
+                screenMap.SetDliColorMultiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, startingLine, lines, clickedChar.X, color5[clickedChar.X]);
             }
             RedrawDliAndMap();
         }
@@ -170,14 +170,14 @@ namespace AtariMapMaker
 
         private void CopyToClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            byte[] color5 = dliMap.GetColorData(clickedChar);
+            byte[] color5 = dliMap.GetDliColor5(clickedChar);
             clipBoard[0, 0] = color5[clickedChar.X];
             clipBoardDataType = Globals.ClipBoardEnum.color;
         }
 
         private void Copy5ToClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            byte[] color5 = dliMap.GetColorData(clickedChar);
+            byte[] color5 = dliMap.GetDliColor5(clickedChar);
             for (int i = 0; i < color5.Length; i++)
                 clipBoard[0, i] = color5[i];
             clipBoardDataType = Globals.ClipBoardEnum.color5;
@@ -187,7 +187,7 @@ namespace AtariMapMaker
         {
             for (int i = 0; i < dliMap.ScreenSize.Height; i++)
             {
-                byte[] color5 = dliMap.GetColorData(i * 5);
+                byte[] color5 = dliMap.GetDliColor5(i * 5);
                 for (int j = 0; j < 5; j++)
                     clipBoard[i, j] = color5[j];
             }
@@ -196,25 +196,25 @@ namespace AtariMapMaker
 
         private void Paste1FromClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            byte[] color5 = dliMap.GetColorData(clickedChar);
+            byte[] color5 = dliMap.GetDliColor5(clickedChar);
             if (color5[0] == Globals.DEFAULT_COLOR)
                 InitializeDliDataForSelectedScreen();   //initialize DLI data
 
-            dliMap.SetColor(0, 0, clickedChar.Y, clickedChar.X, clipBoard[0, 0]);
-            screenMap.SetColor(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, clickedChar.Y, clickedChar.X, clipBoard[0, 0]);
+            dliMap.SetDliColor(0, 0, clickedChar.Y, clickedChar.X, clipBoard[0, 0]);
+            screenMap.SetDliColor(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, clickedChar.Y, clickedChar.X, clipBoard[0, 0]);
             RedrawDliAndMap();
         }
 
         private void Paste5FromClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            byte[] color5 = dliMap.GetColorData(clickedChar);
+            byte[] color5 = dliMap.GetDliColor5(clickedChar);
             if (color5[0] == Globals.DEFAULT_COLOR)
                 InitializeDliDataForSelectedScreen();   //initialize DLI data
 
             for (int i = 0; i < 5; i++)
                 color5[i] = clipBoard[0, i];
-            dliMap.SetColorData(0, 0, clickedChar.Y, 1, color5);
-            screenMap.SetColorData(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, clickedChar.Y, 1, color5);
+            dliMap.SetDliColor5Multiple(0, 0, clickedChar.Y, 1, color5);
+            screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, clickedChar.Y, 1, color5);
             RedrawDliAndMap();
         }
 
@@ -225,8 +225,8 @@ namespace AtariMapMaker
             {
                 for (int i = 0; i < 5; i++)
                     color5[i] = clipBoard[j, i];
-                dliMap.SetColorData(0, 0, j, 1, color5);
-                screenMap.SetColorData(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width, j, 1, color5);
+                dliMap.SetDliColor5Multiple(0, 0, j, 1, color5);
+                screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, j, 1, color5);
             }
             RedrawDliAndMap();
         }
@@ -235,8 +235,8 @@ namespace AtariMapMaker
         {
             byte[] color5 = new byte[5];
             color5[0] = Globals.DEFAULT_COLOR;
-            dliMap.SetColorData(0,0,0,-1,color5);
-            screenMap.SetColorData(screenNumber % screenMap.Screens.Width, screenNumber / screenMap.Screens.Width,0 , -1, color5);
+            dliMap.SetDliColor5Multiple(0,0,0,-1,color5);
+            screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width,0 , -1, color5);
             RedrawDliAndMap();
         }
     }
