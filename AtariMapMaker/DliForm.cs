@@ -56,9 +56,10 @@ namespace AtariMapMaker
             this.Show();
         }
 
-        public void RenderData()
+        public void RenderData(bool refreshPictureBoxOnly = false)
         {
-            AtariPictureTools.Redraw(Globals.WindowType.Dli);
+            if (!refreshPictureBoxOnly)
+                AtariPictureTools.Redraw(Globals.WindowType.Dli);
             pictureBoxDli.Refresh();
         }
         public void ZoomResize()

@@ -37,6 +37,7 @@ namespace AtariMapMaker
             this.labelScreen = new System.Windows.Forms.Label();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.checkBoxShowDli = new System.Windows.Forms.CheckBox();
             this.checkBoxEditDli = new System.Windows.Forms.CheckBox();
             this.buttonRefreshFont = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
@@ -52,6 +53,8 @@ namespace AtariMapMaker
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.buttonImport = new System.Windows.Forms.Button();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
+            this.labelDliMask = new System.Windows.Forms.Label();
+            this.maskedTextBoxDli = new System.Windows.Forms.MaskedTextBox();
             this.numericUpDown6 = new System.Windows.Forms.NumericUpDown();
             this.lblDataWidth = new System.Windows.Forms.Label();
             this.buttonPerform = new System.Windows.Forms.Button();
@@ -85,11 +88,17 @@ namespace AtariMapMaker
             this.lblScreenSize = new System.Windows.Forms.Label();
             this.nudScreenW = new System.Windows.Forms.NumericUpDown();
             this.buttonNewMap = new System.Windows.Forms.Button();
+            this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.radioButtonWholeMap = new System.Windows.Forms.RadioButton();
+            this.radioButtonCurrentScreen = new System.Windows.Forms.RadioButton();
+            this.buttonReplaceCurrentScreen = new System.Windows.Forms.Button();
+            this.numericUpDownReplace2 = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownReplace1 = new System.Windows.Forms.NumericUpDown();
+            this.labelReplace = new System.Windows.Forms.Label();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.checkBoxShowDli = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -117,6 +126,9 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.nudMapW)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudScreenH)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudScreenW)).BeginInit();
+            this.tabPage4.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownReplace2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownReplace1)).BeginInit();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -188,6 +200,7 @@ namespace AtariMapMaker
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Controls.Add(this.tabPage3);
+            this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Location = new System.Drawing.Point(2, 0);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
@@ -211,6 +224,17 @@ namespace AtariMapMaker
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Colors";
             this.tabPage1.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxShowDli
+            // 
+            this.checkBoxShowDli.AutoSize = true;
+            this.checkBoxShowDli.Location = new System.Drawing.Point(18, 288);
+            this.checkBoxShowDli.Name = "checkBoxShowDli";
+            this.checkBoxShowDli.Size = new System.Drawing.Size(73, 17);
+            this.checkBoxShowDli.TabIndex = 12;
+            this.checkBoxShowDli.Text = "Show DLI";
+            this.checkBoxShowDli.UseVisualStyleBackColor = true;
+            this.checkBoxShowDli.CheckedChanged += new System.EventHandler(this.CheckBoxShowDli_CheckedChanged);
             // 
             // checkBoxEditDli
             // 
@@ -378,6 +402,8 @@ namespace AtariMapMaker
             // 
             // groupBox5
             // 
+            this.groupBox5.Controls.Add(this.labelDliMask);
+            this.groupBox5.Controls.Add(this.maskedTextBoxDli);
             this.groupBox5.Controls.Add(this.numericUpDown6);
             this.groupBox5.Controls.Add(this.lblDataWidth);
             this.groupBox5.Controls.Add(this.buttonPerform);
@@ -392,10 +418,28 @@ namespace AtariMapMaker
             this.groupBox5.Controls.Add(this.numericUpDown4);
             this.groupBox5.Location = new System.Drawing.Point(6, 75);
             this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Size = new System.Drawing.Size(212, 249);
+            this.groupBox5.Size = new System.Drawing.Size(212, 267);
             this.groupBox5.TabIndex = 18;
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "Data operations";
+            // 
+            // labelDliMask
+            // 
+            this.labelDliMask.Location = new System.Drawing.Point(3, 218);
+            this.labelDliMask.Name = "labelDliMask";
+            this.labelDliMask.Size = new System.Drawing.Size(53, 17);
+            this.labelDliMask.TabIndex = 22;
+            this.labelDliMask.Text = "DLI mask";
+            // 
+            // maskedTextBoxDli
+            // 
+            this.maskedTextBoxDli.Location = new System.Drawing.Point(131, 215);
+            this.maskedTextBoxDli.Mask = "00000";
+            this.maskedTextBoxDli.Name = "maskedTextBoxDli";
+            this.maskedTextBoxDli.Size = new System.Drawing.Size(69, 20);
+            this.maskedTextBoxDli.TabIndex = 21;
+            this.maskedTextBoxDli.Text = "01110";
+            this.maskedTextBoxDli.ValidatingType = typeof(int);
             // 
             // numericUpDown6
             // 
@@ -424,7 +468,7 @@ namespace AtariMapMaker
             // 
             // buttonPerform
             // 
-            this.buttonPerform.Location = new System.Drawing.Point(6, 216);
+            this.buttonPerform.Location = new System.Drawing.Point(6, 238);
             this.buttonPerform.Name = "buttonPerform";
             this.buttonPerform.Size = new System.Drawing.Size(200, 23);
             this.buttonPerform.TabIndex = 18;
@@ -743,6 +787,87 @@ namespace AtariMapMaker
             this.buttonNewMap.UseVisualStyleBackColor = true;
             this.buttonNewMap.Click += new System.EventHandler(this.BtnNewMap_Click);
             // 
+            // tabPage4
+            // 
+            this.tabPage4.Controls.Add(this.radioButtonWholeMap);
+            this.tabPage4.Controls.Add(this.radioButtonCurrentScreen);
+            this.tabPage4.Controls.Add(this.buttonReplaceCurrentScreen);
+            this.tabPage4.Controls.Add(this.numericUpDownReplace2);
+            this.tabPage4.Controls.Add(this.numericUpDownReplace1);
+            this.tabPage4.Controls.Add(this.labelReplace);
+            this.tabPage4.Location = new System.Drawing.Point(4, 22);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage4.Size = new System.Drawing.Size(226, 463);
+            this.tabPage4.TabIndex = 3;
+            this.tabPage4.Text = "Data manipulation";
+            this.tabPage4.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonWholeMap
+            // 
+            this.radioButtonWholeMap.AutoSize = true;
+            this.radioButtonWholeMap.Location = new System.Drawing.Point(12, 47);
+            this.radioButtonWholeMap.Name = "radioButtonWholeMap";
+            this.radioButtonWholeMap.Size = new System.Drawing.Size(79, 17);
+            this.radioButtonWholeMap.TabIndex = 7;
+            this.radioButtonWholeMap.Text = "Whole map";
+            this.radioButtonWholeMap.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonCurrentScreen
+            // 
+            this.radioButtonCurrentScreen.AutoSize = true;
+            this.radioButtonCurrentScreen.Checked = true;
+            this.radioButtonCurrentScreen.Location = new System.Drawing.Point(124, 47);
+            this.radioButtonCurrentScreen.Name = "radioButtonCurrentScreen";
+            this.radioButtonCurrentScreen.Size = new System.Drawing.Size(94, 17);
+            this.radioButtonCurrentScreen.TabIndex = 6;
+            this.radioButtonCurrentScreen.TabStop = true;
+            this.radioButtonCurrentScreen.Text = "Current screen";
+            this.radioButtonCurrentScreen.UseVisualStyleBackColor = true;
+            // 
+            // buttonReplaceCurrentScreen
+            // 
+            this.buttonReplaceCurrentScreen.Location = new System.Drawing.Point(6, 70);
+            this.buttonReplaceCurrentScreen.Name = "buttonReplaceCurrentScreen";
+            this.buttonReplaceCurrentScreen.Size = new System.Drawing.Size(212, 23);
+            this.buttonReplaceCurrentScreen.TabIndex = 5;
+            this.buttonReplaceCurrentScreen.Text = "Perform replacement";
+            this.buttonReplaceCurrentScreen.UseVisualStyleBackColor = true;
+            this.buttonReplaceCurrentScreen.Click += new System.EventHandler(this.ButtonReplaceCurrentScreen_Click);
+            // 
+            // numericUpDownReplace2
+            // 
+            this.numericUpDownReplace2.Location = new System.Drawing.Point(172, 12);
+            this.numericUpDownReplace2.Maximum = new decimal(new int[] {
+            255,
+            0,
+            0,
+            0});
+            this.numericUpDownReplace2.Name = "numericUpDownReplace2";
+            this.numericUpDownReplace2.Size = new System.Drawing.Size(46, 20);
+            this.numericUpDownReplace2.TabIndex = 4;
+            // 
+            // numericUpDownReplace1
+            // 
+            this.numericUpDownReplace1.Location = new System.Drawing.Point(116, 12);
+            this.numericUpDownReplace1.Maximum = new decimal(new int[] {
+            255,
+            0,
+            0,
+            0});
+            this.numericUpDownReplace1.Name = "numericUpDownReplace1";
+            this.numericUpDownReplace1.Size = new System.Drawing.Size(46, 20);
+            this.numericUpDownReplace1.TabIndex = 3;
+            // 
+            // labelReplace
+            // 
+            this.labelReplace.AutoSize = true;
+            this.labelReplace.Location = new System.Drawing.Point(9, 12);
+            this.labelReplace.Name = "labelReplace";
+            this.labelReplace.Size = new System.Drawing.Size(76, 13);
+            this.labelReplace.TabIndex = 0;
+            this.labelReplace.Text = "Replace chars";
+            // 
             // timer1
             // 
             this.timer1.Enabled = true;
@@ -752,17 +877,6 @@ namespace AtariMapMaker
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // checkBoxShowDli
-            // 
-            this.checkBoxShowDli.AutoSize = true;
-            this.checkBoxShowDli.Location = new System.Drawing.Point(18, 288);
-            this.checkBoxShowDli.Name = "checkBoxShowDli";
-            this.checkBoxShowDli.Size = new System.Drawing.Size(73, 17);
-            this.checkBoxShowDli.TabIndex = 12;
-            this.checkBoxShowDli.Text = "Show DLI";
-            this.checkBoxShowDli.UseVisualStyleBackColor = true;
-            this.checkBoxShowDli.CheckedChanged += new System.EventHandler(this.CheckBoxShowDli_CheckedChanged);
-            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -771,7 +885,7 @@ namespace AtariMapMaker
             this.Controls.Add(this.splitContainer1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "MainForm";
-            this.Text = "AtariMapMaker v1.0 by Martin Simecek";
+            this.Text = "AtariMapMaker by Martin Simecek";
             this.Load += new System.EventHandler(this.MainForm_Load);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
@@ -790,6 +904,7 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.trackBarZoom)).EndInit();
             this.tabPage2.ResumeLayout(false);
             this.groupBox5.ResumeLayout(false);
+            this.groupBox5.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown6)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown3)).EndInit();
@@ -805,6 +920,10 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.nudMapW)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudScreenH)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudScreenW)).EndInit();
+            this.tabPage4.ResumeLayout(false);
+            this.tabPage4.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownReplace2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownReplace1)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -871,6 +990,15 @@ namespace AtariMapMaker
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.CheckBox checkBoxEditDli;
         private System.Windows.Forms.CheckBox checkBoxShowDli;
+        private System.Windows.Forms.Label labelDliMask;
+        private System.Windows.Forms.MaskedTextBox maskedTextBoxDli;
+        private System.Windows.Forms.TabPage tabPage4;
+        private System.Windows.Forms.RadioButton radioButtonWholeMap;
+        private System.Windows.Forms.RadioButton radioButtonCurrentScreen;
+        private System.Windows.Forms.Button buttonReplaceCurrentScreen;
+        private System.Windows.Forms.NumericUpDown numericUpDownReplace2;
+        private System.Windows.Forms.NumericUpDown numericUpDownReplace1;
+        private System.Windows.Forms.Label labelReplace;
     }
 }
 

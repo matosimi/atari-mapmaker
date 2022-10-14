@@ -86,6 +86,7 @@ namespace AtariMapMaker
             this.MinimizeBox = false;
             this.Name = "AtariColorPicker";
             this.Text = "AtariColorPicker";
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.AtariColorPicker_KeyDown);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);

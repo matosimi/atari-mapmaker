@@ -93,5 +93,14 @@ namespace AtariMapMaker
                 DrawSelection(selectedColorIndex, index);
             }
         }
+
+        private void AtariColorPicker_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                this.selectedColorIndex = this.oldColorIndex;
+                this.Close();
+            }
+        }
     }
 }

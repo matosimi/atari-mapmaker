@@ -120,6 +120,22 @@ namespace AtariMapMaker
             int screenOffset = (screeny * MapSize.Width + screenx) * ScreenSize.Height * 5;
             this.ColorData[screenOffset + line * 5 + colorNumber] = colorIndex;
         }
-          
+
+        public void SwapChar(byte char1, byte char2, bool globalChange)
+        {
+            if (globalChange)
+            {
+                for (int i = 0; i < Data.Length; i++)
+                {
+                    if (Data[i] == char1) Data[i] = char2;
+                    else if (Data[i] == char2) Data[i] = char1;
+                }
+            }
+            else
+            {
+                //poop
+            }
+        }
+
     }
 }

@@ -59,7 +59,7 @@ namespace AtariMapMaker
 
             myCharPicker = new FontCharPicker(pictureBoxClipboard);
 
-            comboOperation.Items.AddRange(new String[4] { "Export", "Import", "Column Export", "Column Import" });
+            comboOperation.Items.AddRange(new String[5] { "Export", "Import", "Column Export", "Column Import", "Export DLI" });
             comboOperation.SelectedIndex = 0;
 
             dliForm = new DliForm(myMap, pictureBoxMap);
@@ -156,10 +156,19 @@ namespace AtariMapMaker
 
         private void PictureBoxMap_MouseMove(object sender, MouseEventArgs e)
         {
+            int xx = myMap.OffsetX + e.X / Globals.CharSize;
+            int yy = myMap.OffsetY + e.Y / Globals.CharSize;
+            int scrx = xx / myMap.ScreenSize.Width;
+            int scry = yy / myMap.ScreenSize.Height;
+            int posx = xx % myMap.ScreenSize.Width;
+            int posy = yy % myMap.ScreenSize.Height;
+
             if (e.Button == MouseButtons.Right)     //SCROLL
             {
                 if (AtariPictureTools.Scroll(e.Location, Globals.WindowType.Editor))
                     pictureBoxMap.Refresh();
+
+                UpdateAndShowDliForm(scrx, scry, true);
             }
 
 
@@ -183,12 +192,7 @@ namespace AtariMapMaker
                     AtariPictureTools.DrawUnderClipBoard(e.Location);
                 }
             }
-            int xx = myMap.OffsetX + e.X / Globals.CharSize;
-            int yy = myMap.OffsetY + e.Y / Globals.CharSize;
-            int scrx = xx / myMap.ScreenSize.Width;
-            int scry = yy / myMap.ScreenSize.Height;
-            int posx = xx % myMap.ScreenSize.Width;
-            int posy = yy % myMap.ScreenSize.Height;
+            
 
             if (xx < myMap.Stride && yy < myMap.MapSize.Height * myMap.ScreenSize.Height)
             {
@@ -197,26 +201,31 @@ namespace AtariMapMaker
                 byte charVal = myMap.Data[xx + yy * myMap.Stride];
                 labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
 
-                if (checkBoxEditDli.Checked)
+            }
+        }
+
+        private void UpdateAndShowDliForm(int scrx,int scry, bool justUpdatePosition = false)
+        {
+            Point dliPoint = DliFormOrigin(scrx, scry);
+            if (dliPoint.X != -1)
+            {
+                Rectangle r = this.RectangleToScreen(this.ClientRectangle);
+                dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
+                dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
+                dliForm.Owner = this;
+                if (!justUpdatePosition)
                 {
-                    Point dliPoint = DliFormOrigin(scrx, scry);
-                    if (dliPoint.X != -1)
-                    {
-                        Rectangle r = this.RectangleToScreen(this.ClientRectangle);
-                        dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
-                        dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
-                        dliForm.Owner = this;
-                        myMap.CopyDliColorsFullScreen(scrx + scry * myMap.MapSize.Width, dliForm.DliMap, 0);  //copy screen colors to DLI color editor
-                        dliForm.RenderData();
-                        dliForm.Show(scrx + scry*myMap.MapSize.Width);
-                        
-                    }
-                    else
-                    {
-                        dliForm.Hide();
-                    }
-                } else
-                    dliForm.Hide();
+                    myMap.CopyDliColorsFullScreen(scrx + scry * myMap.MapSize.Width, dliForm.DliMap, 0);  //copy screen colors to DLI color editor
+                    dliForm.RenderData();
+                }
+                else
+                    dliForm.RenderData(true);
+                dliForm.Show(scrx + scry * myMap.MapSize.Width);
+
+            }
+            else
+            {
+                dliForm.Hide();
             }
         }
 
@@ -265,6 +274,17 @@ namespace AtariMapMaker
                 if (mouseStatus == "SELECTION")
                     mouseStatus = "";
                 AtariPictureTools.PreviousOffset = myMap.Offset;
+
+                if (checkBoxEditDli.Checked)
+                {
+                    int xx = myMap.OffsetX + e.X / Globals.CharSize;
+                    int yy = myMap.OffsetY + e.Y / Globals.CharSize;
+                    int scrx = xx / myMap.ScreenSize.Width;
+                    int scry = yy / myMap.ScreenSize.Height;
+                    UpdateAndShowDliForm(scrx, scry);
+                }
+                else
+                    dliForm.Hide();
             }
         }
 
@@ -611,6 +631,31 @@ namespace AtariMapMaker
             }
         }
 
+        private void DliExport()
+        {
+            saveFileDialog1.Filter = "Dli column export (*.dat)|*.dat";
+            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                System.IO.FileStream fs = new System.IO.FileStream(saveFileDialog1.FileName, System.IO.FileMode.Create);
+
+                byte myData;
+
+                int charOffset = (int)numericUpDown1.Value * myMap.ScreenSize.Width + (int)numericUpDown3.Value * myMap.Stride * myMap.ScreenSize.Height;
+                for (int x = 0; x < 5; x++)
+                {
+                    if (maskedTextBoxDli.Text[x] == '0') continue;    //skip 0 masks
+                    for (int y = 0; y < myMap.ScreenSize.Height; y++)
+                    {
+                        byte[] color5 = myMap.GetDliColor5(charOffset + y * myMap.Stride);
+                        myData = color5[x];
+                        fs.WriteByte(myData);
+                    }
+                }
+                fs.Close();
+                fs.Dispose();
+            }
+        }
+
         private void ButtonHoboImport_Click(object sender, EventArgs e)
         {
             openFileDialog1.Filter = "Column based map datafile (*.*)|*.*";
@@ -678,7 +723,7 @@ namespace AtariMapMaker
 
         private void ComboBoxOperation_SelectedIndexChanged(object sender, EventArgs e)
         {
-            //{"Export","Import","Column Export","Column Import"};
+            //{"Export","Import","Column Export","Column Import","Export DLI"};
             switch (comboOperation.SelectedIndex)
             {
                 case 0:
@@ -713,8 +758,17 @@ namespace AtariMapMaker
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
-            
+                case 4:
+                    numericUpDown1.Enabled = true;
+                    numericUpDown2.Enabled = false;
+                    numericUpDown3.Enabled = true;
+                    numericUpDown4.Enabled = false;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
             }
+            maskedTextBoxDli.Visible = labelDliMask.Visible = comboOperation.SelectedIndex == 4;
+
         }
 
         private void ButtonPerform_Click(object sender, EventArgs e)
@@ -733,6 +787,9 @@ namespace AtariMapMaker
                     break;
                 case 3:
                     ButtonHoboImport_Click(null, null);
+                    break;
+                case 4:
+                    DliExport();
                     break;
             }
         }
@@ -777,6 +834,16 @@ namespace AtariMapMaker
             AtariFontRenderer.UseDli = checkBoxShowDli.Checked;
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
             pictureBoxMap.Refresh();
+        }
+
+        private void ButtonReplaceCurrentScreen_Click(object sender, EventArgs e)
+        {
+            if (numericUpDownReplace1.Value != numericUpDownReplace2.Value)
+            {
+                myMap.SwapChar((byte)numericUpDownReplace1.Value, (byte)numericUpDownReplace2.Value, radioButtonWholeMap.Checked);
+                AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                pictureBoxMap.Refresh();
+            }
         }
     }
 }
