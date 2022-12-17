@@ -14,7 +14,7 @@ namespace AtariMapMaker
     }
     public static class AtariFontRenderer
     {
-        private static readonly byte[] COLOR5 = { 40, 202, 148, 70, 0 };
+        private static readonly byte[] COLOR5 = { 40, 202, 148, 70, 0, 80, 15, 52 };
         private static byte[] color5 = COLOR5;
         private static string lastFontFile;
         public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
@@ -199,14 +199,45 @@ namespace AtariMapMaker
                 {
                     byte* fntRow = (byte*)fntd.Scan0;
                     for (int scln = 0; scln < 8; scln++)
-                    {
+                    { 
                         for (int x = 0; x < width; x++)
                         {
                             index = adrOffset + x; // +y * width; //index znaku co sa ma kreslit v data
                             byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : color5; //defines if use DLI or common colors
                             if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
                             for (int c = 0; c < 8; c++)
-                                row[x * 8 + c] = (index < data.Length) ? dliColor5[fntRow[data[index] * 8 + c]] : (byte)0;
+                            {
+                                int colorIndex = fntRow[data[index] * 8 + c];
+                                byte color;
+                                if (color5.Length > 5)
+                                {
+                                    if ((scln & 0x1) == 1)
+                                    {
+                                        switch (colorIndex)
+                                        {
+                                            case 3:
+                                                color = dliColor5[5];
+                                                break;
+                                            case 0:
+                                                color = dliColor5[6];
+                                                break;
+                                            case 2:
+                                                color = dliColor5[7];
+                                                break;
+                                            default:
+                                                color = dliColor5[colorIndex];
+                                                break;
+                                        }
+                                    }
+
+                                    else
+                                        color = dliColor5[colorIndex];
+                                }
+                                else
+                                    color = dliColor5[colorIndex];
+                                //byte color = (scln & 0x1) == 0 ? dliColor5[colorIndex] : (colorIndex == 3 ? dliColor5[5] : dliColor5[colorIndex]);
+                                row[x * 8 + c] = (index < data.Length) ? color : (byte)0;
+                            }
                         }
                         fntRow += fntd.Stride;
                         row += bmd.Stride;

@@ -99,6 +99,7 @@ namespace AtariMapMaker
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+            this.buttonAddScreenRowToMap = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -789,6 +790,7 @@ namespace AtariMapMaker
             // 
             // tabPage4
             // 
+            this.tabPage4.Controls.Add(this.buttonAddScreenRowToMap);
             this.tabPage4.Controls.Add(this.radioButtonWholeMap);
             this.tabPage4.Controls.Add(this.radioButtonCurrentScreen);
             this.tabPage4.Controls.Add(this.buttonReplaceCurrentScreen);
@@ -877,6 +879,16 @@ namespace AtariMapMaker
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // buttonAddScreenRowToMap
+            // 
+            this.buttonAddScreenRowToMap.Location = new System.Drawing.Point(6, 149);
+            this.buttonAddScreenRowToMap.Name = "buttonAddScreenRowToMap";
+            this.buttonAddScreenRowToMap.Size = new System.Drawing.Size(212, 23);
+            this.buttonAddScreenRowToMap.TabIndex = 8;
+            this.buttonAddScreenRowToMap.Text = "Extend map with additional row";
+            this.buttonAddScreenRowToMap.UseVisualStyleBackColor = true;
+            this.buttonAddScreenRowToMap.Click += new System.EventHandler(this.ButtonAddScreenRowToMap_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -884,6 +896,7 @@ namespace AtariMapMaker
             this.ClientSize = new System.Drawing.Size(914, 542);
             this.Controls.Add(this.splitContainer1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.IsMdiContainer = true;
             this.Name = "MainForm";
             this.Text = "AtariMapMaker by Martin Simecek";
             this.Load += new System.EventHandler(this.MainForm_Load);
@@ -999,6 +1012,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.NumericUpDown numericUpDownReplace2;
         private System.Windows.Forms.NumericUpDown numericUpDownReplace1;
         private System.Windows.Forms.Label labelReplace;
+        private System.Windows.Forms.Button buttonAddScreenRowToMap;
     }
 }
 

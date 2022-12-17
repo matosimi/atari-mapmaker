@@ -59,7 +59,7 @@ namespace AtariMapMaker
 
             myCharPicker = new FontCharPicker(pictureBoxClipboard);
 
-            comboOperation.Items.AddRange(new String[5] { "Export", "Import", "Column Export", "Column Import", "Export DLI" });
+            comboOperation.Items.AddRange(new String[6] { "Export", "Import", "Column Export", "Column Import", "Export DLI", "Import DLI" });
             comboOperation.SelectedIndex = 0;
 
             dliForm = new DliForm(myMap, pictureBoxMap);
@@ -95,12 +95,40 @@ namespace AtariMapMaker
                     ImageIndex = i,
                     Text = i == 4 ? "COLBAK" : $"COLPF{i}"
                 };
-                lvi.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[i])); 
+                lvi.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[i]));
                 lvi.SubItems.Add("$" + String.Format("{0:X4}", 0xd016 + i));
                 listView1.Items.Add(lvi);
             }
-            listView1.Columns[0].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
-            listView1.Columns[1].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
+            //add scanline alter colors only when possible
+            if (AtariFontRenderer.Color5.Length > 5)
+            {
+                ListViewItem lviAlter = new ListViewItem
+                {
+                    ImageIndex = 5,
+                    Text = "PF3 alter"
+                };
+                lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[5]));
+                listView1.Items.Add(lviAlter);
+
+                lviAlter = new ListViewItem
+                {
+                    ImageIndex = 6,
+                    Text = "PF0 alter"
+                };
+                lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[6]));
+                listView1.Items.Add(lviAlter);
+
+                lviAlter = new ListViewItem
+                {
+                    ImageIndex = 7,
+                    Text = "PF2 alter"
+                };
+                lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[7]));
+                listView1.Items.Add(lviAlter);
+
+                listView1.Columns[0].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
+                listView1.Columns[1].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
+            }
         }
 
         private ImageList GetFontColorImageList(byte[] color5)
@@ -108,7 +136,7 @@ namespace AtariMapMaker
             ImageList il = new ImageList();
             Size size = new Size(30, 20);
             il.ImageSize = size;
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < color5.Length; i++)
             {
                 Bitmap bmp = new Bitmap(size.Width, size.Height);
                 Graphics gr = Graphics.FromImage(bmp);
@@ -656,6 +684,26 @@ namespace AtariMapMaker
             }
         }
 
+        private void DliImport()
+        {
+            openFileDialog1.Filter = "Dli column export (*.dat)|*.dat";
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open);
+                
+                for (int x = 0; x < 5; x++)
+                {
+                    if (maskedTextBoxDli.Text[x] == '0') continue;    //skip 0 masks
+                    for (int y = 0; y < myMap.ScreenSize.Height; y++)
+                    {
+                        myMap.SetDliColor((int)numericUpDown1.Value, (int)numericUpDown3.Value, y, x, (byte)fs.ReadByte());
+                    }
+                }
+                fs.Close();
+                fs.Dispose();
+            }
+        }
+
         private void ButtonHoboImport_Click(object sender, EventArgs e)
         {
             openFileDialog1.Filter = "Column based map datafile (*.*)|*.*";
@@ -766,6 +814,14 @@ namespace AtariMapMaker
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
+                case 5:
+                    numericUpDown1.Enabled = true;
+                    numericUpDown2.Enabled = false;
+                    numericUpDown3.Enabled = true;
+                    numericUpDown4.Enabled = false;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
             }
             maskedTextBoxDli.Visible = labelDliMask.Visible = comboOperation.SelectedIndex == 4;
 
@@ -790,6 +846,9 @@ namespace AtariMapMaker
                     break;
                 case 4:
                     DliExport();
+                    break;
+                case 5:
+                    DliImport();
                     break;
             }
         }
@@ -844,6 +903,17 @@ namespace AtariMapMaker
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
             }
+        }
+
+        private void ButtonAddScreenRowToMap_Click(object sender, EventArgs e)
+        {
+            AtariMap newMap = new AtariMap(new Size(myMap.MapSize.Width, myMap.MapSize.Height + 1), myMap.ScreenSize);
+            Array.Copy(myMap.Data, newMap.Data, myMap.Data.Length);
+            newMap.InitDliColorFullMap();
+            Array.Copy(myMap.ColorData, newMap.ColorData, myMap.ColorData.Length);
+            myMap = newMap;
+            AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
+            RedrawEditorWindow();
         }
     }
 }
