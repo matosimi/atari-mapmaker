@@ -449,6 +449,7 @@ namespace AtariMapMaker
                     dliForm.Dispose();
                     dliForm = new DliForm(myMap, pictureBoxMap);
                     dliForm.RenderData();
+                    numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                     break;
             }
         }
@@ -913,6 +914,9 @@ namespace AtariMapMaker
             Array.Copy(myMap.ColorData, newMap.ColorData, myMap.ColorData.Length);
             myMap = newMap;
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
+            dliForm.Dispose();
+            dliForm = new DliForm(myMap, pictureBoxMap);
+            dliForm.RenderData();
             RedrawEditorWindow();
         }
     }

@@ -89,6 +89,7 @@ namespace AtariMapMaker
             this.nudScreenW = new System.Windows.Forms.NumericUpDown();
             this.buttonNewMap = new System.Windows.Forms.Button();
             this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.buttonAddScreenRowToMap = new System.Windows.Forms.Button();
             this.radioButtonWholeMap = new System.Windows.Forms.RadioButton();
             this.radioButtonCurrentScreen = new System.Windows.Forms.RadioButton();
             this.buttonReplaceCurrentScreen = new System.Windows.Forms.Button();
@@ -99,7 +100,6 @@ namespace AtariMapMaker
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.buttonAddScreenRowToMap = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -446,7 +446,7 @@ namespace AtariMapMaker
             // 
             this.numericUpDown6.Location = new System.Drawing.Point(131, 184);
             this.numericUpDown6.Maximum = new decimal(new int[] {
-            1000,
+            4096,
             0,
             0,
             0});
@@ -805,6 +805,16 @@ namespace AtariMapMaker
             this.tabPage4.Text = "Data manipulation";
             this.tabPage4.UseVisualStyleBackColor = true;
             // 
+            // buttonAddScreenRowToMap
+            // 
+            this.buttonAddScreenRowToMap.Location = new System.Drawing.Point(6, 149);
+            this.buttonAddScreenRowToMap.Name = "buttonAddScreenRowToMap";
+            this.buttonAddScreenRowToMap.Size = new System.Drawing.Size(212, 23);
+            this.buttonAddScreenRowToMap.TabIndex = 8;
+            this.buttonAddScreenRowToMap.Text = "Extend map with additional row";
+            this.buttonAddScreenRowToMap.UseVisualStyleBackColor = true;
+            this.buttonAddScreenRowToMap.Click += new System.EventHandler(this.ButtonAddScreenRowToMap_Click);
+            // 
             // radioButtonWholeMap
             // 
             this.radioButtonWholeMap.AutoSize = true;
@@ -878,16 +888,6 @@ namespace AtariMapMaker
             // openFileDialog1
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
-            // 
-            // buttonAddScreenRowToMap
-            // 
-            this.buttonAddScreenRowToMap.Location = new System.Drawing.Point(6, 149);
-            this.buttonAddScreenRowToMap.Name = "buttonAddScreenRowToMap";
-            this.buttonAddScreenRowToMap.Size = new System.Drawing.Size(212, 23);
-            this.buttonAddScreenRowToMap.TabIndex = 8;
-            this.buttonAddScreenRowToMap.Text = "Extend map with additional row";
-            this.buttonAddScreenRowToMap.UseVisualStyleBackColor = true;
-            this.buttonAddScreenRowToMap.Click += new System.EventHandler(this.ButtonAddScreenRowToMap_Click);
             // 
             // MainForm
             // 
