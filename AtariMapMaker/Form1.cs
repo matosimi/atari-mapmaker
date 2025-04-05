@@ -196,7 +196,8 @@ namespace AtariMapMaker
                 if (AtariPictureTools.Scroll(e.Location, Globals.WindowType.Editor))
                     pictureBoxMap.Refresh();
 
-                UpdateAndShowDliForm(scrx, scry, true);
+                if (checkBoxEditDli.Checked)
+                    UpdateAndShowDliForm(scrx, scry, true);
             }
 
 
@@ -375,29 +376,16 @@ namespace AtariMapMaker
 
             if (myMap == null)
                 return;
-            pictureBoxMap.Image = new Bitmap(pictureBoxMap.Width, pictureBoxMap.Height);
+            int ignoredWidth = pictureBoxMap.Width % (8 * Globals.Zoom);
+            int ignoredHeight = pictureBoxMap.Height % (8 * Globals.Zoom);
+            try
+            {
+                pictureBoxMap.Image = new Bitmap(pictureBoxMap.Width - ignoredWidth, pictureBoxMap.Height - ignoredHeight);
+            }
+            catch (ArgumentException)   //fix crash when window shrinked to 0 width or height
+            { }
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
-            /*
-            if (dataImage != null)
-                dataImage.Dispose();
-            dataImage = new Bitmap(pictureBoxMap.Width / Globals.Zoom, pictureBoxMap.Height / Globals.Zoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-
-            if (pictureBoxMap.Image != null)
-            {
-                pictureBoxMap.Image.Dispose();
-                gr.Dispose();
-            }
-            pictureBoxMap.Image = new Bitmap(pictureBoxMap.Width, pictureBoxMap.Height);
-
-            gr = Graphics.FromImage(pictureBoxMap.Image);
-            gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-            AtariFontRenderer.SelectFont(Globals.FontType.Screen);
-            AtariFontRenderer.RenderMapData(myMap, AtariFontRenderer.offset, dataImage);
-            //AtariPictureTools.SetDestImage((Bitmap)pictureBoxMap.Image, gr);   //update of new image in picturebox
-            AtariPictureTools.AssignWindow((Bitmap)pictureBoxMap.Image, myMap);
-            AtariPictureTools.Redraw(dataImage);
-            pictureBoxMap.Invalidate();*/
         }
 
         private void ButtonSave_Click(object sender, EventArgs e)
@@ -449,6 +437,7 @@ namespace AtariMapMaker
                     dliForm.Dispose();
                     dliForm = new DliForm(myMap, pictureBoxMap);
                     dliForm.RenderData();
+                    dliForm.ZoomResize();
                     numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                     break;
             }
@@ -733,7 +722,7 @@ namespace AtariMapMaker
         {
             if (MessageBox.Show("Create new map? (current mapdata will be deleted!)", "New map", MessageBoxButtons.OKCancel) == System.Windows.Forms.DialogResult.OK)
             {
-               
+                AtariFontRenderer.SetAlpa(checkBoxAlpa.Checked);
                 myMap = new AtariMap(new Size((int)nudMapW.Value, (int)nudMapH.Value), new Size((int)nudScreenW.Value, (int)nudScreenH.Value));
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                 numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
@@ -882,10 +871,18 @@ namespace AtariMapMaker
 
         private void CheckBoxEditDli_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkBoxEditDli.Checked) checkBoxShowDli.Checked = true;
+            if (checkBoxEditDli.Checked)
+            {
+                checkBoxShowDli.Checked = true;
+            }
+            else
+            {
+                dliForm.Hide();
+            }
             AtariFontRenderer.UseDli = checkBoxShowDli.Checked;
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
             pictureBoxMap.Refresh();
+
         }
 
         private void CheckBoxShowDli_CheckedChanged(object sender, EventArgs e)

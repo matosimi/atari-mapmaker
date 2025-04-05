@@ -29,6 +29,7 @@ namespace AtariMapMaker
             int length = this.ScreenSize.Height * 5;
             int sourceOffset = localScreenNumber * length;
             int destOffset = targetScreenNumber * length;
+            //TODO: fix crash when edit dli shown on the screen out of map bounds
             for (int i = 0; i < length; i++)
                 targetMap.ColorData[destOffset + i] = ColorData[sourceOffset + i];
         }
