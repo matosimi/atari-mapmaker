@@ -1,7 +1,14 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual C# Express 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35825.156 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AtariMapMaker", "AtariMapMaker\AtariMapMaker.csproj", "{3E52E7B6-A798-43FD-8198-98D20E585107}"
+	ProjectSection(ProjectDependencies) = postProject
+		{2300A10B-9080-48CF-8FCE-033C74ECE110} = {2300A10B-9080-48CF-8FCE-033C74ECE110}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AtariMapConverter", "AtariMapConverter\AtariMapConverter.csproj", "{2300A10B-9080-48CF-8FCE-033C74ECE110}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,8 +20,15 @@ Global
 		{3E52E7B6-A798-43FD-8198-98D20E585107}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3E52E7B6-A798-43FD-8198-98D20E585107}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3E52E7B6-A798-43FD-8198-98D20E585107}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2300A10B-9080-48CF-8FCE-033C74ECE110}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2300A10B-9080-48CF-8FCE-033C74ECE110}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2300A10B-9080-48CF-8FCE-033C74ECE110}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2300A10B-9080-48CF-8FCE-033C74ECE110}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B4D310C0-4B2D-4BE3-A638-AC653206C194}
 	EndGlobalSection
 EndGlobal

@@ -9,6 +9,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 using System.Reflection;
 using System.Linq;
+using System.Diagnostics.Eventing.Reader;
 
 namespace AtariMapMaker
 {
@@ -280,11 +281,16 @@ namespace AtariMapMaker
 
                 if (AtariClipboard.IsValid)
                 {
-                    AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
-                    int addoffset = (e.X / Globals.CharSize) + myMap.Stride * (e.Y / Globals.CharSize);
-                    AtariClipboard.Paste(myMap.Offset + addoffset);
-                    //RedrawEditorWindow();
-                    AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                    if (myMap.OffsetX + (e.X / Globals.CharSize) + AtariClipboard.ClipboardWidth > myMap.Stride)
+                    { }
+                    else
+                    {
+                        AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
+                        int addoffset = (e.X / Globals.CharSize) + myMap.Stride * (e.Y / Globals.CharSize);
+                        AtariClipboard.Paste(myMap.Offset + addoffset);
+                        //RedrawEditorWindow();
+                        AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                    }
                 }
                 else
                 {
@@ -324,11 +330,13 @@ namespace AtariMapMaker
             if (e.Button == MouseButtons.Left)
                 if (mouseStatus == "SELECTION")
                 {
-                    AtariPictureTools.SelectionEnd(Globals.WindowType.Editor);
-                    AtariClipboard.IsValid = true;
-                    pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
-                    pictureBoxMap.Refresh();
-                    mouseStatus = "";
+                    if (AtariPictureTools.SelectionEnd(Globals.WindowType.Editor))
+                    {
+                        AtariClipboard.IsValid = true;
+                        pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                        pictureBoxMap.Refresh();
+                    }
+                    mouseStatus = "";   //reset mouse status no matter if selection end is valid or not
                 }
         }
 

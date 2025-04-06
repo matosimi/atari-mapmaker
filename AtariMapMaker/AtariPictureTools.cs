@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Drawing;
+using System.Security.Cryptography;
 
 namespace AtariMapMaker
 {
@@ -41,9 +42,12 @@ namespace AtariMapMaker
                 windows.Remove(windowType);
             }
 
+            int emptyWidth = destinationPictureBoxImage.Width % (8 * Globals.Zoom);
+            int emptyHeight = destinationPictureBoxImage.Height % (8 * Globals.Zoom);
             AtariWindow window = new AtariWindow()
             {
-                fontRendererMapImage = new Bitmap(destinationPictureBoxImage.Width / Globals.Zoom, destinationPictureBoxImage.Height / Globals.Zoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed),
+                
+                fontRendererMapImage = new Bitmap((destinationPictureBoxImage.Width - emptyWidth) / Globals.Zoom, (destinationPictureBoxImage.Height - emptyHeight) / Globals.Zoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed),
                 pictureBoxGraphics = Graphics.FromImage(destinationPictureBoxImage),
                 map = windowMap,
                 fontType = myFontType,
@@ -88,13 +92,22 @@ namespace AtariMapMaker
                     mouseSelection.Height -= Globals.CharSize;
                 }
 
-
+                //selection out of picturebox bounds - do not copy, do not draw selection
                 if (mouseSelection.Width + mouseSelection.X > windows[window].fontRendererMapImage.Width * Globals.Zoom ||
                     mouseSelection.Height + mouseSelection.Y > windows[window].fontRendererMapImage.Height * Globals.Zoom ||
                     newCorner.X < 0 ||
                     newCorner.Y < 0)
                 {
-                    //selection out of bounds - do not copy, do not draw selection
+                    mouseSelection.Width = 0;
+                    mouseSelection.Height = 0;
+                }
+
+                //selection out of data bounds - do not copy, do not draw selection
+                if (mouseSelection.X / Globals.CharSize + windows[window].map.OffsetX > windows[window].map.Stride ||
+                    mouseSelection.Y / Globals.CharSize + windows[window].map.OffsetY > windows[window].map.MapSize.Height * windows[window].map.ScreenSize.Height ||
+                    (mouseSelection.X + mouseSelection.Width) / Globals.CharSize + windows[window].map.OffsetX > windows[window].map.Stride ||
+                    (mouseSelection.Y + mouseSelection.Height)/ Globals.CharSize + windows[window].map.OffsetY > windows[window].map.MapSize.Height * windows[window].map.ScreenSize.Height)
+                {
                     mouseSelection.Width = 0;
                     mouseSelection.Height = 0;
                 }

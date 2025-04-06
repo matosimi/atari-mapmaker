@@ -9,56 +9,18 @@ namespace AtariMapMaker
 {
     public static class AtariClipboard
     {
-        private static Bitmap clipboard;
         private static byte[,] data;
         private static AtariMap dataSource;
         private static Graphics gr;
-        private static int clipboardWidth;
-        private static int clipboardHeight;
-        private static bool valid = false;
-        private static Bitmap underClipBoardImage;
-        private static Graphics gruc;  //underclipboardimage gfx
-
-        public static Bitmap UnderClipBoardImage
-        {
-            get
-            {
-                return underClipBoardImage;
-            }
-            set
-            {
-                underClipBoardImage = value;
-            }
-        }
-
-        public static Graphics UnderImageGraphics
-        {
-            get
-            {
-                return gruc;
-            }
-            set
-            {
-                gruc = value;
-            }
-        }
-
-        public static bool IsValid
-        {
-            get
-            {
-                return valid;
-            }
-            set
-            {
-                valid = value;
-            }
-        }
-
+        public static int ClipboardWidth { get; private set; }
+        public static int ClipboardHeight { get; private set; }
+        public static Bitmap ClipboardImage { get; private set; }
+        public static Bitmap UnderClipBoardImage { get; set; }
+        public static Graphics UnderImageGraphics { get; set; }
+        public static bool IsValid { get; set; }
         public static void SetDataSource(AtariMap myMap)
         {
             dataSource = myMap;
-            
         }
 
         public static void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset)
@@ -66,47 +28,38 @@ namespace AtariMapMaker
             if (dataSource == null)
                 return;
             
-            //graficka cast
-            if (clipboard != null)
+            //graphical part
+            if (ClipboardImage != null)
             {
-                clipboard.Dispose();
+                ClipboardImage.Dispose();
             }
-            clipboard = new Bitmap(mouseSelection.Width, mouseSelection.Height);
-            gr = Graphics.FromImage(clipboard);
+            ClipboardImage = new Bitmap(mouseSelection.Width, mouseSelection.Height);
+            gr = Graphics.FromImage(ClipboardImage);
             gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             gr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
             gr.Dispose();
 
-            //datova cast
-            clipboardWidth = mouseSelection.Width / Globals.CharSize;
-            clipboardHeight = mouseSelection.Height / Globals.CharSize;
-            data = new byte[clipboardWidth, clipboardHeight];
+            //data part
+            ClipboardWidth = mouseSelection.Width / Globals.CharSize;
+            ClipboardHeight = mouseSelection.Height / Globals.CharSize;
+            data = new byte[ClipboardWidth, ClipboardHeight];
             int xo = mouseSelection.X / Globals.CharSize;
             int yo = mouseSelection.Y / Globals.CharSize;
-            for (int y = 0; y < clipboardHeight; y++)
-                for (int x = 0; x < clipboardWidth; x++)
+            for (int y = 0; y < ClipboardHeight; y++)
+                for (int x = 0; x < ClipboardWidth; x++)
                     data[x, y] = dataSource.Data[offset + x + xo + (y + yo) * dataSource.Stride];            
         }
 
         public static void Paste(int offset)
         {
-            if (offset + (clipboardWidth - 1) + (clipboardHeight - 1) * dataSource.Stride < dataSource.Data.Length)
+            if (offset + (ClipboardWidth - 1) + (ClipboardHeight - 1) * dataSource.Stride < dataSource.Data.Length)
             {
-                if (valid)
+                if (IsValid)
                 {
-                    for (int y = 0; y < clipboardHeight; y++)
-                        for (int x = 0; x < clipboardWidth; x++)
+                    for (int y = 0; y < ClipboardHeight; y++)
+                        for (int x = 0; x < ClipboardWidth; x++)
                             dataSource.Data[offset + x + y * dataSource.Stride] = data[x, y];
                 }
-            }
-        }
-
-        public static Bitmap ClipboardImage
-
-        {
-            get
-            {
-                return clipboard;
             }
         }
     }
