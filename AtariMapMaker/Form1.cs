@@ -236,6 +236,13 @@ namespace AtariMapMaker
 
         private void UpdateAndShowDliForm(int scrx,int scry, bool justUpdatePosition = false)
         {
+            //check for out of bounds screens
+            if (scrx >= myMap.MapSize.Width || scry >= myMap.MapSize.Height)
+            {
+                dliForm.Hide();
+                return;
+            }
+            
             Point dliPoint = DliFormOrigin(scrx, scry);
             if (dliPoint.X != -1)
             {
@@ -735,6 +742,9 @@ namespace AtariMapMaker
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                 numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                 RedrawEditorWindow();
+                dliForm.Dispose();
+                dliForm = new DliForm(myMap, pictureBoxMap);
+                dliForm.RenderData();
             }
 
         }

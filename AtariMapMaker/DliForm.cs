@@ -43,6 +43,8 @@ namespace AtariMapMaker
             }
             AtariFontRenderer.SetFontData(dliFormFontData, Globals.FontType.Dli);
             InitializeComponent();
+            pictureBoxDli.Width = 5 * Globals.CharSize;
+            pictureBoxDli.Height = AtariPictureTools.windows[window].map.ScreenSize.Height * Globals.CharSize;
             pictureBoxDli.Image = new Bitmap(5 * Globals.CharSize, lines * Globals.CharSize);
             this.Refresh();
             AtariPictureTools.AssignWindow(Globals.WindowType.Dli, (Bitmap)pictureBoxDli.Image, dliMap);
