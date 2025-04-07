@@ -134,13 +134,14 @@ namespace AtariMapMaker
 
         private ImageList GetFontColorImageList(byte[] color5)
         {
-            ImageList il = new ImageList();
-            il.ColorDepth = ColorDepth.Depth24Bit;
-            Size size = new Size(30, 20);
-            il.ImageSize = size;
+            ImageList il = new ImageList
+            {
+                ColorDepth = ColorDepth.Depth24Bit,
+                ImageSize = new Size(30, 20)
+            };
             for (int i = 0; i < color5.Length; i++)
             {
-                Bitmap bmp = new Bitmap(size.Width, size.Height);
+                Bitmap bmp = new Bitmap(il.ImageSize.Width, il.ImageSize.Height);
                 Graphics gr = Graphics.FromImage(bmp);
                 gr.Clear(AtariPalette.GetColor(color5[i]));
                 il.Images.Add(bmp);
