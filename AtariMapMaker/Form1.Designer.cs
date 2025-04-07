@@ -75,6 +75,7 @@ namespace AtariMapMaker
             this.buttonShiftChars = new System.Windows.Forms.Button();
             this.buttonHoboExport = new System.Windows.Forms.Button();
             this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.checkBoxAlpa = new System.Windows.Forms.CheckBox();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
             this.labelAbout2 = new System.Windows.Forms.Label();
             this.linkLabel2 = new System.Windows.Forms.LinkLabel();
@@ -100,7 +101,6 @@ namespace AtariMapMaker
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.checkBoxAlpa = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -151,8 +151,8 @@ namespace AtariMapMaker
             this.splitContainer1.Panel2.Controls.Add(this.labelPosition);
             this.splitContainer1.Panel2.Controls.Add(this.labelScreen);
             this.splitContainer1.Panel2.Controls.Add(this.tabControl1);
-            this.splitContainer1.Size = new System.Drawing.Size(1371, 834);
-            this.splitContainer1.SplitterDistance = 1017;
+            this.splitContainer1.Size = new System.Drawing.Size(1371, 894);
+            this.splitContainer1.SplitterDistance = 1011;
             this.splitContainer1.SplitterWidth = 6;
             this.splitContainer1.TabIndex = 0;
             // 
@@ -163,7 +163,7 @@ namespace AtariMapMaker
             this.pictureBoxMap.Location = new System.Drawing.Point(0, 0);
             this.pictureBoxMap.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.pictureBoxMap.Name = "pictureBoxMap";
-            this.pictureBoxMap.Size = new System.Drawing.Size(1017, 834);
+            this.pictureBoxMap.Size = new System.Drawing.Size(1011, 894);
             this.pictureBoxMap.TabIndex = 0;
             this.pictureBoxMap.TabStop = false;
             this.pictureBoxMap.ClientSizeChanged += new System.EventHandler(this.PictureBoxMap_ClientSizeChanged);
@@ -176,7 +176,7 @@ namespace AtariMapMaker
             // labelChar
             // 
             this.labelChar.AutoSize = true;
-            this.labelChar.Location = new System.Drawing.Point(178, 757);
+            this.labelChar.Location = new System.Drawing.Point(172, 807);
             this.labelChar.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelChar.Name = "labelChar";
             this.labelChar.Size = new System.Drawing.Size(97, 20);
@@ -186,7 +186,7 @@ namespace AtariMapMaker
             // labelPosition
             // 
             this.labelPosition.AutoSize = true;
-            this.labelPosition.Location = new System.Drawing.Point(14, 782);
+            this.labelPosition.Location = new System.Drawing.Point(8, 832);
             this.labelPosition.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelPosition.Name = "labelPosition";
             this.labelPosition.Size = new System.Drawing.Size(91, 20);
@@ -196,7 +196,7 @@ namespace AtariMapMaker
             // labelScreen
             // 
             this.labelScreen.AutoSize = true;
-            this.labelScreen.Location = new System.Drawing.Point(14, 757);
+            this.labelScreen.Location = new System.Drawing.Point(8, 807);
             this.labelScreen.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelScreen.Name = "labelScreen";
             this.labelScreen.Size = new System.Drawing.Size(86, 20);
@@ -211,9 +211,11 @@ namespace AtariMapMaker
             this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Location = new System.Drawing.Point(4, 0);
             this.tabControl1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.tabControl1.Multiline = true;
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(350, 752);
+            this.tabControl1.Size = new System.Drawing.Size(350, 800);
+            this.tabControl1.SizeMode = System.Windows.Forms.TabSizeMode.Fixed;
             this.tabControl1.TabIndex = 0;
             // 
             // tabPage1
@@ -226,11 +228,11 @@ namespace AtariMapMaker
             this.tabPage1.Controls.Add(this.groupBox2);
             this.tabPage1.Controls.Add(this.groupBox1);
             this.tabPage1.Controls.Add(this.buttonShowFont);
-            this.tabPage1.Location = new System.Drawing.Point(4, 29);
+            this.tabPage1.Location = new System.Drawing.Point(4, 54);
             this.tabPage1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.tabPage1.Size = new System.Drawing.Size(343, 719);
+            this.tabPage1.Size = new System.Drawing.Size(342, 742);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Colors";
             this.tabPage1.UseVisualStyleBackColor = true;
@@ -410,7 +412,7 @@ namespace AtariMapMaker
             this.tabPage2.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.tabPage2.Size = new System.Drawing.Size(342, 719);
+            this.tabPage2.Size = new System.Drawing.Size(344, 767);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Load/Save/Export";
             this.tabPage2.UseVisualStyleBackColor = true;
@@ -690,14 +692,24 @@ namespace AtariMapMaker
             this.tabPage3.Controls.Add(this.lblScreenSize);
             this.tabPage3.Controls.Add(this.nudScreenW);
             this.tabPage3.Controls.Add(this.buttonNewMap);
-            this.tabPage3.Location = new System.Drawing.Point(4, 29);
+            this.tabPage3.Location = new System.Drawing.Point(4, 54);
             this.tabPage3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.tabPage3.Size = new System.Drawing.Size(342, 719);
+            this.tabPage3.Size = new System.Drawing.Size(344, 742);
             this.tabPage3.TabIndex = 2;
             this.tabPage3.Text = "New Map";
             this.tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxAlpa
+            // 
+            this.checkBoxAlpa.AutoSize = true;
+            this.checkBoxAlpa.Location = new System.Drawing.Point(10, 357);
+            this.checkBoxAlpa.Name = "checkBoxAlpa";
+            this.checkBoxAlpa.Size = new System.Drawing.Size(76, 24);
+            this.checkBoxAlpa.TabIndex = 8;
+            this.checkBoxAlpa.Text = "ALPA";
+            this.checkBoxAlpa.UseVisualStyleBackColor = true;
             // 
             // groupBox6
             // 
@@ -859,11 +871,11 @@ namespace AtariMapMaker
             this.tabPage4.Controls.Add(this.numericUpDownReplace2);
             this.tabPage4.Controls.Add(this.numericUpDownReplace1);
             this.tabPage4.Controls.Add(this.labelReplace);
-            this.tabPage4.Location = new System.Drawing.Point(4, 29);
+            this.tabPage4.Location = new System.Drawing.Point(4, 54);
             this.tabPage4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.tabPage4.Name = "tabPage4";
             this.tabPage4.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.tabPage4.Size = new System.Drawing.Size(342, 719);
+            this.tabPage4.Size = new System.Drawing.Size(344, 742);
             this.tabPage4.TabIndex = 3;
             this.tabPage4.Text = "Data manipulation";
             this.tabPage4.UseVisualStyleBackColor = true;
@@ -959,21 +971,11 @@ namespace AtariMapMaker
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // checkBoxAlpa
-            // 
-            this.checkBoxAlpa.AutoSize = true;
-            this.checkBoxAlpa.Location = new System.Drawing.Point(10, 357);
-            this.checkBoxAlpa.Name = "checkBoxAlpa";
-            this.checkBoxAlpa.Size = new System.Drawing.Size(76, 24);
-            this.checkBoxAlpa.TabIndex = 8;
-            this.checkBoxAlpa.Text = "ALPA";
-            this.checkBoxAlpa.UseVisualStyleBackColor = true;
-            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1371, 834);
+            this.ClientSize = new System.Drawing.Size(1371, 894);
             this.Controls.Add(this.splitContainer1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.IsMdiContainer = true;

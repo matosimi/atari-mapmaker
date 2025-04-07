@@ -135,6 +135,7 @@ namespace AtariMapMaker
         private ImageList GetFontColorImageList(byte[] color5)
         {
             ImageList il = new ImageList();
+            il.ColorDepth = ColorDepth.Depth24Bit;
             Size size = new Size(30, 20);
             il.ImageSize = size;
             for (int i = 0; i < color5.Length; i++)
