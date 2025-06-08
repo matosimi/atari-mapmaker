@@ -55,6 +55,7 @@ namespace AtariMapMaker
             };
             window.fontRendererMapImage.Palette = AtariPalette.GetPalette();
             window.pictureBoxGraphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            window.pictureBoxGraphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             windows.Add(windowType, window);
         }
        
@@ -190,7 +191,7 @@ namespace AtariMapMaker
             Bitmap mapImage = windows[window].fontRendererMapImage;
             AtariMap myMap = windows[window].map;
             Graphics gr = windows[window].pictureBoxGraphics;
-
+            gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             if (drawData)
             {
                 AtariFontRenderer.RenderMapData(myMap, windows[window].fontType, mapImage);

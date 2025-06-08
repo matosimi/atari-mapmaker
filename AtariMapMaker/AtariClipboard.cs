@@ -36,6 +36,7 @@ namespace AtariMapMaker
             ClipboardImage = new Bitmap(mouseSelection.Width, mouseSelection.Height);
             gr = Graphics.FromImage(ClipboardImage);
             gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             gr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
             gr.Dispose();
 

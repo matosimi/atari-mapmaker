@@ -137,5 +137,30 @@ namespace AtariMapMaker
             }
         }
 
+        public void ClearScreen(Point screenToClear)
+        {
+            int offset = Stride * ScreenSize.Height * screenToClear.Y + ScreenSize.Width * screenToClear.X;
+            for (int y = 0; y < ScreenSize.Height; y++)
+                for (int x = 0; x < ScreenSize.Width; x++)
+                    Data[offset + y * Stride + x] = 0;
+        }
+
+        public void FlipScreen(Point screenToFlip, bool horizontal)
+        {
+            int offset = Stride * ScreenSize.Height * screenToFlip.Y + ScreenSize.Width * screenToFlip.X;
+            if (horizontal)
+            {
+                for (int y = 0; y < ScreenSize.Height; y++)
+                    for (int x = 0; x < ScreenSize.Width / 2; x++)
+                        (Data[offset + y * Stride + x], Data[offset + y * Stride + ScreenSize.Width - 1 - x]) = (Data[offset + y * Stride + ScreenSize.Width - 1 - x], Data[offset + y * Stride + x]);
+            }
+            else //vertical
+            {
+                for (int y = 0; y < ScreenSize.Height / 2 ; y++)
+                    for (int x = 0; x < ScreenSize.Width; x++)
+                        (Data[offset + y * Stride + x], Data[offset + (ScreenSize.Height - 1 - y) * Stride + x]) = (Data[offset + (ScreenSize.Height - 1 - y) * Stride + x], Data[offset + y * Stride + x]);
+
+            }
+        }
     }
 }

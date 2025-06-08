@@ -22,6 +22,7 @@ namespace AtariMapMaker
         //private Graphics gr;
         private FontCharPicker myCharPicker;
         private DliForm dliForm;
+        private Point currentScreen = new Point(0, 0);
 
         public MainForm()
         {
@@ -193,6 +194,8 @@ namespace AtariMapMaker
             int scry = yy / myMap.ScreenSize.Height;
             int posx = xx % myMap.ScreenSize.Width;
             int posy = yy % myMap.ScreenSize.Height;
+            currentScreen.X = scrx;
+            currentScreen.Y = scry;
 
             if (e.Button == MouseButtons.Right)     //SCROLL
             {
@@ -228,7 +231,7 @@ namespace AtariMapMaker
 
             if (xx < myMap.Stride && yy < myMap.MapSize.Height * myMap.ScreenSize.Height)
             {
-                labelScreen.Text = "Screen: " + scrx.ToString() + ":" + scry.ToString();
+                labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
                 labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
                 byte charVal = myMap.Data[xx + yy * myMap.Stride];
                 labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
@@ -337,6 +340,7 @@ namespace AtariMapMaker
         private void PictureBoxMap_MouseUp(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
+            {
                 if (mouseStatus == "SELECTION")
                 {
                     if (AtariPictureTools.SelectionEnd(Globals.WindowType.Editor))
@@ -347,6 +351,12 @@ namespace AtariMapMaker
                     }
                     mouseStatus = "";   //reset mouse status no matter if selection end is valid or not
                 }
+            }
+            else if (e.Button == MouseButtons.Middle)
+            {
+                contextMenuStripScreen.Show(pictureBoxMap, e.Location);
+            }
+
         }
 
         private void PictureBoxMap_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -934,6 +944,27 @@ namespace AtariMapMaker
             dliForm.Dispose();
             dliForm = new DliForm(myMap, pictureBoxMap);
             dliForm.RenderData();
+            RedrawEditorWindow();
+        }
+
+        private void ToolStripMenuItemClear_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show($"Clear Screen {currentScreen.X}:{currentScreen.Y}?", "Confirmation popup", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK)
+            {
+                myMap.ClearScreen(currentScreen);
+                RedrawEditorWindow();
+            }
+        }
+
+        private void toolStripMenuItemHFlip_Click(object sender, EventArgs e)
+        {
+            myMap.FlipScreen(currentScreen, true);
+            RedrawEditorWindow();
+        }
+
+        private void toolStripMenuItemVFlip_Click(object sender, EventArgs e)
+        {
+            myMap.FlipScreen(currentScreen, false);
             RedrawEditorWindow();
         }
     }
