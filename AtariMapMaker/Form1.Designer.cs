@@ -53,6 +53,7 @@ namespace AtariMapMaker
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.buttonImport = new System.Windows.Forms.Button();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
+            this.checkBoxShowScreenSelection = new System.Windows.Forms.CheckBox();
             this.labelDliMask = new System.Windows.Forms.Label();
             this.maskedTextBoxDli = new System.Windows.Forms.MaskedTextBox();
             this.numericUpDown6 = new System.Windows.Forms.NumericUpDown();
@@ -61,12 +62,12 @@ namespace AtariMapMaker
             this.comboOperation = new System.Windows.Forms.ComboBox();
             this.lblScrToXY = new System.Windows.Forms.Label();
             this.lblScrFromXY = new System.Windows.Forms.Label();
-            this.numericUpDown1 = new System.Windows.Forms.NumericUpDown();
-            this.numericUpDown3 = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownScreenFromX = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownScreenFromY = new System.Windows.Forms.NumericUpDown();
             this.numericUpDown5 = new System.Windows.Forms.NumericUpDown();
             this.label3 = new System.Windows.Forms.Label();
-            this.numericUpDown2 = new System.Windows.Forms.NumericUpDown();
-            this.numericUpDown4 = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownScreenToX = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownScreenToY = new System.Windows.Forms.NumericUpDown();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.buttonLoad = new System.Windows.Forms.Button();
             this.buttonSave = new System.Windows.Forms.Button();
@@ -120,11 +121,11 @@ namespace AtariMapMaker
             this.tabPage2.SuspendLayout();
             this.groupBox5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown6)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown3)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenFromX)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenFromY)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown4)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenToX)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenToY)).BeginInit();
             this.groupBox3.SuspendLayout();
             this.tabPage3.SuspendLayout();
             this.groupBox6.SuspendLayout();
@@ -157,7 +158,7 @@ namespace AtariMapMaker
             this.splitContainer1.Panel2.Controls.Add(this.labelScreen);
             this.splitContainer1.Panel2.Controls.Add(this.tabControl1);
             this.splitContainer1.Size = new System.Drawing.Size(967, 894);
-            this.splitContainer1.SplitterDistance = 714;
+            this.splitContainer1.SplitterDistance = 702;
             this.splitContainer1.SplitterWidth = 6;
             this.splitContainer1.TabIndex = 0;
             // 
@@ -168,7 +169,7 @@ namespace AtariMapMaker
             this.pictureBoxMap.Location = new System.Drawing.Point(0, 0);
             this.pictureBoxMap.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.pictureBoxMap.Name = "pictureBoxMap";
-            this.pictureBoxMap.Size = new System.Drawing.Size(714, 894);
+            this.pictureBoxMap.Size = new System.Drawing.Size(702, 894);
             this.pictureBoxMap.TabIndex = 0;
             this.pictureBoxMap.TabStop = false;
             this.pictureBoxMap.ClientSizeChanged += new System.EventHandler(this.PictureBoxMap_ClientSizeChanged);
@@ -222,6 +223,7 @@ namespace AtariMapMaker
             this.tabControl1.Size = new System.Drawing.Size(350, 800);
             this.tabControl1.SizeMode = System.Windows.Forms.TabSizeMode.Fixed;
             this.tabControl1.TabIndex = 0;
+            this.tabControl1.SelectedIndexChanged += new System.EventHandler(this.TabControl1_SelectedIndexChanged);
             // 
             // tabPage1
             // 
@@ -436,6 +438,7 @@ namespace AtariMapMaker
             // 
             // groupBox5
             // 
+            this.groupBox5.Controls.Add(this.checkBoxShowScreenSelection);
             this.groupBox5.Controls.Add(this.labelDliMask);
             this.groupBox5.Controls.Add(this.maskedTextBoxDli);
             this.groupBox5.Controls.Add(this.numericUpDown6);
@@ -444,12 +447,12 @@ namespace AtariMapMaker
             this.groupBox5.Controls.Add(this.comboOperation);
             this.groupBox5.Controls.Add(this.lblScrToXY);
             this.groupBox5.Controls.Add(this.lblScrFromXY);
-            this.groupBox5.Controls.Add(this.numericUpDown1);
-            this.groupBox5.Controls.Add(this.numericUpDown3);
+            this.groupBox5.Controls.Add(this.numericUpDownScreenFromX);
+            this.groupBox5.Controls.Add(this.numericUpDownScreenFromY);
             this.groupBox5.Controls.Add(this.numericUpDown5);
             this.groupBox5.Controls.Add(this.label3);
-            this.groupBox5.Controls.Add(this.numericUpDown2);
-            this.groupBox5.Controls.Add(this.numericUpDown4);
+            this.groupBox5.Controls.Add(this.numericUpDownScreenToX);
+            this.groupBox5.Controls.Add(this.numericUpDownScreenToY);
             this.groupBox5.Location = new System.Drawing.Point(9, 115);
             this.groupBox5.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.groupBox5.Name = "groupBox5";
@@ -458,6 +461,20 @@ namespace AtariMapMaker
             this.groupBox5.TabIndex = 18;
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "Data operations";
+            // 
+            // checkBoxShowScreenSelection
+            // 
+            this.checkBoxShowScreenSelection.AutoSize = true;
+            this.checkBoxShowScreenSelection.Checked = true;
+            this.checkBoxShowScreenSelection.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxShowScreenSelection.Location = new System.Drawing.Point(9, 67);
+            this.checkBoxShowScreenSelection.Name = "checkBoxShowScreenSelection";
+            this.checkBoxShowScreenSelection.Size = new System.Drawing.Size(200, 24);
+            this.checkBoxShowScreenSelection.TabIndex = 23;
+            this.checkBoxShowScreenSelection.Text = "Show Screen Selection";
+            this.checkBoxShowScreenSelection.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.checkBoxShowScreenSelection.UseVisualStyleBackColor = true;
+            this.checkBoxShowScreenSelection.CheckedChanged += new System.EventHandler(this.CheckBoxShowScreenSelection_CheckedChanged);
             // 
             // labelDliMask
             // 
@@ -546,21 +563,23 @@ namespace AtariMapMaker
             this.lblScrFromXY.TabIndex = 9;
             this.lblScrFromXY.Text = "Screen from X,Y";
             // 
-            // numericUpDown1
+            // numericUpDownScreenFromX
             // 
-            this.numericUpDown1.Location = new System.Drawing.Point(9, 120);
-            this.numericUpDown1.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.numericUpDown1.Name = "numericUpDown1";
-            this.numericUpDown1.Size = new System.Drawing.Size(104, 26);
-            this.numericUpDown1.TabIndex = 3;
+            this.numericUpDownScreenFromX.Location = new System.Drawing.Point(9, 120);
+            this.numericUpDownScreenFromX.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.numericUpDownScreenFromX.Name = "numericUpDownScreenFromX";
+            this.numericUpDownScreenFromX.Size = new System.Drawing.Size(104, 26);
+            this.numericUpDownScreenFromX.TabIndex = 3;
+            this.numericUpDownScreenFromX.ValueChanged += new System.EventHandler(this.NumericUpDownScreenSelection_ValueChanged);
             // 
-            // numericUpDown3
+            // numericUpDownScreenFromY
             // 
-            this.numericUpDown3.Location = new System.Drawing.Point(196, 120);
-            this.numericUpDown3.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.numericUpDown3.Name = "numericUpDown3";
-            this.numericUpDown3.Size = new System.Drawing.Size(104, 26);
-            this.numericUpDown3.TabIndex = 5;
+            this.numericUpDownScreenFromY.Location = new System.Drawing.Point(196, 120);
+            this.numericUpDownScreenFromY.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.numericUpDownScreenFromY.Name = "numericUpDownScreenFromY";
+            this.numericUpDownScreenFromY.Size = new System.Drawing.Size(104, 26);
+            this.numericUpDownScreenFromY.TabIndex = 5;
+            this.numericUpDownScreenFromY.ValueChanged += new System.EventHandler(this.NumericUpDownScreenSelection_ValueChanged);
             // 
             // numericUpDown5
             // 
@@ -579,31 +598,33 @@ namespace AtariMapMaker
             this.label3.TabIndex = 11;
             this.label3.Text = "Extra chars in line (suffix)\r\n";
             // 
-            // numericUpDown2
+            // numericUpDownScreenToX
             // 
-            this.numericUpDown2.Location = new System.Drawing.Point(9, 198);
-            this.numericUpDown2.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.numericUpDown2.Name = "numericUpDown2";
-            this.numericUpDown2.Size = new System.Drawing.Size(104, 26);
-            this.numericUpDown2.TabIndex = 4;
-            this.numericUpDown2.Value = new decimal(new int[] {
+            this.numericUpDownScreenToX.Location = new System.Drawing.Point(9, 198);
+            this.numericUpDownScreenToX.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.numericUpDownScreenToX.Name = "numericUpDownScreenToX";
+            this.numericUpDownScreenToX.Size = new System.Drawing.Size(104, 26);
+            this.numericUpDownScreenToX.TabIndex = 4;
+            this.numericUpDownScreenToX.Value = new decimal(new int[] {
             2,
             0,
             0,
             0});
+            this.numericUpDownScreenToX.ValueChanged += new System.EventHandler(this.NumericUpDownScreenSelection_ValueChanged);
             // 
-            // numericUpDown4
+            // numericUpDownScreenToY
             // 
-            this.numericUpDown4.Location = new System.Drawing.Point(196, 198);
-            this.numericUpDown4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.numericUpDown4.Name = "numericUpDown4";
-            this.numericUpDown4.Size = new System.Drawing.Size(104, 26);
-            this.numericUpDown4.TabIndex = 6;
-            this.numericUpDown4.Value = new decimal(new int[] {
+            this.numericUpDownScreenToY.Location = new System.Drawing.Point(196, 198);
+            this.numericUpDownScreenToY.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.numericUpDownScreenToY.Name = "numericUpDownScreenToY";
+            this.numericUpDownScreenToY.Size = new System.Drawing.Size(104, 26);
+            this.numericUpDownScreenToY.TabIndex = 6;
+            this.numericUpDownScreenToY.Value = new decimal(new int[] {
             2,
             0,
             0,
             0});
+            this.numericUpDownScreenToY.ValueChanged += new System.EventHandler(this.NumericUpDownScreenSelection_ValueChanged);
             // 
             // groupBox3
             // 
@@ -998,14 +1019,14 @@ namespace AtariMapMaker
             this.toolStripMenuItemHFlip.Name = "toolStripMenuItemHFlip";
             this.toolStripMenuItemHFlip.Size = new System.Drawing.Size(256, 32);
             this.toolStripMenuItemHFlip.Text = "Flip Screen Horizontal";
-            this.toolStripMenuItemHFlip.Click += new System.EventHandler(this.toolStripMenuItemHFlip_Click);
+            this.toolStripMenuItemHFlip.Click += new System.EventHandler(this.ToolStripMenuItemHFlip_Click);
             // 
             // toolStripMenuItemVFlip
             // 
             this.toolStripMenuItemVFlip.Name = "toolStripMenuItemVFlip";
             this.toolStripMenuItemVFlip.Size = new System.Drawing.Size(256, 32);
             this.toolStripMenuItemVFlip.Text = "Flip Screen Vertical";
-            this.toolStripMenuItemVFlip.Click += new System.EventHandler(this.toolStripMenuItemVFlip_Click);
+            this.toolStripMenuItemVFlip.Click += new System.EventHandler(this.ToolStripMenuItemVFlip_Click);
             // 
             // MainForm
             // 
@@ -1038,11 +1059,11 @@ namespace AtariMapMaker
             this.groupBox5.ResumeLayout(false);
             this.groupBox5.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown6)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown3)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenFromX)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenFromY)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown4)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenToX)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownScreenToY)).EndInit();
             this.groupBox3.ResumeLayout(false);
             this.tabPage3.ResumeLayout(false);
             this.tabPage3.PerformLayout();
@@ -1082,10 +1103,10 @@ namespace AtariMapMaker
         private System.Windows.Forms.Label labelScreen;
         private System.Windows.Forms.Label labelPosition;
         private System.Windows.Forms.Label lblScrFromXY;
-        private System.Windows.Forms.NumericUpDown numericUpDown4;
-        private System.Windows.Forms.NumericUpDown numericUpDown3;
-        private System.Windows.Forms.NumericUpDown numericUpDown2;
-        private System.Windows.Forms.NumericUpDown numericUpDown1;
+        private System.Windows.Forms.NumericUpDown numericUpDownScreenToY;
+        private System.Windows.Forms.NumericUpDown numericUpDownScreenFromY;
+        private System.Windows.Forms.NumericUpDown numericUpDownScreenToX;
+        private System.Windows.Forms.NumericUpDown numericUpDownScreenFromX;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.NumericUpDown numericUpDown5;
         private System.Windows.Forms.Button buttonShiftChars;
@@ -1138,6 +1159,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemClear;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemHFlip;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemVFlip;
+        private System.Windows.Forms.CheckBox checkBoxShowScreenSelection;
     }
 }
 

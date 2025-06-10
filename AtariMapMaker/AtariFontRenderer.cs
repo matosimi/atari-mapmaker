@@ -98,8 +98,9 @@ namespace AtariMapMaker
             if (subY < 0)
                 deltaY = myMap.OffsetY;
 
-            myMap.Offset -= deltaX + deltaY * myMap.Stride;
-            return true;
+            int offsetChange = deltaX + deltaY * myMap.Stride;
+            myMap.Offset -= offsetChange;
+            return offsetChange != 0;
         }
 
         //8bpp indexed

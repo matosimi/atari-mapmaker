@@ -10,6 +10,8 @@ using System.IO;
 using System.Reflection;
 using System.Linq;
 using System.Diagnostics.Eventing.Reader;
+using System.Runtime.InteropServices;
+using System.Drawing.Drawing2D;
 
 namespace AtariMapMaker
 {
@@ -23,7 +25,7 @@ namespace AtariMapMaker
         private FontCharPicker myCharPicker;
         private DliForm dliForm;
         private Point currentScreen = new Point(0, 0);
-
+        private bool ScreenSelectionShown = false;
         public MainForm()
         {
             InitializeComponent();
@@ -200,7 +202,16 @@ namespace AtariMapMaker
             if (e.Button == MouseButtons.Right)     //SCROLL
             {
                 if (AtariPictureTools.Scroll(e.Location, Globals.WindowType.Editor))
-                    pictureBoxMap.Refresh();
+                {
+                    AtariPictureTools.PreviousMouseLocation = e.Location;
+                    AtariPictureTools.PreviousOffset = myMap.Offset;
+                    if (tabControl1.SelectedTab == tabPage2 && checkBoxShowScreenSelection.Checked)
+                    {
+                        ShowScreenSelection(false);
+                    }
+                    else 
+                        pictureBoxMap.Refresh();
+                }
 
                 if (checkBoxEditDli.Checked)
                     UpdateAndShowDliForm(scrx, scry, true);
@@ -495,8 +506,8 @@ namespace AtariMapMaker
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    this.Export((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown2.Value, (int)numericUpDown4.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
-                    int width = (int)((numericUpDown2.Value - numericUpDown1.Value + 1) * myMap.ScreenSize.Width + numericUpDown5.Value);
+                    this.Export((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
+                    int width = (int)((numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * myMap.ScreenSize.Width + numericUpDown5.Value);
                     MessageBox.Show("Export dataline width: " + width);
                     break;
             }
@@ -671,7 +682,7 @@ namespace AtariMapMaker
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    this.ExportColumns((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown2.Value, (int)numericUpDown4.Value, saveFileDialog1.FileName);
+                    this.ExportColumns((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, saveFileDialog1.FileName);
                     break;
             }
         }
@@ -685,7 +696,7 @@ namespace AtariMapMaker
 
                 byte myData;
 
-                int charOffset = (int)numericUpDown1.Value * myMap.ScreenSize.Width + (int)numericUpDown3.Value * myMap.Stride * myMap.ScreenSize.Height;
+                int charOffset = (int)numericUpDownScreenFromX.Value * myMap.ScreenSize.Width + (int)numericUpDownScreenFromY.Value * myMap.Stride * myMap.ScreenSize.Height;
                 for (int x = 0; x < 5; x++)
                 {
                     if (maskedTextBoxDli.Text[x] == '0') continue;    //skip 0 masks
@@ -713,7 +724,7 @@ namespace AtariMapMaker
                     if (maskedTextBoxDli.Text[x] == '0') continue;    //skip 0 masks
                     for (int y = 0; y < myMap.ScreenSize.Height; y++)
                     {
-                        myMap.SetDliColor((int)numericUpDown1.Value, (int)numericUpDown3.Value, y, x, (byte)fs.ReadByte());
+                        myMap.SetDliColor((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, y, x, (byte)fs.ReadByte());
                     }
                 }
                 fs.Close();
@@ -727,7 +738,7 @@ namespace AtariMapMaker
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    this.ImportColumns((int)numericUpDown1.Value, (int)numericUpDown3.Value, openFileDialog1.FileName);
+                    this.ImportColumns((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
             }
@@ -739,7 +750,7 @@ namespace AtariMapMaker
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    this.Import((int)numericUpDown1.Value, (int)numericUpDown3.Value, (int)numericUpDown6.Value, openFileDialog1.FileName);
+                    this.Import((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDown6.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
             }
@@ -753,6 +764,11 @@ namespace AtariMapMaker
                 myMap = new AtariMap(new Size((int)nudMapW.Value, (int)nudMapH.Value), new Size((int)nudScreenW.Value, (int)nudScreenH.Value));
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                 numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
+                numericUpDownScreenFromX.Maximum = nudMapW.Value - 1;
+                numericUpDownScreenToX.Maximum = nudMapW.Value - 1;
+                numericUpDownScreenFromY.Maximum = nudMapH.Value - 1;
+                numericUpDownScreenToY.Maximum = nudMapH.Value - 1;
+
                 RedrawEditorWindow();
                 dliForm.Dispose();
                 dliForm = new DliForm(myMap, pictureBoxMap);
@@ -786,7 +802,9 @@ namespace AtariMapMaker
         {
             //AtariFontRenderer.RenderMapData(myMap, AtariFontRenderer.offset, dataImage); //redraw data
             AtariPictureTools.Redraw(Globals.WindowType.Editor); //dataImage);                         //redraw grids
-            pictureBoxMap.Refresh();
+            if (!ScreenSelectionShown)  //refresh only when selection is not supposed to be drawn (prevents flickering)
+                pictureBoxMap.Refresh();
+            ScreenSelectionShown = false;
         }
 
         private void ComboBoxOperation_SelectedIndexChanged(object sender, EventArgs e)
@@ -795,50 +813,50 @@ namespace AtariMapMaker
             switch (comboOperation.SelectedIndex)
             {
                 case 0:
-                    numericUpDown1.Enabled = true;
-                    numericUpDown2.Enabled = true;
-                    numericUpDown3.Enabled = true;
-                    numericUpDown4.Enabled = true;
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = true;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = true;
                     numericUpDown5.Enabled = true;
                     numericUpDown6.Enabled = false;
                     break;
                 case 1:
-                    numericUpDown1.Enabled = true;
-                    numericUpDown2.Enabled = false;
-                    numericUpDown3.Enabled = true;
-                    numericUpDown4.Enabled = false;
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = false;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = false;
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = true;
                     break;
                 case 2:
-                    numericUpDown1.Enabled = true;
-                    numericUpDown2.Enabled = true;
-                    numericUpDown3.Enabled = true;
-                    numericUpDown4.Enabled = true;
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = true;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = true;
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
                 case 3:
-                    numericUpDown1.Enabled = true;
-                    numericUpDown2.Enabled = false;
-                    numericUpDown3.Enabled = true;
-                    numericUpDown4.Enabled = false;
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = false;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = false;
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
                 case 4:
-                    numericUpDown1.Enabled = true;
-                    numericUpDown2.Enabled = false;
-                    numericUpDown3.Enabled = true;
-                    numericUpDown4.Enabled = false;
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = false;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = false;
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
                 case 5:
-                    numericUpDown1.Enabled = true;
-                    numericUpDown2.Enabled = false;
-                    numericUpDown3.Enabled = true;
-                    numericUpDown4.Enabled = false;
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = false;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = false;
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
@@ -945,6 +963,9 @@ namespace AtariMapMaker
             dliForm = new DliForm(myMap, pictureBoxMap);
             dliForm.RenderData();
             RedrawEditorWindow();
+            //extend export selection option with additional screen row
+            numericUpDownScreenFromY.Maximum++;
+            numericUpDownScreenToY.Maximum++;
         }
 
         private void ToolStripMenuItemClear_Click(object sender, EventArgs e)
@@ -956,16 +977,63 @@ namespace AtariMapMaker
             }
         }
 
-        private void toolStripMenuItemHFlip_Click(object sender, EventArgs e)
+        private void ToolStripMenuItemHFlip_Click(object sender, EventArgs e)
         {
             myMap.FlipScreen(currentScreen, true);
             RedrawEditorWindow();
         }
 
-        private void toolStripMenuItemVFlip_Click(object sender, EventArgs e)
+        private void ToolStripMenuItemVFlip_Click(object sender, EventArgs e)
         {
             myMap.FlipScreen(currentScreen, false);
             RedrawEditorWindow();
+        }
+
+        private void ShowScreenSelection(bool redraw = true)
+        {
+            if (redraw)
+                RedrawEditorWindow();
+            int left = (int)numericUpDownScreenFromX.Value * myMap.ScreenSize.Width;
+            int top = (int)numericUpDownScreenFromY.Value * myMap.ScreenSize.Height;
+            int width = (int)(numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * myMap.ScreenSize.Width * Globals.CharSize;
+            int height = (int)(numericUpDownScreenToY.Value - numericUpDownScreenFromY.Value + 1) * myMap.ScreenSize.Height * Globals.CharSize;
+            Graphics g = Graphics.FromImage(pictureBoxMap.Image);
+            Brush b = new HatchBrush(HatchStyle.Percent80, Color.FromArgb(96, Color.GreenYellow));
+            g.FillRectangle(b, (left - myMap.OffsetX) * Globals.CharSize, (top - myMap.OffsetY) * Globals.CharSize, width, height);
+            pictureBoxMap.Refresh();
+            this.ScreenSelectionShown = true;
+        }
+
+        private void CheckBoxShowScreenSelection_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBoxShowScreenSelection.Checked)
+            {
+                ShowScreenSelection();
+            }
+            else
+            {
+                RedrawEditorWindow();
+            }
+        }
+
+        private void TabControl1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (tabControl1.SelectedTab == tabPage2 && checkBoxShowScreenSelection.Checked && !ScreenSelectionShown)
+            {
+                ShowScreenSelection();
+            } else if (tabControl1.SelectedTab != tabPage2 && ScreenSelectionShown)
+            {
+                RedrawEditorWindow();
+            }
+
+        }
+
+        private void NumericUpDownScreenSelection_ValueChanged(object sender, EventArgs e)
+        {
+            if (checkBoxShowScreenSelection.Checked)
+            {
+                ShowScreenSelection();
+            }
         }
     }
 }
