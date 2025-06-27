@@ -63,7 +63,7 @@ namespace AtariMapMaker
 
             myCharPicker = new FontCharPicker(pictureBoxClipboard);
 
-            comboOperation.Items.AddRange(new String[6] { "Export", "Import", "Column Export", "Column Import", "Export DLI", "Import DLI" });
+            comboOperation.Items.AddRange(new String[8] { "Export", "Import", "Column Export", "Column Import", "Export DLI", "Import DLI", "Export screen by screen", "Import screen by screen" });
             comboOperation.SelectedIndex = 0;
 
             dliForm = new DliForm(myMap, pictureBoxMap);
@@ -476,6 +476,10 @@ namespace AtariMapMaker
                     dliForm = new DliForm(myMap, pictureBoxMap);
                     dliForm.RenderData();
                     dliForm.ZoomResize();
+                    numericUpDownScreenFromX.Maximum = myMap.MapSize.Width;
+                    numericUpDownScreenFromY.Maximum = myMap.MapSize.Height;
+                    numericUpDownScreenToX.Maximum = myMap.MapSize.Width;
+                    numericUpDownScreenToY.Maximum = myMap.MapSize.Height;
                     numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                     break;
             }
@@ -539,6 +543,60 @@ namespace AtariMapMaker
             fs.Dispose();
         }
 
+        private void ExportScreens(int x1, int y1, int x2, int y2, string filename)
+        {
+            System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Create);
+
+            byte myData;
+            for (int ymap = y1; ymap <= y2; ymap++)
+                for (int xmap = x1; xmap <= x2; xmap++)
+                {
+                    int xs = xmap * myMap.ScreenSize.Width;
+                    int ys = ymap * myMap.ScreenSize.Height;
+                    int xf = (xmap + 1) * myMap.ScreenSize.Width;
+                    int yf = (ymap + 1) * myMap.ScreenSize.Height;
+
+                    for (int y = ys; y < yf; y++)
+                        for (int x = xs; x < xf; x++)
+                        {
+
+                            if (x < xf)
+                                myData = myMap.Data[x + y * myMap.Stride];
+                            else
+                                myData = 0;
+
+                            fs.WriteByte(myData);
+                        }
+                }
+            fs.Close();
+            fs.Dispose();
+        }
+
+        private void ExportScreenByScreen()
+        {
+            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            switch (saveFileDialog1.ShowDialog())
+            {
+                case DialogResult.OK:
+                    this.ExportScreens((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, saveFileDialog1.FileName);
+                    int width = myMap.ScreenSize.Width;
+                    MessageBox.Show("Export dataline width: " + width);
+                    break;
+            }
+        }
+
+        private void ImportScreenByScreen()
+        {
+            openFileDialog1.Filter = "Map datafile (*.*)|*.*";
+            switch (openFileDialog1.ShowDialog())
+            {
+                case DialogResult.OK:
+                    this.ImportScreens((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, openFileDialog1.FileName);
+                    RedrawEditorWindow();
+                    break;
+            }
+        }
+
         private void ExportColumns(int x1, int y1, int x2, int y2, string filename)
         {
             int xs = x1 * myMap.ScreenSize.Width;
@@ -593,6 +651,50 @@ namespace AtariMapMaker
                     break;
                 }
             }
+            fs.Close();
+            fs.Dispose();
+
+        }
+
+        // this imports screens 1 by 1 from the ScreenFrom screen rows and columns
+        private void ImportScreens(int x1, int y1, string filename)
+        {
+            /*
+             * for (int ymap = y1; ymap <= y2; ymap++)
+                for (int xmap = x1; xmap <= x2; xmap++)
+                {
+                    int xs = xmap * myMap.ScreenSize.Width;
+                    int ys = ymap * myMap.ScreenSize.Height;
+                    int xf = (xmap + 1) * myMap.ScreenSize.Width;
+                    int yf = (ymap + 1) * myMap.ScreenSize.Height;
+            */
+            
+            int xs = x1 * myMap.ScreenSize.Width;
+            int ys = y1 * myMap.ScreenSize.Height;
+            int xf = xs + width;
+
+            System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Open);
+
+
+            byte myData;
+
+            int y = ys;
+            while (fs.Position <= (fs.Length - width))
+            {
+                for (int x = xs; x < xf; x++)
+                {
+                    myData = (byte)fs.ReadByte();
+                    myMap.Data[x + y * myMap.Stride] = myData;
+
+                }
+                y++;
+                if (y == myMap.MapSize.Height * myMap.ScreenSize.Height)
+                {
+                    MessageBox.Show("Reading aborted! Reached bottom edge of map.");
+                    break;
+                }
+            }
+
             fs.Close();
             fs.Dispose();
 
@@ -888,6 +990,12 @@ namespace AtariMapMaker
                 case 5:
                     DliImport();
                     break;
+                case 6:
+                    ExportScreenByScreen();
+                    break;
+                case 7:
+                    ImportScreenByScreen();
+                    break;
             }
         }
 
@@ -1012,6 +1120,7 @@ namespace AtariMapMaker
             }
             else
             {
+                ScreenSelectionShown = false;
                 RedrawEditorWindow();
             }
         }
@@ -1021,11 +1130,12 @@ namespace AtariMapMaker
             if (tabControl1.SelectedTab == tabPage2 && checkBoxShowScreenSelection.Checked && !ScreenSelectionShown)
             {
                 ShowScreenSelection();
-            } else if (tabControl1.SelectedTab != tabPage2 && ScreenSelectionShown)
+            } 
+            if (tabControl1.SelectedTab != tabPage2 && ScreenSelectionShown)
             {
+                ScreenSelectionShown = false;
                 RedrawEditorWindow();
             }
-
         }
 
         private void NumericUpDownScreenSelection_ValueChanged(object sender, EventArgs e)
