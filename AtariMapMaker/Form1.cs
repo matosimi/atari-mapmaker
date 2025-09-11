@@ -246,7 +246,9 @@ namespace AtariMapMaker
                 labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
                 byte charVal = myMap.Data[xx + yy * myMap.Stride];
                 labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
-
+                //calculate the occurence
+                (int idx, int amnt) = myMap.CharOccurence(new Point(currentScreen.X,currentScreen.Y), posx, posy, charVal);
+                labelCharOccurence.Text = $"{idx} of {amnt}";
             }
         }
 
@@ -657,7 +659,7 @@ namespace AtariMapMaker
         }
 
         // this imports screens 1 by 1 from the ScreenFrom screen rows and columns
-        private void ImportScreens(int x1, int y1, string filename)
+        private void ImportScreens(int xmap, int ymap, string filename)
         {
             /*
              * for (int ymap = y1; ymap <= y2; ymap++)
@@ -668,36 +670,46 @@ namespace AtariMapMaker
                     int xf = (xmap + 1) * myMap.ScreenSize.Width;
                     int yf = (ymap + 1) * myMap.ScreenSize.Height;
             */
-            
-            int xs = x1 * myMap.ScreenSize.Width;
-            int ys = y1 * myMap.ScreenSize.Height;
-            int xf = xs + width;
 
+            int screenSize = myMap.ScreenSize.Width * myMap.ScreenSize.Height;
+            int importedScreens = 0;
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Open);
 
-
-            byte myData;
-
-            int y = ys;
-            while (fs.Position <= (fs.Length - width))
+            while (fs.Position <= (fs.Length - screenSize))
             {
-                for (int x = xs; x < xf; x++)
-                {
-                    myData = (byte)fs.ReadByte();
-                    myMap.Data[x + y * myMap.Stride] = myData;
 
-                }
-                y++;
-                if (y == myMap.MapSize.Height * myMap.ScreenSize.Height)
+                byte myData;
+
+                int xs = xmap * myMap.ScreenSize.Width;
+                int ys = ymap * myMap.ScreenSize.Height;
+                int xf = (xmap + 1) * myMap.ScreenSize.Width;
+                int yf = (ymap + 1) * myMap.ScreenSize.Height;
+
+                //Import single screen
+                for (int y = ys; y < yf; y++)
+                    for (int x = xs; x < xf; x++)
+                    {
+                        myData = (byte)fs.ReadByte();
+                        myMap.Data[x + y * myMap.Stride] = myData;
+                    }
+                importedScreens++;
+
+                //go to next screen
+                xmap++;
+                if (xmap == myMap.MapSize.Width)
                 {
-                    MessageBox.Show("Reading aborted! Reached bottom edge of map.");
+                    xmap = 0;
+                    ymap++;
+                }
+                if (ymap == myMap.MapSize.Height)
+                {
+                    MessageBox.Show($"Reading aborted! Reached bottom edge of map.\nImported screens: {importedScreens}\nSkipped screens (beyond map bounds): {(fs.Length - importedScreens * screenSize) / screenSize}");
                     break;
                 }
             }
-
+            MessageBox.Show($"Imported screens: {importedScreens}\n");
             fs.Close();
             fs.Dispose();
-
         }
 
         private void Import(int x1, int y1, int width, string filename)
@@ -1053,7 +1065,7 @@ namespace AtariMapMaker
         {
             if (numericUpDownReplace1.Value != numericUpDownReplace2.Value)
             {
-                myMap.SwapChar((byte)numericUpDownReplace1.Value, (byte)numericUpDownReplace2.Value, radioButtonWholeMap.Checked);
+                myMap.SwapChar((byte)numericUpDownReplace1.Value, (byte)numericUpDownReplace2.Value, radioButtonWholeMap.Checked, new Point(currentScreen.X,currentScreen.Y));
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
             }

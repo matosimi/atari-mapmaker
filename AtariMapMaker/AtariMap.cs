@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Drawing;
+using System.Xml.Serialization;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace AtariMapMaker
 {
@@ -121,7 +124,7 @@ namespace AtariMapMaker
             this.ColorData[screenOffset + line * 5 + colorNumber] = colorIndex;
         }
 
-        public void SwapChar(byte char1, byte char2, bool globalChange)
+        public void SwapChar(byte char1, byte char2, bool globalChange, Point screenToUse)
         {
             if (globalChange)
             {
@@ -133,8 +136,29 @@ namespace AtariMapMaker
             }
             else
             {
-                //poop
+                int offset = Stride * ScreenSize.Height * screenToUse.Y + ScreenSize.Width * screenToUse.X;
+                for (int y = 0; y < ScreenSize.Height; y++)
+                    for (int x = 0; x < ScreenSize.Width; x++)
+                    {
+                        int i = offset + y * Stride + x;
+                        if (Data[i] == char1) Data[i] = char2;
+                        else if (Data[i] == char2) Data[i] = char1;
+                    }
             }
+        }
+
+        public (int,int) CharOccurence(Point screenToAnalyze, int posx, int posy, byte charVal)
+        {
+            int index = 0;
+            int count = 0;
+            int offset = Stride * ScreenSize.Height * screenToAnalyze.Y + ScreenSize.Width * screenToAnalyze.X;
+            for (int y = 0; y < ScreenSize.Height; y++)
+                for (int x = 0; x < ScreenSize.Width; x++)
+                {
+                    if (y == posy && x == posx) index = count;
+                    if (Data[offset + y * Stride + x] == charVal) count++;
+                }
+            return (index, count);
         }
 
         public void ClearScreen(Point screenToClear)

@@ -32,6 +32,7 @@ namespace AtariMapMaker
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.pictureBoxMap = new System.Windows.Forms.PictureBox();
+            this.labelCharOccurence = new System.Windows.Forms.Label();
             this.labelChar = new System.Windows.Forms.Label();
             this.labelPosition = new System.Windows.Forms.Label();
             this.labelScreen = new System.Windows.Forms.Label();
@@ -153,12 +154,13 @@ namespace AtariMapMaker
             // 
             // splitContainer1.Panel2
             // 
+            this.splitContainer1.Panel2.Controls.Add(this.labelCharOccurence);
             this.splitContainer1.Panel2.Controls.Add(this.labelChar);
             this.splitContainer1.Panel2.Controls.Add(this.labelPosition);
             this.splitContainer1.Panel2.Controls.Add(this.labelScreen);
             this.splitContainer1.Panel2.Controls.Add(this.tabControl1);
-            this.splitContainer1.Size = new System.Drawing.Size(967, 894);
-            this.splitContainer1.SplitterDistance = 702;
+            this.splitContainer1.Size = new System.Drawing.Size(1669, 894);
+            this.splitContainer1.SplitterDistance = 1400;
             this.splitContainer1.SplitterWidth = 6;
             this.splitContainer1.TabIndex = 0;
             // 
@@ -169,7 +171,7 @@ namespace AtariMapMaker
             this.pictureBoxMap.Location = new System.Drawing.Point(0, 0);
             this.pictureBoxMap.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.pictureBoxMap.Name = "pictureBoxMap";
-            this.pictureBoxMap.Size = new System.Drawing.Size(702, 894);
+            this.pictureBoxMap.Size = new System.Drawing.Size(1400, 894);
             this.pictureBoxMap.TabIndex = 0;
             this.pictureBoxMap.TabStop = false;
             this.pictureBoxMap.ClientSizeChanged += new System.EventHandler(this.PictureBoxMap_ClientSizeChanged);
@@ -179,10 +181,20 @@ namespace AtariMapMaker
             this.pictureBoxMap.MouseUp += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseUp);
             this.pictureBoxMap.Resize += new System.EventHandler(this.PictureBoxMap_Resize);
             // 
+            // labelCharOccurence
+            // 
+            this.labelCharOccurence.AutoSize = true;
+            this.labelCharOccurence.Location = new System.Drawing.Point(227, 832);
+            this.labelCharOccurence.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.labelCharOccurence.Name = "labelCharOccurence";
+            this.labelCharOccurence.Size = new System.Drawing.Size(49, 20);
+            this.labelCharOccurence.TabIndex = 4;
+            this.labelCharOccurence.Text = "1 of 1";
+            // 
             // labelChar
             // 
             this.labelChar.AutoSize = true;
-            this.labelChar.Location = new System.Drawing.Point(172, 808);
+            this.labelChar.Location = new System.Drawing.Point(227, 808);
             this.labelChar.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelChar.Name = "labelChar";
             this.labelChar.Size = new System.Drawing.Size(97, 20);
@@ -1032,7 +1044,7 @@ namespace AtariMapMaker
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(967, 894);
+            this.ClientSize = new System.Drawing.Size(1669, 894);
             this.Controls.Add(this.splitContainer1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.IsMdiContainer = true;
@@ -1160,6 +1172,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemHFlip;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemVFlip;
         private System.Windows.Forms.CheckBox checkBoxShowScreenSelection;
+        private System.Windows.Forms.Label labelCharOccurence;
     }
 }
 
