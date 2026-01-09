@@ -88,7 +88,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>move $(TargetName).exe* $(SolutionDir)$(SolutionName)\$(OutDir) 
+    <PostBuildEvent>copy $(TargetName).exe* $(SolutionDir)$(SolutionName)\$(OutDir) 
 </PostBuildEvent>
   </PropertyGroup>
   <Import Project="..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets" Condition="Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" />

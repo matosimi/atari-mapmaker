@@ -18,9 +18,23 @@ namespace AtariMapConverter
 
                 return;
             }
-            OldAtrmapDataProvider oadp = new OldAtrmapDataProvider();
-            oadp.OpenAtrmap(args[0]);
-            Console.Write(oadp.FlushData());
+            try
+            {
+                OldAtrmapDataProvider oadp = new OldAtrmapDataProvider();
+                oadp.OpenAtrmap(args[0]);
+                Console.Write(oadp.FlushData());
+            }
+            catch (Exception ex)
+            {
+                // Write error to stderr so it doesn't interfere with JSON output
+                Console.Error.WriteLine($"Error converting file: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.Error.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
+                Environment.Exit(1);
+            }
         }
     }
 }

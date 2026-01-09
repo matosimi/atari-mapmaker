@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,7 +16,7 @@ namespace AtariMapConverter
     public class AtariMap
     {
         public byte[] data;
-        public int[] Data { get { return data.Select(b => (int)b).ToArray(); } }
+        public int[] Data { get { return data?.Select(b => (int)b).ToArray() ?? new int[0]; } }
         public Size screenSize;    
         public Size screens;       
     }
@@ -23,9 +25,32 @@ namespace AtariMapConverter
     public class AtariFontRenderer
     {
         public byte[] fontData;
-        public int[] FontData { get { return fontData.Select(b => (int)b).ToArray(); } }
+        public int[] FontData { get { return fontData?.Select(b => (int)b).ToArray() ?? new int[0]; } }
         public byte[] color5;
-        public int[] Color5 { get { return color5.Select(b => (int)b).ToArray(); } }
+        public int[] Color5 { get { return color5?.Select(b => (int)b).ToArray() ?? new int[0]; } }
+    }
+
+    // Proxy for unknown AtariMapMaker types we need to skip
+    [Serializable]
+    public class SkipProxy { }
+
+    // Binder to map AtariMapMaker types to AtariMapConverter types
+    public class AtariMapBinder : SerializationBinder
+    {
+        public override Type BindToType(string assemblyName, string typeName)
+        {
+            // Map known AtariMapMaker types to AtariMapConverter types
+            if (typeName == "AtariMapMaker.AtariMap" && assemblyName.Contains("AtariMapMaker"))
+                return typeof(AtariMap);
+            if (typeName == "AtariMapMaker.AtariFontRenderer" && assemblyName.Contains("AtariMapMaker"))
+                return typeof(AtariFontRenderer);
+            
+            // Skip any other AtariMapMaker types (like AtariPalette)
+            if (assemblyName.Contains("AtariMapMaker"))
+                return typeof(SkipProxy);
+            
+            return null; // Use default for other types
+        }
     }
 
     internal class OldAtrmapDataProvider
@@ -35,11 +60,46 @@ namespace AtariMapConverter
 
         public void OpenAtrmap(string fileName)
         {
-            BinaryFormatter bf = new BinaryFormatter();
-            System.IO.FileStream fs = new System.IO.FileStream(fileName, System.IO.FileMode.Open); //test.dat
-            myMap = (AtariMap)bf.Deserialize(fs);
-            myRenderer = (AtariFontRenderer)bf.Deserialize(fs);
-            fs.Close();
+            // Handle missing AtariMapMaker assembly
+            ResolveEventHandler handler = (s, e) =>
+                e.Name.Contains("AtariMapMaker") ? Assembly.GetExecutingAssembly() : null;
+            AppDomain.CurrentDomain.AssemblyResolve += handler;
+            
+            try
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                bf.Binder = new AtariMapBinder();
+                System.IO.FileStream fs = new System.IO.FileStream(fileName, System.IO.FileMode.Open);
+                try
+                {
+                    // Deserialize first object (should be AtariMap)
+                    object obj = bf.Deserialize(fs);
+                    if (obj is AtariMap map)
+                        myMap = map;
+                    else
+                        throw new InvalidOperationException($"Expected AtariMap, got {obj?.GetType().FullName ?? "null"}");
+                    
+                    // Skip any SkipProxy objects, find AtariFontRenderer
+                    object rendererObj;
+                    do
+                    {
+                        rendererObj = bf.Deserialize(fs);
+                    } while (rendererObj is SkipProxy && fs.Position < fs.Length);
+                    
+                    if (rendererObj is AtariFontRenderer renderer)
+                        myRenderer = renderer;
+                    else
+                        throw new InvalidOperationException($"Expected AtariFontRenderer, got {rendererObj?.GetType().FullName ?? "null"}");
+                }
+                finally
+                {
+                    fs.Close();
+                }
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= handler;
+            }
         }
         public  byte[] GetFontData()
         {
