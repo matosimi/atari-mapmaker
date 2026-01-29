@@ -43,6 +43,7 @@ namespace AtariMapMaker
             AtariFontRenderer.SetFontData(Properties.Resources.Default, Globals.FontType.Screen);
 
             myMap = new AtariMap(new Size(4, 4), new Size(32, 20));
+            undoManager = new UndoManager(myMap);
             numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
 
             this.FillFontColorList();
@@ -69,6 +70,138 @@ namespace AtariMapMaker
             dliForm = new DliForm(myMap, pictureBoxMap);
             dliForm.RenderData();
 
+            // Add new UI elements for v2.0 features
+            AddV2UIElements();
+
+        }
+
+        private CheckBox checkBoxMultiFont;
+
+        private void AddV2UIElements()
+        {
+            // Add MultiFont checkbox in the Colors group
+            checkBoxMultiFont = new CheckBox();
+            checkBoxMultiFont.Text = "Enable Multi-Font";
+            checkBoxMultiFont.Location = new Point(checkBoxShowDli.Location.X + 10, checkBoxShowDli.Location.Y + checkBoxShowDli.Height + 10);
+            checkBoxMultiFont.Size = new Size(150, 20);
+            checkBoxMultiFont.Checked = myMap != null ? myMap.MultiFontEnabled : false;
+            checkBoxMultiFont.CheckedChanged += CheckBoxMultiFont_CheckedChanged;
+            groupBoxDli.Controls.Add(checkBoxMultiFont);
+            
+            // Update font template button and element library button visibility based on multifont
+            UpdateMultiFontUI();
+
+            // Add Font Template button next to Load Font button
+            Button buttonFontTemplate = new Button();
+            buttonFontTemplate.Text = "Font Templates";
+            buttonFontTemplate.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y - 45);
+            buttonFontTemplate.Size = new Size(112, 35);
+            buttonFontTemplate.Click += ButtonFontTemplate_Click;
+            flowLayoutPanel1.Controls.Add(buttonFontTemplate);
+
+            // Add Element Library button
+            Button buttonElementLibrary = new Button();
+            buttonElementLibrary.Text = "Element Library";
+            buttonElementLibrary.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y + 45);
+            buttonElementLibrary.Size = new Size(112, 35);
+            buttonElementLibrary.Click += ButtonElementLibrary_Click;
+            flowLayoutPanel1.Controls.Add(buttonElementLibrary);
+
+            // Add Map Description button
+            Button buttonMapDescription = new Button();
+            buttonMapDescription.Text = "Map Description";
+            buttonMapDescription.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y + 90);
+            buttonMapDescription.Size = new Size(112, 35);
+            buttonMapDescription.Click += ButtonMapDescription_Click;
+            flowLayoutPanel1.Controls.Add(buttonMapDescription);
+
+            // Add Export Font button (for single font)
+            Button buttonExportFont = new Button();
+            buttonExportFont.Text = "Export Font";
+            buttonExportFont.Size = new Size(112, 35);
+            buttonExportFont.Top = buttonLoadFont.Bottom + 10;
+            buttonExportFont.Click += ButtonExportFont_Click;
+            groupBoxFont.Controls.Add(buttonExportFont);
+
+            // Add context menu items for screen operations
+            ToolStripMenuItem menuItemLinkScreen = new ToolStripMenuItem("Link to Screen...");
+            menuItemLinkScreen.Click += MenuItemLinkScreen_Click;
+            contextMenuStripScreen.Items.Add(new ToolStripSeparator());
+            contextMenuStripScreen.Items.Add(menuItemLinkScreen);
+
+            ToolStripMenuItem menuItemScreenMetadata = new ToolStripMenuItem("Screen Metadata...");
+            menuItemScreenMetadata.Click += MenuItemScreenMetadata_Click;
+            contextMenuStripScreen.Items.Add(menuItemScreenMetadata);
+
+            ToolStripMenuItem menuItemScreenDescription = new ToolStripMenuItem("Screen Description...");
+            menuItemScreenDescription.Click += MenuItemScreenDescription_Click;
+            contextMenuStripScreen.Items.Add(menuItemScreenDescription);
+
+            // Add Undo/Redo to a menu (if there's a menu bar) or create keyboard shortcuts
+            // For now, add them to the context menu as well
+            ToolStripMenuItem menuItemUndo = new ToolStripMenuItem("Undo");
+            menuItemUndo.ShortcutKeys = Keys.Control | Keys.Z;
+            menuItemUndo.Click += MenuItemUndo_Click;
+            contextMenuStripScreen.Items.Add(new ToolStripSeparator());
+            contextMenuStripScreen.Items.Add(menuItemUndo);
+
+            ToolStripMenuItem menuItemRedo = new ToolStripMenuItem("Redo");
+            menuItemRedo.ShortcutKeys = Keys.Control | Keys.Y;
+            menuItemRedo.Click += MenuItemRedo_Click;
+            contextMenuStripScreen.Items.Add(menuItemRedo);
+        }
+
+        private UndoManager undoManager;
+
+        private void MenuItemUndo_Click(object sender, EventArgs e)
+        {
+            if (undoManager != null && undoManager.CanUndo())
+            {
+                undoManager.Undo();
+                AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                pictureBoxMap.Refresh();
+            }
+        }
+
+        private void MenuItemRedo_Click(object sender, EventArgs e)
+        {
+            if (undoManager != null && undoManager.CanRedo())
+            {
+                undoManager.Redo();
+                AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                pictureBoxMap.Refresh();
+            }
+        }
+
+        private void MenuItemLinkScreen_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            using (ScreenLinkDialog dialog = new ScreenLinkDialog(myMap, currentScreen))
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                    pictureBoxMap.Refresh();
+                }
+            }
+        }
+
+        private void MenuItemScreenMetadata_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            using (ScreenMetadataDialog dialog = new ScreenMetadataDialog(myMap, currentScreen))
+            {
+                dialog.ShowDialog();
+            }
+        }
+
+        private void MenuItemScreenDescription_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            using (ScreenDescriptionDialog dialog = new ScreenDescriptionDialog(myMap, currentScreen))
+            {
+                dialog.ShowDialog();
+            }
         }
 
         private void UpdateEditorWindowSizeInChars()
@@ -86,12 +219,12 @@ namespace AtariMapMaker
 
         private void FillFontColorList()
         {
-            listView1.Clear();
-            listView1.LargeImageList = GetFontColorImageList(AtariFontRenderer.Color5);
-            listView1.Columns.Add("Color");
-            listView1.Columns.Add("Value");
-            listView1.Columns.Add("Address");
-            listView1.SmallImageList = listView1.LargeImageList;
+            listViewColors.Clear();
+            listViewColors.LargeImageList = GetFontColorImageList(AtariFontRenderer.Color5);
+            listViewColors.Columns.Add("Color");
+            listViewColors.Columns.Add("Value");
+            listViewColors.Columns.Add("Address");
+            listViewColors.SmallImageList = listViewColors.LargeImageList;
             for (int i = 0; i < 5; i++)
             {
                 ListViewItem lvi = new ListViewItem
@@ -101,7 +234,7 @@ namespace AtariMapMaker
                 };
                 lvi.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[i]));
                 lvi.SubItems.Add("$" + String.Format("{0:X4}", 0xd016 + i));
-                listView1.Items.Add(lvi);
+                listViewColors.Items.Add(lvi);
             }
             //add scanline alter colors only when possible
             if (AtariFontRenderer.Color5.Length > 5)
@@ -112,7 +245,7 @@ namespace AtariMapMaker
                     Text = "PF3 alter"
                 };
                 lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[5]));
-                listView1.Items.Add(lviAlter);
+                listViewColors.Items.Add(lviAlter);
 
                 lviAlter = new ListViewItem
                 {
@@ -120,7 +253,7 @@ namespace AtariMapMaker
                     Text = "PF0 alter"
                 };
                 lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[6]));
-                listView1.Items.Add(lviAlter);
+                listViewColors.Items.Add(lviAlter);
 
                 lviAlter = new ListViewItem
                 {
@@ -128,10 +261,10 @@ namespace AtariMapMaker
                     Text = "PF2 alter"
                 };
                 lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[7]));
-                listView1.Items.Add(lviAlter);
+                listViewColors.Items.Add(lviAlter);
 
-                listView1.Columns[0].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
-                listView1.Columns[1].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
+                listViewColors.Columns[0].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
+                listViewColors.Columns[1].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
             }
         }
 
@@ -155,17 +288,17 @@ namespace AtariMapMaker
 
         private void ListView1_MouseLeave(object sender, EventArgs e)
         {
-            for (int a = 0; a < listView1.Items.Count; a++)
+            for (int a = 0; a < listViewColors.Items.Count; a++)
             {
-                listView1.Items[a].Selected = false;
+                listViewColors.Items[a].Selected = false;
             }
         }
 
         private void ListView1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            if (listView1.SelectedItems.Count == 1)
+            if (listViewColors.SelectedItems.Count == 1)
             {
-                int colorIndex = listView1.SelectedItems[0].Index;
+                int colorIndex = listViewColors.SelectedItems[0].Index;
                 byte index = AtariFontRenderer.Color5[colorIndex];
                 colorPickerForm.Owner = this;
                 colorPickerForm.Pick(index);
@@ -452,9 +585,25 @@ namespace AtariMapMaker
                 MapScreenSize = myMap.ScreenSize,
                 FontData = AtariFontRenderer.fonts[Globals.FontType.Screen].data.Select(i => (int)i).ToArray(),
                 Color5 = AtariFontRenderer.Color5.Select(i => (int)i).ToArray(),
-                DliData = myMap.ColorData.Select(i => (int)i).ToArray()
+                DliData = myMap.ColorData.Select(i => (int)i).ToArray(),
+                // v2.0 fields
+                FontDataArray = myMap.FontDataArray?.Select(font => font?.Select(i => (int)i).ToArray()).ToArray(),
+                FontFileNames = myMap.FontFileNames,
+                FontLineMapping = myMap.FontLineMapping?.Select(i => (int)i).ToArray(),
+                FontTemplateLocked = myMap.FontTemplateLocked,
+                FontTemplatePattern = myMap.FontTemplatePattern,
+                MultiFontEnabled = myMap.MultiFontEnabled,
+                MapDescription = myMap.MapDescription,
+                ScreenDescriptions = myMap.ScreenDescriptions,
+                ScreenMetadataDict = myMap.ScreenMetadata,
+                SubmapPath = myMap.SubmapPath,
+                IsTilemap = myMap.IsTilemap,
+                TilemapInfo = myMap.TilemapInfo,
+                BitmapTileset = myMap.BitmapTileset,
+                ElementLibrary = myMap.ElementLibrary,
+                ScreenLinks = myMap.ScreenLinks
             };
-            AtariJson.SaveAtrMap(atrmap,filename);
+            AtariJson.SaveAtrMap(atrmap, filename);
         }
 
         private void ButtonLoad_Click(object sender, EventArgs e)
@@ -470,6 +619,9 @@ namespace AtariMapMaker
                   
                     checkBoxShowDli.Checked = true;
                     this.FillFontColorList();
+                    // Update multifont checkbox
+                    if (checkBoxMultiFont != null)
+                        checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
                     RedrawEditorWindow();
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
@@ -496,14 +648,77 @@ namespace AtariMapMaker
             };
             
             AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
-            AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
             
+            // Load fonts - handle v1.2 and v2.0 formats
+            if (AtariJson.ParsedData.FontDataArray != null && AtariJson.ParsedData.FontDataArray.Length > 0)
+            {
+                // v2.0 format with multiple fonts
+                for (int i = 0; i < AtariJson.ParsedData.FontDataArray.Length && i < 8; i++)
+                {
+                    if (AtariJson.ParsedData.FontDataArray[i] != null)
+                    {
+                        string fileNameFont = (AtariJson.ParsedData.FontFileNames != null && i < AtariJson.ParsedData.FontFileNames.Length) 
+                            ? AtariJson.ParsedData.FontFileNames[i] : null;
+                        myMap.SetFontData(AtariJson.ParsedData.FontDataArray[i].Select(j => (byte)j).ToArray(), i, fileNameFont);
+                    }
+                }
+                // Set the first font as the active screen font
+                if (AtariJson.ParsedData.FontDataArray[0] != null)
+                {
+                    AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontDataArray[0].Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
+                }
+            }
+            else if (AtariJson.ParsedData.FontData != null)
+            {
+                // v1.2 format - migrate to v2.0
+                myMap.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), 0);
+                AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
+            }
+            
+            // Load font line mapping
+            if (AtariJson.ParsedData.FontLineMapping != null)
+            {
+                myMap.FontLineMapping = AtariJson.ParsedData.FontLineMapping.Select(i => (byte)i).ToArray();
+            }
+            else
+            {
+                // Initialize to all font 0
+                myMap.SetFontForAllLines(0);
+            }
+            
+            // Load font template settings
+            if (AtariJson.ParsedData.FontTemplateLocked.HasValue)
+                myMap.FontTemplateLocked = AtariJson.ParsedData.FontTemplateLocked.Value;
+            if (!string.IsNullOrEmpty(AtariJson.ParsedData.FontTemplatePattern))
+                myMap.FontTemplatePattern = AtariJson.ParsedData.FontTemplatePattern;
+            if (AtariJson.ParsedData.MultiFontEnabled.HasValue)
+                myMap.MultiFontEnabled = AtariJson.ParsedData.MultiFontEnabled.Value;
+            
+            // Load DLI data
             if (AtariJson.ParsedData.DliData == null)
                 myMap.InitDliColorFullMap();
             else
                 myMap.ColorData = AtariJson.ParsedData.DliData.Select(i => (byte)i).ToArray();
 
-
+            // Load v2.0 fields
+            if (!string.IsNullOrEmpty(AtariJson.ParsedData.MapDescription))
+                myMap.MapDescription = AtariJson.ParsedData.MapDescription;
+            if (AtariJson.ParsedData.ScreenDescriptions != null)
+                myMap.ScreenDescriptions = AtariJson.ParsedData.ScreenDescriptions;
+            if (AtariJson.ParsedData.ScreenMetadataDict != null)
+                myMap.ScreenMetadata = AtariJson.ParsedData.ScreenMetadataDict;
+            if (!string.IsNullOrEmpty(AtariJson.ParsedData.SubmapPath))
+                myMap.SubmapPath = AtariJson.ParsedData.SubmapPath;
+            if (AtariJson.ParsedData.IsTilemap.HasValue)
+                myMap.IsTilemap = AtariJson.ParsedData.IsTilemap.Value;
+            if (AtariJson.ParsedData.TilemapInfo != null)
+                myMap.TilemapInfo = AtariJson.ParsedData.TilemapInfo;
+            if (AtariJson.ParsedData.BitmapTileset != null)
+                myMap.BitmapTileset = AtariJson.ParsedData.BitmapTileset;
+            if (AtariJson.ParsedData.ElementLibrary != null)
+                myMap.ElementLibrary = AtariJson.ParsedData.ElementLibrary;
+            if (AtariJson.ParsedData.ScreenLinks != null)
+                myMap.ScreenLinks = AtariJson.ParsedData.ScreenLinks;
         }
 
         private void ButtonExport_Click(object sender, EventArgs e)
@@ -751,17 +966,149 @@ namespace AtariMapMaker
             switch (openFileDialog1.ShowDialog())
             {
                 case System.Windows.Forms.DialogResult.OK:
-
-                    AtariFontRenderer.LoadFont(openFileDialog1.FileName, Globals.FontType.Screen);
-                    AtariPictureTools.Redraw(Globals.WindowType.Editor);
-                    AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
-                    pictureBoxMap.Refresh();
-                    myCharPicker.Refresh();
-                    //myCharPicker.GetRenderer().LoadFont(openFileDialog1.FileName);
-                    //myCharPicker.GetRenderer().RedrawFont();
-                    //myCharPicker.RedrawFontWindow();
-                    //RedrawEditorWindow();
+                    LoadFontToSlot(openFileDialog1.FileName, 0);
+                    // Also update the multifont checkbox state if needed
+                    if (checkBoxMultiFont != null && !checkBoxMultiFont.Checked)
+                    {
+                        // When loading font in single font mode, ensure font 0 is set
+                        // This is already done in LoadFontToSlot, but we make sure it's the active font
+                    }
                     break;
+            }
+        }
+
+        private void LoadFontToSlot(string fileName, int fontSlot)
+        {
+            byte[] fontData = new byte[1024 * 2];
+            FileStream fs = new FileStream(fileName, FileMode.Open);
+            fs.Read(fontData, 0, 1024);
+            fs.Close();
+            for (int a = 0; a < 1024; a++)
+            {
+                fontData[a + 1024] = (byte)(fontData[a] ^ 0x80);
+            }
+
+            myMap.SetFontData(fontData, fontSlot, fileName);
+            AtariFontRenderer.ClearFontCache();
+
+            // If loading to slot 0, also set it as the active screen font
+            if (fontSlot == 0)
+            {
+                AtariFontRenderer.SetFontData(fontData, Globals.FontType.Screen);
+            }
+
+            AtariPictureTools.Redraw(Globals.WindowType.Editor);
+            AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
+            pictureBoxMap.Refresh();
+            myCharPicker.Refresh();
+        }
+
+        private void CheckBoxMultiFont_CheckedChanged(object sender, EventArgs e)
+        {
+            if (myMap != null)
+            {
+                myMap.MultiFontEnabled = checkBoxMultiFont.Checked;
+                AtariFontRenderer.ClearFontCache();
+                AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                pictureBoxMap.Refresh();
+                UpdateMultiFontUI();
+                
+                // Update DLI form to show/hide font column
+                if (dliForm != null && dliForm.Visible)
+                {
+                    dliForm.ZoomResize();
+                    dliForm.Show(dliForm.screenNumber); // Refresh the form with current screen
+                }
+            }
+        }
+
+        private void UpdateMultiFontUI()
+        {
+            bool enabled = checkBoxMultiFont != null && checkBoxMultiFont.Checked;
+            // Enable/disable font template button based on multifont checkbox
+            foreach (Control ctrl in flowLayoutPanel1.Controls)
+            {
+                if (ctrl is Button btn && btn.Text == "Font Templates")
+                {
+                    btn.Enabled = enabled;
+                    break;
+                }
+            }
+        }
+
+        private void ButtonFontTemplate_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            using (FontTemplateDialog dialog = new FontTemplateDialog(myMap))
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    AtariFontRenderer.ClearFontCache();
+                    AtariPictureTools.Redraw(Globals.WindowType.Editor);
+                    pictureBoxMap.Refresh();
+                }
+            }
+        }
+
+        private void ButtonElementLibrary_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            using (ElementLibraryDialog dialog = new ElementLibraryDialog(myMap))
+            {
+                dialog.ShowDialog();
+            }
+        }
+
+        private void ButtonMapDescription_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            using (MapDescriptionDialog dialog = new MapDescriptionDialog(myMap))
+            {
+                dialog.ShowDialog();
+            }
+        }
+
+        private void ButtonExportFont_Click(object sender, EventArgs e)
+        {
+            // Export the single font (font 0 or the active screen font)
+            byte[] fontData = null;
+            string defaultFileName = "font.fnt";
+
+            // Try to get from font 0 first
+            if (myMap != null && myMap.FontDataArray != null && myMap.FontDataArray[0] != null)
+            {
+                fontData = myMap.FontDataArray[0];
+                if (myMap.FontFileNames != null && myMap.FontFileNames[0] != null)
+                {
+                    defaultFileName = System.IO.Path.GetFileName(myMap.FontFileNames[0]);
+                }
+            }
+            // Otherwise get from AtariFontRenderer (the active screen font)
+            else if (AtariFontRenderer.fonts.ContainsKey(Globals.FontType.Screen))
+            {
+                fontData = AtariFontRenderer.fonts[Globals.FontType.Screen].data;
+                if (!string.IsNullOrEmpty(AtariFontRenderer.LastFontFile))
+                {
+                    defaultFileName = System.IO.Path.GetFileName(AtariFontRenderer.LastFontFile);
+                }
+            }
+
+            if (fontData == null)
+            {
+                MessageBox.Show("No font data available to export.", "Export Font", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            SaveFileDialog saveDialog = new SaveFileDialog();
+            saveDialog.Filter = "Atari Font (*.fnt)|*.fnt";
+            saveDialog.FileName = defaultFileName;
+            if (saveDialog.ShowDialog() == DialogResult.OK)
+            {
+                // Export only first 1024 bytes (standard Atari font format)
+                byte[] exportData = new byte[1024];
+                Array.Copy(fontData, exportData, Math.Min(1024, fontData.Length));
+                File.WriteAllBytes(saveDialog.FileName, exportData);
+                MessageBox.Show("Font exported successfully.", "Export Font", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
    
@@ -1156,6 +1503,17 @@ namespace AtariMapMaker
             {
                 ShowScreenSelection();
             }
+        }
+
+        private void labelPosition_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void splitContainer1_SplitterMoving(object sender, SplitterCancelEventArgs e)
+        {
+            flowLayoutPanel1.Refresh();
+            flowLayoutPanel1.Invalidate();
         }
     }
 }

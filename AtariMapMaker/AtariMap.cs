@@ -18,6 +18,24 @@ namespace AtariMapMaker
         public Size MapSize { get; }       //pocet screenov v datach (velkost mapy)
         private int offset;
         public byte[] ColorData { get; set; }   //screens*lines*5 colors
+        
+        // New properties for v2.0+
+        public byte[][] FontDataArray { get; set; }  // Multiple fonts (max 8)
+        public string[] FontFileNames { get; set; }  // Font file names (one per slot)
+        public byte[] FontLineMapping { get; set; }  // Font index per line (one per screen line)
+        public bool FontTemplateLocked { get; set; }
+        public string FontTemplatePattern { get; set; }
+        public bool MultiFontEnabled { get; set; }  // Enable/disable multifont features
+        public string MapDescription { get; set; }
+        public Dictionary<string, string> ScreenDescriptions { get; set; }
+        public Dictionary<string, ScreenMetadata> ScreenMetadata { get; set; }
+        public string SubmapPath { get; set; }
+        public bool IsTilemap { get; set; }
+        public TilemapData TilemapInfo { get; set; }
+        public BitmapTilesetData BitmapTileset { get; set; }
+        public Dictionary<string, LibraryElement> ElementLibrary { get; set; }
+        public List<ScreenLink> ScreenLinks { get; set; }
+        
         public AtariMap(Size mapSize, Size screenSize)
         {
             this.MapSize = mapSize;
@@ -25,6 +43,26 @@ namespace AtariMapMaker
             this.dataSize = new Size(mapSize.Width * screenSize.Width, mapSize.Height * screenSize.Height);
             this.Data = new byte[dataSize.Width * dataSize.Height];
             InitDliColorFullMap();
+            InitializeV2Properties();
+        }
+        
+        private void InitializeV2Properties()
+        {
+            FontDataArray = new byte[8][];  // Max 8 fonts
+            FontFileNames = new string[8];  // Font file names
+            FontLineMapping = new byte[ScreenSize.Height];
+            FontTemplateLocked = false;
+            FontTemplatePattern = "All Font0";
+            MultiFontEnabled = false;  // Default to single font mode
+            MapDescription = "";
+            ScreenDescriptions = new Dictionary<string, string>();
+            ScreenMetadata = new Dictionary<string, ScreenMetadata>();
+            SubmapPath = null;
+            IsTilemap = false;
+            TilemapInfo = null;
+            BitmapTileset = null;
+            ElementLibrary = new Dictionary<string, LibraryElement>();
+            ScreenLinks = new List<ScreenLink>();
         }
 
         public void CopyDliColorsFullScreen(int localScreenNumber, AtariMap targetMap, int targetScreenNumber)
@@ -185,6 +223,72 @@ namespace AtariMapMaker
                         (Data[offset + y * Stride + x], Data[offset + (ScreenSize.Height - 1 - y) * Stride + x]) = (Data[offset + (ScreenSize.Height - 1 - y) * Stride + x], Data[offset + y * Stride + x]);
 
             }
+        }
+
+        // Font management methods
+        public byte GetFontForLine(int line)
+        {
+            if (FontLineMapping == null || line < 0 || line >= FontLineMapping.Length)
+                return 0;
+            return FontLineMapping[line];
+        }
+
+        public void SetFontForLine(int line, byte fontIndex)
+        {
+            if (FontLineMapping == null)
+                FontLineMapping = new byte[ScreenSize.Height];
+            if (line >= 0 && line < FontLineMapping.Length && fontIndex < 8)
+                FontLineMapping[line] = fontIndex;
+        }
+
+        public void SetFontForAllLines(byte fontIndex)
+        {
+            if (FontLineMapping == null)
+                FontLineMapping = new byte[ScreenSize.Height];
+            for (int i = 0; i < FontLineMapping.Length; i++)
+                FontLineMapping[i] = fontIndex;
+        }
+
+        public int GetAvailableFontSlot()
+        {
+            if (FontDataArray == null)
+                FontDataArray = new byte[8][];
+            for (int i = 0; i < FontDataArray.Length; i++)
+            {
+                if (FontDataArray[i] == null)
+                    return i;
+            }
+            return -1; // No available slot
+        }
+
+        public void SetFontData(byte[] fontData, int fontIndex, string fileName = null)
+        {
+            if (FontDataArray == null)
+                FontDataArray = new byte[8][];
+            if (FontFileNames == null)
+                FontFileNames = new string[8];
+            if (fontIndex >= 0 && fontIndex < FontDataArray.Length)
+            {
+                FontDataArray[fontIndex] = fontData;
+                FontFileNames[fontIndex] = fileName;
+            }
+        }
+
+        public void ClearFontSlot(int fontIndex)
+        {
+            if (FontDataArray != null && fontIndex >= 0 && fontIndex < FontDataArray.Length)
+            {
+                FontDataArray[fontIndex] = null;
+                if (FontFileNames != null)
+                    FontFileNames[fontIndex] = null;
+            }
+        }
+
+        public byte[] GetFontData(int fontIndex)
+        {
+            if (FontDataArray == null || fontIndex < 0 || fontIndex >= FontDataArray.Length)
+                return null;
+            return FontDataArray[fontIndex];
         }
     }
 }
