@@ -23,6 +23,7 @@ namespace AtariMapMaker
         //private Bitmap dataImage;                                   //picture with map (data only, no zoom)
         //private Graphics gr;
         private FontCharPicker myCharPicker;
+        private TilePicker tilePicker;
         private DliForm dliForm;
         private Point currentScreen = new Point(0, 0);
         private bool ScreenSelectionShown = false;
@@ -167,6 +168,14 @@ namespace AtariMapMaker
             buttonMapDescription.Click += ButtonMapDescription_Click;
             flowLayoutPanel1.Controls.Add(buttonMapDescription);
 
+            // Add Tilemap/Submap Configuration button
+            Button buttonTilemapConfig = new Button();
+            buttonTilemapConfig.Text = "Tilemap Config";
+            buttonTilemapConfig.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y + 135);
+            buttonTilemapConfig.Size = new Size(112, 35);
+            buttonTilemapConfig.Click += ButtonTilemapConfig_Click;
+            flowLayoutPanel1.Controls.Add(buttonTilemapConfig);
+
             // Add Export Font button (for single font)
             Button buttonExportFont = new Button();
             buttonExportFont.Text = "Export Font";
@@ -174,6 +183,16 @@ namespace AtariMapMaker
             buttonExportFont.Top = buttonLoadFont.Bottom + 10;
             buttonExportFont.Click += ButtonExportFont_Click;
             groupBoxFont.Controls.Add(buttonExportFont);
+
+            // Add "Show Tiles" button (will be shown when tilemap is enabled)
+            Button buttonShowTiles = new Button();
+            buttonShowTiles.Text = "Show Tiles";
+            buttonShowTiles.Size = new Size(112, 35);
+            buttonShowTiles.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y);
+            buttonShowTiles.Click += ButtonShowTiles_Click;
+            buttonShowTiles.Visible = false;
+            buttonShowTiles.Name = "buttonShowTiles";
+            groupBoxFont.Controls.Add(buttonShowTiles);
 
             // Add context menu items for screen operations
             ToolStripMenuItem menuItemLinkScreen = new ToolStripMenuItem("Link to Screen...");
@@ -420,6 +439,11 @@ namespace AtariMapMaker
                 pictureBoxMap.Refresh();
                 myCharPicker.Refresh();
                 myCharPicker.GetPictureBox().Refresh();
+                // Refresh tile picker if it's open
+                if (tilePicker != null && !tilePicker.IsDisposed && tilePicker.Visible)
+                {
+                    tilePicker.Refresh();
+                }
                 //pictureBoxClipboard.Image = AtariPictureTools.windows[Globals.WindowType.Editor].destinationImage;
 
                 //AtariFontRenderer.RedrawFont();
@@ -635,7 +659,19 @@ namespace AtariMapMaker
                     else
                     {
                         AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
-                        int addoffset = (e.X / Globals.CharSize) + myMap.Stride * (e.Y / Globals.CharSize);
+                        int charX = e.X / Globals.CharSize;
+                        int charY = e.Y / Globals.CharSize;
+                        
+                        // If tilemap is enabled, snap to tile grid
+                        if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                        {
+                            int tileWidth = myMap.TilemapInfo.TileWidth;
+                            int tileHeight = myMap.TilemapInfo.TileHeight;
+                            charX = (charX / tileWidth) * tileWidth;
+                            charY = (charY / tileHeight) * tileHeight;
+                        }
+                        
+                        int addoffset = charX + myMap.Stride * charY;
                         AtariClipboard.Paste(myMap.Offset + addoffset);
                         //RedrawEditorWindow();
                         AtariPictureTools.Redraw(Globals.WindowType.Editor);
@@ -847,13 +883,25 @@ namespace AtariMapMaker
                   
                     checkBoxShowDli.Checked = true;
                     this.FillFontColorList();
+                    
+                    // Update numeric up/down controls for new map size
+                    numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
+                    numericUpDownScreenFromX.Maximum = myMap.MapSize.Width - 1;
+                    numericUpDownScreenToX.Maximum = myMap.MapSize.Width - 1;
+                    numericUpDownScreenFromY.Maximum = myMap.MapSize.Height - 1;
+                    numericUpDownScreenToY.Maximum = myMap.MapSize.Height - 1;
+                    
                     // Update multifont checkbox
                     if (checkBoxMultiFont != null)
                     {
                         checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
                         checkBoxMultiFont.Enabled = true;
                     }
+                    
+                    currentScreen = new Point(0, 0);
+                    isScreenLocked = false;
                     UpdateFontMappingReferenceUI();
+                    UpdateMultiFontUI();
                     RedrawEditorWindow();
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
@@ -879,6 +927,7 @@ namespace AtariMapMaker
                 Data = AtariJson.ParsedData.MapData.Select(i => (byte)i).ToArray()
             };
             
+            undoManager = new UndoManager(myMap);
             AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
             
             // Load fonts - handle v1.2 and v2.0 formats
@@ -1222,6 +1271,14 @@ namespace AtariMapMaker
 
         private void ButtonLoadFont_Click(object sender, EventArgs e)
         {
+            // Don't allow loading fonts for tilemaps (fonts come from submap)
+            if (myMap != null && myMap.IsTilemap)
+            {
+                MessageBox.Show("Fonts for tilemaps are inherited from the submap. Use Tilemap Config to update the submap.", 
+                    "Tilemap Fonts", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
             openFileDialog1.Filter = "Atari Font (*.fnt)|*.fnt";
             switch (openFileDialog1.ShowDialog())
             {
@@ -1261,6 +1318,11 @@ namespace AtariMapMaker
             AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
             pictureBoxMap.Refresh();
             myCharPicker.Refresh();
+            // Refresh tile picker if it's open
+            if (tilePicker != null && !tilePicker.IsDisposed && tilePicker.Visible)
+            {
+                tilePicker.Refresh();
+            }
         }
 
         private void CheckBoxMultiFont_CheckedChanged(object sender, EventArgs e)
@@ -1339,36 +1401,121 @@ namespace AtariMapMaker
             if (myMap == null || checkBoxFontMappingReference == null)
                 return;
             
+            // Update max values FIRST before trying to set Value
+            numericUpDownRefScreenX.Maximum = Math.Max(0, myMap.MapSize.Width - 1);
+            numericUpDownRefScreenY.Maximum = Math.Max(0, myMap.MapSize.Height - 1);
+            
             // Get current screen reference settings
             bool useReference;
             int refX, refY;
             useReference = myMap.GetFontMappingReference(currentScreen.X, currentScreen.Y, out refX, out refY);
             
+            // Clamp reference values to valid range
+            refX = Math.Max(0, Math.Min(myMap.MapSize.Width - 1, refX));
+            refY = Math.Max(0, Math.Min(myMap.MapSize.Height - 1, refY));
+            
             checkBoxFontMappingReference.Checked = useReference;
-            numericUpDownRefScreenX.Value = Math.Max(0, Math.Min(myMap.MapSize.Width - 1, refX));
-            numericUpDownRefScreenY.Value = Math.Max(0, Math.Min(myMap.MapSize.Height - 1, refY));
+            numericUpDownRefScreenX.Value = refX;
+            numericUpDownRefScreenY.Value = refY;
             
             bool enabled = myMap.MultiFontEnabled;
             checkBoxFontMappingReference.Enabled = enabled;
             numericUpDownRefScreenX.Enabled = enabled && useReference;
             numericUpDownRefScreenY.Enabled = enabled && useReference;
             labelRefScreen.Enabled = enabled && useReference;
-            
-            // Update max values
-            numericUpDownRefScreenX.Maximum = myMap.MapSize.Width - 1;
-            numericUpDownRefScreenY.Maximum = myMap.MapSize.Height - 1;
         }
 
         private void UpdateMultiFontUI()
         {
             bool enabled = checkBoxMultiFont != null && checkBoxMultiFont.Checked;
-            // Enable/disable font template button based on multifont checkbox
+            bool tilemapEnabled = myMap != null && myMap.IsTilemap;
+            
+            // For tilemaps, hide/disable multi-font related controls (they don't make sense for tilemaps)
+            if (tilemapEnabled)
+            {
+                if (checkBoxMultiFont != null)
+                {
+                    checkBoxMultiFont.Visible = false;
+                    checkBoxMultiFont.Enabled = false;
+                }
+                if (checkBoxFontMappingReference != null)
+                {
+                    checkBoxFontMappingReference.Visible = false;
+                    checkBoxFontMappingReference.Enabled = false;
+                }
+                if (labelRefScreen != null)
+                {
+                    labelRefScreen.Visible = false;
+                    labelRefScreen.Enabled = false;
+                }
+                if (numericUpDownRefScreenX != null)
+                {
+                    numericUpDownRefScreenX.Visible = false;
+                    numericUpDownRefScreenX.Enabled = false;
+                }
+                if (numericUpDownRefScreenY != null)
+                {
+                    numericUpDownRefScreenY.Visible = false;
+                    numericUpDownRefScreenY.Enabled = false;
+                }
+            }
+            else
+            {
+                // Show controls for regular maps
+                if (checkBoxMultiFont != null)
+                {
+                    checkBoxMultiFont.Visible = true;
+                    checkBoxMultiFont.Enabled = true;
+                }
+                if (checkBoxFontMappingReference != null)
+                {
+                    checkBoxFontMappingReference.Visible = true;
+                    checkBoxFontMappingReference.Enabled = enabled;
+                }
+                if (labelRefScreen != null)
+                {
+                    labelRefScreen.Visible = true;
+                }
+                if (numericUpDownRefScreenX != null)
+                {
+                    numericUpDownRefScreenX.Visible = true;
+                }
+                if (numericUpDownRefScreenY != null)
+                {
+                    numericUpDownRefScreenY.Visible = true;
+                }
+            }
+            
+            // Enable/disable font template button based on multifont checkbox (only for non-tilemaps)
             foreach (Control ctrl in flowLayoutPanel1.Controls)
             {
                 if (ctrl is Button btn && btn.Text == "Font Templates")
                 {
-                    btn.Enabled = enabled;
+                    btn.Enabled = !tilemapEnabled && enabled;
                     break;
+                }
+            }
+            
+            // Handle groupBoxFont controls based on tilemap state
+            if (groupBoxFont != null)
+            {
+                // Keep groupBoxFont enabled so "Show Tiles" button can be clicked
+                groupBoxFont.Enabled = true;
+                
+                foreach (Control ctrl in groupBoxFont.Controls)
+                {
+                    if (ctrl.Name == "buttonShowTiles")
+                    {
+                        // Show "Show Tiles" button when tilemap is enabled
+                        ctrl.Visible = tilemapEnabled;
+                        ctrl.Enabled = tilemapEnabled;
+                    }
+                    else
+                    {
+                        // Hide/disable other controls when tilemap is enabled
+                        ctrl.Enabled = !tilemapEnabled;
+                        ctrl.Visible = !tilemapEnabled;
+                    }
                 }
             }
         }
@@ -1402,6 +1549,48 @@ namespace AtariMapMaker
             using (MapDescriptionDialog dialog = new MapDescriptionDialog(myMap))
             {
                 dialog.ShowDialog();
+            }
+        }
+
+        private void ButtonTilemapConfig_Click(object sender, EventArgs e)
+        {
+            if (myMap == null || !myMap.IsTilemap) 
+            {
+                MessageBox.Show("This dialog is only available for tilemap maps.", "Tilemap Only", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            using (TilemapConfigDialog dialog = new TilemapConfigDialog(myMap))
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Update UI based on tilemap state
+                    UpdateMultiFontUI();
+                    // Refresh the editor window to show tilemap rendering
+                    RedrawEditorWindow();
+                }
+            }
+        }
+
+        private void ButtonShowTiles_Click(object sender, EventArgs e)
+        {
+            if (myMap == null || !myMap.IsTilemap || string.IsNullOrEmpty(myMap.SubmapPath)) return;
+            
+            try
+            {
+                if (tilePicker == null || tilePicker.IsDisposed)
+                {
+                    tilePicker = new TilePicker(myMap, pictureBoxClipboard);
+                }
+                // Refresh tilepicker to reflect current zoom and color settings
+                tilePicker.Refresh();
+                tilePicker.Show();
+                tilePicker.BringToFront();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading tiles: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1558,14 +1747,133 @@ namespace AtariMapMaker
         {
             if (MessageBox.Show("Create new map? (current mapdata will be deleted!)", "New map", MessageBoxButtons.OKCancel) == System.Windows.Forms.DialogResult.OK)
             {
+                bool isTilemap = checkBoxTilemap.Checked;
+                string submapPath = null;
+                
+                // If tilemap mode, require submap selection
+                if (isTilemap)
+                {
+                    OpenFileDialog openDialog = new OpenFileDialog();
+                    openDialog.Filter = "Atari Map Files (*.atrmap)|*.atrmap|All Files (*.*)|*.*";
+                    openDialog.Title = "Select Submap File (Required for Tilemap)";
+                    
+                    if (openDialog.ShowDialog() != DialogResult.OK)
+                    {
+                        MessageBox.Show("Submap file is required for tilemap mode. Map creation cancelled.", 
+                            "Submap Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    
+                    submapPath = openDialog.FileName;
+                    
+                    // Validate submap file exists
+                    if (!System.IO.File.Exists(submapPath))
+                    {
+                        MessageBox.Show("Submap file does not exist. Map creation cancelled.", 
+                            "Invalid File", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+                
                 AtariFontRenderer.SetAlpa(checkBoxAlpa.Checked);
-                myMap = new AtariMap(new Size((int)nudMapW.Value, (int)nudMapH.Value), new Size((int)nudScreenW.Value, (int)nudScreenH.Value));
+                
+                Size mapSize = new Size((int)nudMapW.Value, (int)nudMapH.Value);
+                Size screenSize = new Size((int)nudScreenW.Value, (int)nudScreenH.Value);
+                
+                if (isTilemap)
+                {
+                    // Load submap first to get tile dimensions
+                    try
+                    {
+                        AtariMap tempSubmap = SubmapManager.LoadSubmap(submapPath);
+                        int tileWidth = tempSubmap.ScreenSize.Width;
+                        int tileHeight = tempSubmap.ScreenSize.Height;
+                        
+                        // For tilemaps:
+                        // - MapSize: number of screens (e.g., 2x2 screens)
+                        // - ScreenSize: size of each screen in TILES (e.g., 10x10 tiles per screen)
+                        // - Tile dimensions come from submap (e.g., 2x2 chars per tile)
+                        // - Data array stores tile indexes: (MapSize.Width * ScreenSize.Width) x (MapSize.Height * ScreenSize.Height)
+                        
+                        // Create map with screen size in TILES (not chars)
+                        myMap = new AtariMap(mapSize, screenSize);
+                        myMap.IsTilemap = true;
+                        myMap.SubmapPath = submapPath;
+                        
+                        // Initialize tilemap info
+                        myMap.TilemapInfo = new TilemapData();
+                        myMap.TilemapInfo.TileWidth = tileWidth;
+                        myMap.TilemapInfo.TileHeight = tileHeight;
+                        myMap.TilemapInfo.NumberingPattern = "row-major";
+                        myMap.TilemapInfo.Use16BitIndexes = false; // Default to 8-bit, can be changed later
+                        
+                        // For tilemaps, automatically enable multi-font (fonts come from tiles)
+                        myMap.MultiFontEnabled = true;
+                        if (checkBoxMultiFont != null)
+                        {
+                            checkBoxMultiFont.Checked = true;
+                        }
+                        
+                        // For tilemaps, Data array stores tile indexes, not characters
+                        // Size is already correct: (MapSize.Width * ScreenSize.Width) x (MapSize.Height * ScreenSize.Height) tiles
+                        // This is set by AtariMap constructor, and represents the tile grid
+                        // All values are initialized to 0 (tile index 0)
+                        
+                        // Inherit all fonts from submap
+                        if (tempSubmap.FontDataArray != null)
+                        {
+                            for (int i = 0; i < tempSubmap.FontDataArray.Length && i < 8; i++)
+                            {
+                                if (tempSubmap.FontDataArray[i] != null)
+                                {
+                                    string fontFileName = (tempSubmap.FontFileNames != null && i < tempSubmap.FontFileNames.Length) 
+                                        ? tempSubmap.FontFileNames[i] : null;
+                                    myMap.SetFontData(tempSubmap.FontDataArray[i], i, fontFileName);
+                                }
+                            }
+                        }
+                        
+                        // Set first font as active screen font if available
+                        if (tempSubmap.FontDataArray != null && tempSubmap.FontDataArray[0] != null)
+                        {
+                            AtariFontRenderer.SetFontData(tempSubmap.FontDataArray[0], Globals.FontType.Screen);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error loading submap: {ex.Message}\nMap creation cancelled.", 
+                            "Submap Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    // Regular map - use character grid
+                    myMap = new AtariMap(mapSize, screenSize);
+                    myMap.IsTilemap = false;
+                }
+                
+                undoManager = new UndoManager(myMap);
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                 numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                 numericUpDownScreenFromX.Maximum = nudMapW.Value - 1;
                 numericUpDownScreenToX.Maximum = nudMapW.Value - 1;
                 numericUpDownScreenFromY.Maximum = nudMapH.Value - 1;
                 numericUpDownScreenToY.Maximum = nudMapH.Value - 1;
+
+                // Update font mapping reference controls
+                if (numericUpDownRefScreenX != null && numericUpDownRefScreenY != null)
+                {
+                    numericUpDownRefScreenX.Maximum = Math.Max(0, myMap.MapSize.Width - 1);
+                    numericUpDownRefScreenY.Maximum = Math.Max(0, myMap.MapSize.Height - 1);
+                    numericUpDownRefScreenX.Value = 0;
+                    numericUpDownRefScreenY.Value = 0;
+                }
+
+                currentScreen = new Point(0, 0);
+                isScreenLocked = false;
+                UpdateFontMappingReferenceUI();
+                UpdateMultiFontUI();
 
                 RedrawEditorWindow();
                 dliForm.Dispose();
@@ -1582,6 +1890,11 @@ namespace AtariMapMaker
             myCharPicker.SetZoom();
             dliForm.ZoomResize();
             dliForm.Hide();
+            // Refresh tile picker if it's open
+            if (tilePicker != null && !tilePicker.IsDisposed && tilePicker.Visible)
+            {
+                tilePicker.Refresh();
+            }
         }
 
         private void ComboBoxDrawGrid_CheckedChanged(object sender, EventArgs e)

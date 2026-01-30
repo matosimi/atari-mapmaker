@@ -191,8 +191,14 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="SubmapManager.cs" />
+    <Compile Include="TilemapConfigDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="TilemapEditor.cs" />
     <Compile Include="TilemapRenderer.cs" />
+    <Compile Include="TilePicker.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UndoManager.cs" />
     <EmbeddedResource Include="AtariColorPicker.resx">
       <SubType>Designer</SubType>

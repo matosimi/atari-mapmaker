@@ -33,7 +33,6 @@ namespace AtariMapMaker
             this.buttonExportFont = new Button();
             this.comboBoxFontSlot = new ComboBox();
             this.labelFontFileName = new Label();
-            Label labelTemplate = new Label();
             Label labelFontSlot = new Label();
             this.SuspendLayout();
 

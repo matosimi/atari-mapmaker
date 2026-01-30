@@ -222,8 +222,18 @@ namespace AtariMapMaker
             if (drawGrid)
             {
                 Brush gridBrush = new SolidBrush(gridColor);
-                for (int x = 0; x < (mapImage.Size.Width / 8); x++)
-                    for (int y = 0; y < (mapImage.Size.Height / 8); y++)
+                int gridStepX = 1;
+                int gridStepY = 1;
+                
+                // If tilemap is enabled, use tile size for grid
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    gridStepX = myMap.TilemapInfo.TileWidth;
+                    gridStepY = myMap.TilemapInfo.TileHeight;
+                }
+                
+                for (int x = 0; x < (mapImage.Size.Width / 8); x += gridStepX)
+                    for (int y = 0; y < (mapImage.Size.Height / 8); y += gridStepY)
                         if (myMap.OffsetX + x < myMap.Stride && myMap.OffsetY + y < myMap.MapSize.Height * myMap.ScreenSize.Height)
                             gr.FillRectangle(gridBrush, x * Globals.CharSize, y * Globals.CharSize, 1, 1);
                             //destImage.SetPixel(x * Globals.CharSize, y * Globals.CharSize, gridColor);

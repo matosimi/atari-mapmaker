@@ -44,6 +44,7 @@ namespace AtariMapMaker
         public string NumberingPattern { get; set; }  // "row-major", "column-major", etc.
         public bool ShowByteOverlay { get; set; }
         public float ByteOverlayTransparency { get; set; }
+        public bool Use16BitIndexes { get; set; }  // If true, use 16-bit tile indexes (supports >256 tiles)
 
         public TilemapData()
         {
@@ -51,6 +52,7 @@ namespace AtariMapMaker
             NumberingPattern = "row-major";
             ShowByteOverlay = false;
             ByteOverlayTransparency = 0.5f;
+            Use16BitIndexes = false;  // Default to 8-bit (256 tiles max)
         }
     }
 

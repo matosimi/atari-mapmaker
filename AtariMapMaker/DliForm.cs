@@ -198,6 +198,12 @@ namespace AtariMapMaker
 
                 if (e.Button == MouseButtons.Left)
                 {
+                    // In tilemap mode, font numbers are read-only (inherited from tiles)
+                    if (screenMap.IsTilemap)
+                    {
+                        return; // Cannot edit font numbers in tilemap mode
+                    }
+                    
                     // Left click: increase font number (0-7, wrapping)
                     // Shift+Left click: decrease font number (0-7, wrapping)
                     byte currentFont = screenMap.GetFontForLine(screenX, screenY, ychar);

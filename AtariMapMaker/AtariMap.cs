@@ -37,6 +37,12 @@ namespace AtariMapMaker
         public Dictionary<string, LibraryElement> ElementLibrary { get; set; }
         public List<ScreenLink> ScreenLinks { get; set; }
         
+        // Tile index storage for tilemaps (stores tile indexes instead of individual chars)
+        // If Use16BitIndexes is true, this stores ushort values (2 bytes per tile)
+        // If false, Data array stores byte values (1 byte per tile)
+        // For tilemaps, Data array represents tile grid, not character grid
+        public ushort[] TileIndexes { get; set; }  // Optional: separate array for 16-bit indexes
+        
         public AtariMap(Size mapSize, Size screenSize)
         {
             this.MapSize = mapSize;
@@ -304,6 +310,52 @@ namespace AtariMapMaker
         // Get font for a line, checking references
         public byte GetFontForLine(int screenx, int screeny, int line)
         {
+            // In tilemap mode, font numbers are inherited from tiles
+            if (IsTilemap && TilemapInfo != null && !string.IsNullOrEmpty(SubmapPath))
+            {
+                try
+                {
+                    AtariMap submap = SubmapManager.LoadSubmap(SubmapPath);
+                    int tileWidth = TilemapInfo.TileWidth;
+                    int tileHeight = TilemapInfo.TileHeight;
+                    
+                    // Calculate which tile grid line this line belongs to
+                    int tileGridLine = line / tileHeight;
+                    
+                    // Get font from tile at x==0 of this grid line
+                    int tileX = 0;
+                    int tileY = tileGridLine;
+                    
+                    // Check if there's a tile at this position
+                    // Convert screen coordinates to tile coordinates
+                    int charX = screenx * ScreenSize.Width;
+                    int charY = screeny * ScreenSize.Height + line;
+                    int mapTileX = charX / tileWidth;
+                    int mapTileY = charY / tileHeight;
+                    
+                    // Get the tile index from the map at position (0, mapTileY) within the current screen
+                    // For now, we'll get font from the first tile in submap (index 0) if no tile at x==0
+                    // This is a simplified implementation - full implementation would need to track which tile is at each position
+                    int submapTileIndex = 0; // Default to first tile
+                    
+                    // Try to get font from submap tile at index 0, line within that tile
+                    int lineInTile = line % tileHeight;
+                    if (submap.FontLineMappingPerScreen != null && submap.MapSize.Width > 0 && submap.MapSize.Height > 0)
+                    {
+                        // Get font from first tile (screen 0,0) of submap
+                        int submapScreenOffset = 0 * submap.ScreenSize.Height;
+                        int submapIndex = submapScreenOffset + lineInTile;
+                        if (submapIndex >= 0 && submapIndex < submap.FontLineMappingPerScreen.Length)
+                            return submap.FontLineMappingPerScreen[submapIndex];
+                    }
+                    return 0; // Default to font 0
+                }
+                catch
+                {
+                    // If submap loading fails, fall through to normal font mapping
+                }
+            }
+            
             // Check if this screen references another screen
             Point actualScreen = GetReferencedScreen(screenx, screeny);
             int actualScreenX = actualScreen.X;
