@@ -111,13 +111,15 @@ namespace AtariMapMaker
         public void Show(int screenNumber)
         {
             this.screenNumber = screenNumber;
+            int screenX = screenNumber % screenMap.MapSize.Width;
+            int screenY = screenNumber / screenMap.MapSize.Width;
             // Update font numbers in column 5 from FontLineMapping (only if MultiFont is enabled)
             bool showFontColumn = screenMap.MultiFontEnabled;
-            if (showFontColumn && screenMap.FontLineMapping != null)
+            if (showFontColumn)
             {
-                for (int line = 0; line < screenMap.ScreenSize.Height && line < screenMap.FontLineMapping.Length; line++)
+                for (int line = 0; line < screenMap.ScreenSize.Height; line++)
                 {
-                    byte fontIndex = screenMap.GetFontForLine(line);
+                    byte fontIndex = screenMap.GetFontForLine(screenX, screenY, line);
                     int charOffset = 5 + line * dliMap.Stride;
                     dliMap.Data[charOffset] = (byte)(0x30 + fontIndex); // 0x30-0x37 for digits 0-7
                 }
@@ -172,33 +174,59 @@ namespace AtariMapMaker
             // Handle font number column (column 5) - only if MultiFont is enabled
             if (xchar == 5 && screenMap.MultiFontEnabled)
             {
-                if (screenMap.FontLineMapping == null || ychar < 0 || ychar >= screenMap.FontLineMapping.Length)
+                if (ychar < 0 || ychar >= screenMap.ScreenSize.Height)
                     return;
 
-                byte currentFont = screenMap.GetFontForLine(ychar);
-                byte newFont;
+                int screenX = screenNumber % screenMap.MapSize.Width;
+                int screenY = screenNumber / screenMap.MapSize.Width;
+                
+                // Check if this screen references another screen - if so, editing is not allowed
+                int refScreenX, refScreenY;
+                bool isReferencing = screenMap.GetFontMappingReference(screenX, screenY, out refScreenX, out refScreenY);
+                if (isReferencing && (refScreenX != screenX || refScreenY != screenY))
+                {
+                    // This screen references another screen - editing is read-only
+                    // Just show context menu on right click, but don't allow editing
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        FillContextMenu();
+                        contextMenuStripDli.Show(pictureBoxDli, e.X, e.Y);
+                    }
+                    // Left click does nothing when referencing
+                    return;
+                }
 
                 if (e.Button == MouseButtons.Left)
                 {
                     // Left click: increase font number (0-7, wrapping)
-                    newFont = (byte)((currentFont + 1) % 8);
+                    // Shift+Left click: decrease font number (0-7, wrapping)
+                    byte currentFont = screenMap.GetFontForLine(screenX, screenY, ychar);
+                    byte newFont;
+                    
+                    if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+                    {
+                        // Shift+Left click: decrease font number
+                        newFont = (byte)((currentFont + 7) % 8); // +7 is same as -1 mod 8
+                    }
+                    else
+                    {
+                        // Left click: increase font number
+                        newFont = (byte)((currentFont + 1) % 8);
+                    }
+                    
+                    screenMap.SetFontForLine(screenX, screenY, ychar, newFont);
+                    // Update the displayed character in column 5
+                    int charOffset = 5 + ychar * dliMap.Stride;
+                    dliMap.Data[charOffset] = (byte)(0x30 + newFont); // 0x30-0x37 for digits 0-7
+                    AtariFontRenderer.ClearFontCache();
+                    RedrawDliAndMap();
                 }
                 else if (e.Button == MouseButtons.Right)
                 {
-                    // Right click: decrease font number (0-7, wrapping)
-                    newFont = (byte)((currentFont + 7) % 8); // +7 is same as -1 mod 8
+                    // Right click: show context menu (for fill down, copy/paste, etc.)
+                    FillContextMenu();
+                    contextMenuStripDli.Show(pictureBoxDli, e.X, e.Y);
                 }
-                else
-                {
-                    return;
-                }
-
-                screenMap.SetFontForLine(ychar, newFont);
-                // Update the displayed character in column 5
-                int charOffset = 5 + ychar * dliMap.Stride;
-                dliMap.Data[charOffset] = (byte)(0x30 + newFont); // 0x30-0x37 for digits 0-7
-                AtariFontRenderer.ClearFontCache();
-                RedrawDliAndMap();
                 return;
             }
 
@@ -231,7 +259,9 @@ namespace AtariMapMaker
         private void ShowFontSelector(int line)
         {
             // Show font selection dialog for this line
-            using (FontSelectorDialog dialog = new FontSelectorDialog(screenMap, line))
+            int screenX = screenNumber % screenMap.MapSize.Width;
+            int screenY = screenNumber / screenMap.MapSize.Width;
+            using (FontSelectorDialog dialog = new FontSelectorDialog(screenMap, line, screenX, screenY))
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
@@ -248,7 +278,9 @@ namespace AtariMapMaker
             screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, 0, -1, AtariFontRenderer.Color5);
         }
 
-        private ToolStripMenuItem fontSelectorToolStripMenuItem;
+        private ToolStripMenuItem fontsForWholeScreenToolStripMenuItem;
+        private ToolStripMenuItem copyAllFontsToClipboardToolStripMenuItem;
+        private ToolStripMenuItem pasteAllFontsFromClipboardToolStripMenuItem;
 
         private void FillContextMenu()
         {
@@ -265,24 +297,40 @@ namespace AtariMapMaker
             paste5FromClipboardToolStripMenuItem.Enabled = clipBoardDataType == Globals.ClipBoardEnum.color5;
             pasteAllFromClipboardToolStripMenuItem.Enabled = clipBoardDataType == Globals.ClipBoardEnum.colorAll;
 
-            // Add font selector menu item if not already added
-            if (fontSelectorToolStripMenuItem == null)
+            // Add "Fonts for whole screen" menu item if MultiFont is enabled
+            if (screenMap.MultiFontEnabled)
             {
-                fontSelectorToolStripMenuItem = new ToolStripMenuItem("Font Selector...");
-                fontSelectorToolStripMenuItem.Click += FontSelectorToolStripMenuItem_Click;
-                contextMenuStripDli.Items.Add(new ToolStripSeparator());
-                contextMenuStripDli.Items.Add(fontSelectorToolStripMenuItem);
-            }
-        }
-
-        private void FontSelectorToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            // Show font selection dialog for this line
-            using (FontSelectorDialog dialog = new FontSelectorDialog(screenMap, clickedChar.Y))
-            {
-                if (dialog.ShowDialog() == DialogResult.OK)
+                if (fontsForWholeScreenToolStripMenuItem == null)
                 {
-                    RedrawDliAndMap();
+                    fontsForWholeScreenToolStripMenuItem = new ToolStripMenuItem("Fonts for whole screen");
+                    copyAllFontsToClipboardToolStripMenuItem = new ToolStripMenuItem("Copy to clipboard");
+                    copyAllFontsToClipboardToolStripMenuItem.Click += CopyAllFontsToClipboardToolStripMenuItem_Click;
+                    pasteAllFontsFromClipboardToolStripMenuItem = new ToolStripMenuItem("Paste from clipboard");
+                    pasteAllFontsFromClipboardToolStripMenuItem.Click += PasteAllFontsFromClipboardToolStripMenuItem_Click;
+                    
+                    fontsForWholeScreenToolStripMenuItem.DropDownItems.Add(copyAllFontsToClipboardToolStripMenuItem);
+                    fontsForWholeScreenToolStripMenuItem.DropDownItems.Add(pasteAllFontsFromClipboardToolStripMenuItem);
+                    
+                    contextMenuStripDli.Items.Add(new ToolStripSeparator());
+                    contextMenuStripDli.Items.Add(fontsForWholeScreenToolStripMenuItem);
+                }
+                else if (!contextMenuStripDli.Items.Contains(fontsForWholeScreenToolStripMenuItem))
+                {
+                    // Re-add if it was removed
+                    contextMenuStripDli.Items.Add(new ToolStripSeparator());
+                    contextMenuStripDli.Items.Add(fontsForWholeScreenToolStripMenuItem);
+                }
+                
+                // Enable/disable paste menu item
+                pasteAllFontsFromClipboardToolStripMenuItem.Enabled = clipBoardDataType == Globals.ClipBoardEnum.fontAll;
+            }
+            else
+            {
+                // Remove font menu if MultiFont is disabled
+                if (fontsForWholeScreenToolStripMenuItem != null && contextMenuStripDli.Items.Contains(fontsForWholeScreenToolStripMenuItem))
+                {
+                    contextMenuStripDli.Items.Remove(fontsForWholeScreenToolStripMenuItem);
+                    // Note: We don't set to null so it can be re-added when MultiFont is enabled again
                 }
             }
         }
@@ -304,14 +352,25 @@ namespace AtariMapMaker
         private void FillDown(bool wholeLine, int lines)
         {
             int startingLine = clickedChar.Y;
+            int screenX = screenNumber % screenMap.MapSize.Width;
+            int screenY = screenNumber / screenMap.MapSize.Width;
 
             if (clickedChar.X == 5 && screenMap.MultiFontEnabled)
             {
+                // Check if this screen references another screen - if so, editing is not allowed
+                int refScreenX, refScreenY;
+                bool isReferencing = screenMap.GetFontMappingReference(screenX, screenY, out refScreenX, out refScreenY);
+                if (isReferencing && (refScreenX != screenX || refScreenY != screenY))
+                {
+                    // This screen references another screen - editing is read-only
+                    return;
+                }
+                
                 // Fill down font numbers
-                byte fontIndex = screenMap.GetFontForLine(clickedChar.Y);
+                byte fontIndex = screenMap.GetFontForLine(screenX, screenY, clickedChar.Y);
                 for (int j = 0; j < lines && (startingLine + j) < screenMap.ScreenSize.Height; j++)
                 {
-                    screenMap.SetFontForLine(startingLine + j, fontIndex);
+                    screenMap.SetFontForLine(screenX, screenY, startingLine + j, fontIndex);
                     int charOffset = 5 + (startingLine + j) * dliMap.Stride;
                     dliMap.Data[charOffset] = (byte)(0x30 + fontIndex);
                 }
@@ -348,7 +407,9 @@ namespace AtariMapMaker
             if (clickedChar.X == 5 && screenMap.MultiFontEnabled)
             {
                 // Copy font number
-                byte fontIndex = screenMap.GetFontForLine(clickedChar.Y);
+                int screenX = screenNumber % screenMap.MapSize.Width;
+                int screenY = screenNumber / screenMap.MapSize.Width;
+                byte fontIndex = screenMap.GetFontForLine(screenX, screenY, clickedChar.Y);
                 clipBoard[0, 5] = fontIndex;
                 clipBoardDataType = Globals.ClipBoardEnum.color; // Reuse enum for single value
             }
@@ -365,22 +426,20 @@ namespace AtariMapMaker
             byte[] color5 = dliMap.GetDliColor5(clickedChar);
             for (int i = 0; i < color5.Length; i++)
                 clipBoard[0, i] = color5[i];
-            // Also copy font number if MultiFont is enabled
-            if (screenMap.MultiFontEnabled && screenMap.FontLineMapping != null && clickedChar.Y < screenMap.FontLineMapping.Length)
-                clipBoard[0, 5] = screenMap.GetFontForLine(clickedChar.Y);
+            // Only copy colors, not fonts
             clipBoardDataType = Globals.ClipBoardEnum.color5;
         }
 
         private void CopyAllToClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            int screenX = screenNumber % screenMap.MapSize.Width;
+            int screenY = screenNumber / screenMap.MapSize.Width;
             for (int i = 0; i < dliMap.ScreenSize.Height; i++)
             {
                 byte[] color5 = dliMap.GetDliColor5(i * 6);
                 for (int j = 0; j < 5; j++)
                     clipBoard[i, j] = color5[j];
-                // Also copy font number if MultiFont is enabled
-                if (screenMap.MultiFontEnabled && screenMap.FontLineMapping != null && i < screenMap.FontLineMapping.Length)
-                    clipBoard[i, 5] = screenMap.GetFontForLine(i);
+                // Only copy colors, not fonts
             }
             clipBoardDataType = Globals.ClipBoardEnum.colorAll;
         }
@@ -390,8 +449,10 @@ namespace AtariMapMaker
             if (clickedChar.X == 5 && screenMap.MultiFontEnabled)
             {
                 // Paste font number
+                int screenX = screenNumber % screenMap.MapSize.Width;
+                int screenY = screenNumber / screenMap.MapSize.Width;
                 byte fontIndex = clipBoard[0, 5];
-                screenMap.SetFontForLine(clickedChar.Y, fontIndex);
+                screenMap.SetFontForLine(screenX, screenY, clickedChar.Y, fontIndex);
                 int charOffset = 5 + clickedChar.Y * dliMap.Stride;
                 dliMap.Data[charOffset] = (byte)(0x30 + fontIndex);
                 AtariFontRenderer.ClearFontCache();
@@ -419,15 +480,7 @@ namespace AtariMapMaker
             dliMap.SetDliColor5Multiple(0, 0, clickedChar.Y, 1, color5);
             screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, clickedChar.Y, 1, color5);
             
-            // Also paste font number if MultiFont is enabled
-            if (screenMap.MultiFontEnabled)
-            {
-                byte fontIndex = clipBoard[0, 5];
-                screenMap.SetFontForLine(clickedChar.Y, fontIndex);
-                int charOffset = 5 + clickedChar.Y * dliMap.Stride;
-                dliMap.Data[charOffset] = (byte)(0x30 + fontIndex);
-                AtariFontRenderer.ClearFontCache();
-            }
+            // Only paste colors, not fonts
             RedrawDliAndMap();
         }
 
@@ -441,17 +494,8 @@ namespace AtariMapMaker
                 dliMap.SetDliColor5Multiple(0, 0, j, 1, color5);
                 screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width, j, 1, color5);
                 
-                // Also paste font number if MultiFont is enabled
-                if (screenMap.MultiFontEnabled)
-                {
-                    byte fontIndex = clipBoard[j, 5];
-                    screenMap.SetFontForLine(j, fontIndex);
-                    int charOffset = 5 + j * dliMap.Stride;
-                    dliMap.Data[charOffset] = (byte)(0x30 + fontIndex);
-                }
+                // Only paste colors, not fonts
             }
-            if (screenMap.MultiFontEnabled)
-                AtariFontRenderer.ClearFontCache();
             RedrawDliAndMap();
         }
 
@@ -461,6 +505,75 @@ namespace AtariMapMaker
             color5[0] = Globals.DEFAULT_COLOR;
             dliMap.SetDliColor5Multiple(0,0,0,-1,color5);
             screenMap.SetDliColor5Multiple(screenNumber % screenMap.MapSize.Width, screenNumber / screenMap.MapSize.Width,0 , -1, color5);
+            RedrawDliAndMap();
+        }
+
+        private void CopyAllFontsToClipboardToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            int screenX = screenNumber % screenMap.MapSize.Width;
+            int screenY = screenNumber / screenMap.MapSize.Width;
+            for (int i = 0; i < dliMap.ScreenSize.Height; i++)
+            {
+                clipBoard[i, 5] = screenMap.GetFontForLine(screenX, screenY, i);
+            }
+            clipBoardDataType = Globals.ClipBoardEnum.fontAll;
+        }
+
+        private void PasteAllFontsFromClipboardToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            int screenX = screenNumber % screenMap.MapSize.Width;
+            int screenY = screenNumber / screenMap.MapSize.Width;
+            
+            // Check if this screen references another screen - if so, editing is not allowed
+            int refScreenX, refScreenY;
+            bool isReferencing = screenMap.GetFontMappingReference(screenX, screenY, out refScreenX, out refScreenY);
+            if (isReferencing && (refScreenX != screenX || refScreenY != screenY))
+            {
+                // This screen references another screen - editing is read-only
+                return;
+            }
+            
+            for (int j = 0; j < dliMap.ScreenSize.Height; j++)
+            {
+                if (screenMap.MultiFontEnabled)
+                {
+                    byte fontIndex = clipBoard[j, 5];
+                    screenMap.SetFontForLine(screenX, screenY, j, fontIndex);
+                    int charOffset = 5 + j * dliMap.Stride;
+                    dliMap.Data[charOffset] = (byte)(0x30 + fontIndex);
+                }
+            }
+            AtariFontRenderer.ClearFontCache();
+            RedrawDliAndMap();
+        }
+
+        private void FillDownAllFontsNumber_Click(object sender, EventArgs e)
+        {
+            int screenX = screenNumber % screenMap.MapSize.Width;
+            int screenY = screenNumber / screenMap.MapSize.Width;
+            
+            // Check if this screen references another screen - if so, editing is not allowed
+            int refScreenX, refScreenY;
+            bool isReferencing = screenMap.GetFontMappingReference(screenX, screenY, out refScreenX, out refScreenY);
+            if (isReferencing && (refScreenX != screenX || refScreenY != screenY))
+            {
+                // This screen references another screen - editing is read-only
+                return;
+            }
+            
+            var tsi = (ToolStripItem)sender;
+            int lines = int.Parse(tsi.Text) + 1;
+            int startingLine = clickedChar.Y;
+            
+            // Fill down font numbers
+            byte fontIndex = screenMap.GetFontForLine(screenX, screenY, clickedChar.Y);
+            for (int j = 0; j < lines && (startingLine + j) < screenMap.ScreenSize.Height; j++)
+            {
+                screenMap.SetFontForLine(screenX, screenY, startingLine + j, fontIndex);
+                int charOffset = 5 + (startingLine + j) * dliMap.Stride;
+                dliMap.Data[charOffset] = (byte)(0x30 + fontIndex);
+            }
+            AtariFontRenderer.ClearFontCache();
             RedrawDliAndMap();
         }
     }

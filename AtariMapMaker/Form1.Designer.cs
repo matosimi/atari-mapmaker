@@ -1019,7 +1019,7 @@ namespace AtariMapMaker
             this.toolStripMenuItemHFlip,
             this.toolStripMenuItemVFlip});
             this.contextMenuStripScreen.Name = "contextMenuStripScreen";
-            this.contextMenuStripScreen.Size = new System.Drawing.Size(257, 100);
+            this.contextMenuStripScreen.Size = new System.Drawing.Size(257, 133);
             // 
             // toolStripMenuItemClear
             // 

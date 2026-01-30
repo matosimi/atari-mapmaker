@@ -188,6 +188,11 @@ namespace AtariMapMaker
 
         public static void Redraw(Globals.WindowType window, bool drawData, bool drawScreenBorders, bool drawGrid)
         {
+            Redraw(window, drawData, drawScreenBorders, drawGrid, Point.Empty, false, Point.Empty);
+        }
+
+        public static void Redraw(Globals.WindowType window, bool drawData, bool drawScreenBorders, bool drawGrid, Point currentScreen, bool isLocked, Point lockedScreen)
+        {
             Bitmap mapImage = windows[window].fontRendererMapImage;
             AtariMap myMap = windows[window].map;
             Graphics gr = windows[window].pictureBoxGraphics;
@@ -223,6 +228,68 @@ namespace AtariMapMaker
                             gr.FillRectangle(gridBrush, x * Globals.CharSize, y * Globals.CharSize, 1, 1);
                             //destImage.SetPixel(x * Globals.CharSize, y * Globals.CharSize, gridColor);
             }
+            
+            // Draw yellow L-shaped corners for current screen (on top of red borders)
+            if (window == Globals.WindowType.Editor && currentScreen != Point.Empty)
+            {
+                DrawCurrentScreenCorners(gr, myMap, currentScreen);
+            }
+            
+            // Draw "locked" text above locked screen
+            if (window == Globals.WindowType.Editor && isLocked && lockedScreen != Point.Empty)
+            {
+                DrawLockedText(gr, myMap, lockedScreen);
+            }
+        }
+        
+        private static void DrawCurrentScreenCorners(Graphics gr, AtariMap myMap, Point currentScreen)
+        {
+            Pen yellowPen = new Pen(Color.Yellow, 2);
+            int cornerSize = 5 * 8 * Globals.Zoom; // Size of the L-shape corner (5 grid points)
+            
+            // Calculate screen position in pixels - need to account for scrolling offset
+            int screenStartX = currentScreen.X * myMap.ScreenSize.Width;
+            int screenStartY = currentScreen.Y * myMap.ScreenSize.Height;
+            int screenPixelX = (screenStartX - myMap.OffsetX) * Globals.CharSize;
+            int screenPixelY = (screenStartY - myMap.OffsetY) * Globals.CharSize;
+            int screenPixelWidth = myMap.ScreenSize.Width * Globals.CharSize;
+            int screenPixelHeight = myMap.ScreenSize.Height * Globals.CharSize;
+            
+            // Top-left corner
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY, screenPixelX + cornerSize, screenPixelY);
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY, screenPixelX, screenPixelY + cornerSize);
+            
+            // Top-right corner
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth - cornerSize, screenPixelY, screenPixelX + screenPixelWidth, screenPixelY);
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth, screenPixelY, screenPixelX + screenPixelWidth, screenPixelY + cornerSize);
+            
+            // Bottom-left corner
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY + screenPixelHeight - cornerSize, screenPixelX, screenPixelY + screenPixelHeight);
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY + screenPixelHeight, screenPixelX + cornerSize, screenPixelY + screenPixelHeight);
+            
+            // Bottom-right corner
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth - cornerSize, screenPixelY + screenPixelHeight, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight);
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight - cornerSize, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight);
+        }
+        
+        private static void DrawLockedText(Graphics gr, AtariMap myMap, Point lockedScreen)
+        {
+            Font textFont = new Font("Arial", 12, FontStyle.Bold);
+            Brush yellowBrush = new SolidBrush(Color.Yellow);
+            
+            // Calculate screen position in pixels - need to account for scrolling offset
+            int screenStartX = lockedScreen.X * myMap.ScreenSize.Width;
+            int screenStartY = lockedScreen.Y * myMap.ScreenSize.Height;
+            int screenPixelX = (screenStartX - myMap.OffsetX) * Globals.CharSize;
+            int screenPixelY = (screenStartY - myMap.OffsetY) * Globals.CharSize;
+            
+            // Draw "locked" text above the screen
+            string lockedText = "locked";
+            SizeF textSize = gr.MeasureString(lockedText, textFont);
+            float textX = screenPixelX + (myMap.ScreenSize.Width * Globals.CharSize - textSize.Width) / 2;
+            float textY = screenPixelY - textSize.Height - 5; // 5 pixels above the screen
+            
+            gr.DrawString(lockedText, textFont, yellowBrush, textX, textY);
         }
         /// <summary>
         /// Performs scroll of a window.

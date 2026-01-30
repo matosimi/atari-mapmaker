@@ -166,7 +166,7 @@ namespace AtariMapMaker
         /// <summary>
         /// Get font bitmap for a specific line, supporting per-line font selection
         /// </summary>
-        private static AtariFont GetFontForLine(AtariMap myMap, int line, Globals.FontType fontType)
+        private static AtariFont GetFontForLine(AtariMap myMap, int screenx, int screeny, int line, Globals.FontType fontType)
         {
             // If multifont is disabled, always use default font (font 0)
             if (!myMap.MultiFontEnabled)
@@ -174,51 +174,49 @@ namespace AtariMapMaker
                 return fonts[fontType];
             }
 
-            // Check if map has multiple fonts and line mapping
-            if (myMap.FontDataArray != null && myMap.FontLineMapping != null && 
-                line >= 0 && line < myMap.FontLineMapping.Length)
+            // Get font index for this line (with screen coordinates)
+            byte fontIndex = myMap.GetFontForLine(screenx, screeny, line);
+            
+            // Check if map has multiple fonts
+            if (myMap.FontDataArray != null && fontIndex < myMap.FontDataArray.Length && myMap.FontDataArray[fontIndex] != null)
             {
-                byte fontIndex = myMap.FontLineMapping[line];
-                if (fontIndex < myMap.FontDataArray.Length && myMap.FontDataArray[fontIndex] != null)
+                // Check if we have this font cached
+                if (cachedFonts.ContainsKey(fontIndex))
                 {
-                    // Check if we have this font cached
-                    if (cachedFonts.ContainsKey(fontIndex))
-                    {
-                        return cachedFonts[fontIndex];
-                    }
-                    else
-                    {
-                        // Create font bitmap and cache it
-                        AtariFont customFont = new AtariFont
-                        {
-                            data = myMap.FontDataArray[fontIndex],
-                            bitmap = CreateFontImage(true, myMap.FontDataArray[fontIndex])
-                        };
-                        cachedFonts[fontIndex] = customFont;
-                        return customFont;
-                    }
+                    return cachedFonts[fontIndex];
                 }
                 else
                 {
-                    // Font slot is undefined - inherit from font 0 (single font)
-                    // If font 0 is also undefined, use the default screen font
-                    if (myMap.FontDataArray != null && myMap.FontDataArray[0] != null)
+                    // Create font bitmap and cache it
+                    AtariFont customFont = new AtariFont
                     {
-                        // Use font 0
-                        if (cachedFonts.ContainsKey(0))
+                        data = myMap.FontDataArray[fontIndex],
+                        bitmap = CreateFontImage(true, myMap.FontDataArray[fontIndex])
+                    };
+                    cachedFonts[fontIndex] = customFont;
+                    return customFont;
+                }
+            }
+            else
+            {
+                // Font slot is undefined - inherit from font 0 (single font)
+                // If font 0 is also undefined, use the default screen font
+                if (myMap.FontDataArray != null && myMap.FontDataArray[0] != null)
+                {
+                    // Use font 0
+                    if (cachedFonts.ContainsKey(0))
+                    {
+                        return cachedFonts[0];
+                    }
+                    else
+                    {
+                        AtariFont font0 = new AtariFont
                         {
-                            return cachedFonts[0];
-                        }
-                        else
-                        {
-                            AtariFont font0 = new AtariFont
-                            {
-                                data = myMap.FontDataArray[0],
-                                bitmap = CreateFontImage(true, myMap.FontDataArray[0])
-                            };
-                            cachedFonts[0] = font0;
-                            return font0;
-                        }
+                            data = myMap.FontDataArray[0],
+                            bitmap = CreateFontImage(true, myMap.FontDataArray[0])
+                        };
+                        cachedFonts[0] = font0;
+                        return font0;
                     }
                 }
             }
@@ -290,21 +288,42 @@ namespace AtariMapMaker
                     // Determine which font to use for this line
                     int absoluteLine = myMap.OffsetY + y;
                     int lineInScreen = absoluteLine % myMap.ScreenSize.Height;
-                    AtariFont lineFont = GetFontForLine(myMap, lineInScreen, fontType);
+                    int screenY = absoluteLine / myMap.ScreenSize.Height;
+                    // Clamp screen Y to valid range
+                    if (screenY < 0) screenY = 0;
+                    if (screenY >= myMap.MapSize.Height) screenY = myMap.MapSize.Height - 1;
                     
-                    // If font changed, unlock old and lock new
-                    if (lineFont.bitmap != currentFont.bitmap)
-                    {
-                        currentFont.bitmap.UnlockBits(fntd);
-                        currentFont = lineFont;
-                        fntd = currentFont.bitmap.LockBits(new Rectangle(0, 0, currentFont.bitmap.Width, currentFont.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
-                    }
+                    // Track current screen X to detect when we cross screen boundaries
+                    int lastScreenX = -1;
                     
-                    byte* fntRow = (byte*)fntd.Scan0;
                     for (int scln = 0; scln < 8; scln++)
                     {
+                        byte* fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
                         for (int x = 0; x < width; x++)
                         {
+                            // Calculate which screen this character belongs to
+                            int absoluteX = myMap.OffsetX + x;
+                            int screenX = absoluteX / myMap.ScreenSize.Width;
+                            // Clamp screen X to valid range
+                            if (screenX < 0) screenX = 0;
+                            if (screenX >= myMap.MapSize.Width) screenX = myMap.MapSize.Width - 1;
+                            
+                            // If we've crossed into a new screen, switch to that screen's font
+                            if (screenX != lastScreenX)
+                            {
+                                AtariFont lineFont = GetFontForLine(myMap, screenX, screenY, lineInScreen, fontType);
+                                
+                                // If font changed, unlock old and lock new
+                                if (lineFont.bitmap != currentFont.bitmap)
+                                {
+                                    currentFont.bitmap.UnlockBits(fntd);
+                                    currentFont = lineFont;
+                                    fntd = currentFont.bitmap.LockBits(new Rectangle(0, 0, currentFont.bitmap.Width, currentFont.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+                                    fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
+                                }
+                                lastScreenX = screenX;
+                            }
+                            
                             index = adrOffset + x;
                             byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : color5;
                             if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
@@ -345,7 +364,6 @@ namespace AtariMapMaker
                             for (int c = 0; c < 8; c++)
                                 row[x * 8 + c] = offMapColor;
 
-                        fntRow += fntd.Stride;
                         row += bmd.Stride;
                     }
                     adrOffset += myMap.Stride;

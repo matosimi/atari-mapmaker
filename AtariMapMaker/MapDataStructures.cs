@@ -4,6 +4,17 @@ using System.Drawing;
 
 namespace AtariMapMaker
 {
+    public class ScreenReference
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        
+        public ScreenReference() { }
+        public ScreenReference(int x, int y) { X = x; Y = y; }
+        
+        public static implicit operator Point(ScreenReference r) => new Point(r.X, r.Y);
+        public static implicit operator ScreenReference(Point p) => new ScreenReference(p.X, p.Y);
+    }
     public class ScreenMetadata
     {
         public string RawText { get; set; }

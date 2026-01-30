@@ -57,19 +57,35 @@ namespace AtariMapMaker
             return templates.FirstOrDefault(t => t.Name == name);
         }
 
-        public static void ApplyTemplate(AtariMap map, string templateName)
+        public static void ApplyTemplate(AtariMap map, string templateName, int? screenX = null, int? screenY = null)
         {
             if (map == null) return;
 
             var template = GetTemplate(templateName);
             if (template == null) return;
 
-            if (map.FontLineMapping == null)
-                map.FontLineMapping = new byte[map.ScreenSize.Height];
-
-            for (int i = 0; i < map.ScreenSize.Height; i++)
+            // Always per-screen mode: apply to all screens if no specific screen provided, otherwise just that screen
+            if (screenX.HasValue && screenY.HasValue)
             {
-                map.FontLineMapping[i] = template.PatternFunction(i);
+                // Apply to specific screen
+                for (int i = 0; i < map.ScreenSize.Height; i++)
+                {
+                    map.SetFontForLine(screenX.Value, screenY.Value, i, template.PatternFunction(i));
+                }
+            }
+            else
+            {
+                // Apply to all screens
+                for (int sy = 0; sy < map.MapSize.Height; sy++)
+                {
+                    for (int sx = 0; sx < map.MapSize.Width; sx++)
+                    {
+                        for (int i = 0; i < map.ScreenSize.Height; i++)
+                        {
+                            map.SetFontForLine(sx, sy, i, template.PatternFunction(i));
+                        }
+                    }
+                }
             }
 
             map.FontTemplatePattern = templateName;

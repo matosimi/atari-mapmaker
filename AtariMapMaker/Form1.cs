@@ -26,6 +26,8 @@ namespace AtariMapMaker
         private DliForm dliForm;
         private Point currentScreen = new Point(0, 0);
         private bool ScreenSelectionShown = false;
+        private bool isScreenLocked = false;
+        private Point lockedScreen = new Point(0, 0);
         public MainForm()
         {
             InitializeComponent();
@@ -76,6 +78,10 @@ namespace AtariMapMaker
         }
 
         private CheckBox checkBoxMultiFont;
+        private CheckBox checkBoxFontMappingReference;
+        private NumericUpDown numericUpDownRefScreenX;
+        private NumericUpDown numericUpDownRefScreenY;
+        private Label labelRefScreen;
 
         private void AddV2UIElements()
         {
@@ -87,6 +93,52 @@ namespace AtariMapMaker
             checkBoxMultiFont.Checked = myMap != null ? myMap.MultiFontEnabled : false;
             checkBoxMultiFont.CheckedChanged += CheckBoxMultiFont_CheckedChanged;
             groupBoxDli.Controls.Add(checkBoxMultiFont);
+            
+            // Add Font Mapping Reference checkbox and controls
+            checkBoxFontMappingReference = new CheckBox();
+            checkBoxFontMappingReference.Text = "Reference Font Mapping";
+            checkBoxFontMappingReference.Location = new Point(checkBoxMultiFont.Location.X, checkBoxMultiFont.Location.Y + checkBoxMultiFont.Height + 5);
+            checkBoxFontMappingReference.Size = new Size(150, 20);
+            checkBoxFontMappingReference.CheckedChanged += CheckBoxFontMappingReference_CheckedChanged;
+            checkBoxFontMappingReference.Enabled = myMap != null ? myMap.MultiFontEnabled : false;
+            groupBoxDli.Controls.Add(checkBoxFontMappingReference);
+            
+            labelRefScreen = new Label();
+            labelRefScreen.Text = "Reference Screen:";
+            labelRefScreen.Location = new Point(checkBoxFontMappingReference.Location.X, checkBoxFontMappingReference.Location.Y + checkBoxFontMappingReference.Height + 5);
+            labelRefScreen.Size = new Size(100, 20);
+            labelRefScreen.Enabled = false;
+            groupBoxDli.Controls.Add(labelRefScreen);
+            
+            numericUpDownRefScreenX = new NumericUpDown();
+            numericUpDownRefScreenX.Location = new Point(labelRefScreen.Location.X + labelRefScreen.Width, labelRefScreen.Location.Y);
+            numericUpDownRefScreenX.Size = new Size(50, 20);
+            numericUpDownRefScreenX.Minimum = 0;
+            numericUpDownRefScreenX.Maximum = myMap != null ? myMap.MapSize.Width - 1 : 0;
+            numericUpDownRefScreenX.Value = 0;
+            numericUpDownRefScreenX.Enabled = false;
+            numericUpDownRefScreenX.ValueChanged += NumericUpDownRefScreen_ValueChanged;
+            groupBoxDli.Controls.Add(numericUpDownRefScreenX);
+            
+            Label labelComma = new Label();
+            labelComma.Text = ",";
+            labelComma.Location = new Point(numericUpDownRefScreenX.Location.X + numericUpDownRefScreenX.Width, labelRefScreen.Location.Y);
+            labelComma.Size = new Size(10, 20);
+            labelComma.Enabled = false;
+            groupBoxDli.Controls.Add(labelComma);
+            
+            numericUpDownRefScreenY = new NumericUpDown();
+            numericUpDownRefScreenY.Location = new Point(labelComma.Location.X + labelComma.Width, labelRefScreen.Location.Y);
+            numericUpDownRefScreenY.Size = new Size(50, 20);
+            numericUpDownRefScreenY.Minimum = 0;
+            numericUpDownRefScreenY.Maximum = myMap != null ? myMap.MapSize.Height - 1 : 0;
+            numericUpDownRefScreenY.Value = 0;
+            numericUpDownRefScreenY.Enabled = false;
+            numericUpDownRefScreenY.ValueChanged += NumericUpDownRefScreen_ValueChanged;
+            groupBoxDli.Controls.Add(numericUpDownRefScreenY);
+            
+            // Update UI based on current screen
+            UpdateFontMappingReferenceUI();
             
             // Update font template button and element library button visibility based on multifont
             UpdateMultiFontUI();
@@ -136,6 +188,11 @@ namespace AtariMapMaker
             ToolStripMenuItem menuItemScreenDescription = new ToolStripMenuItem("Screen Description...");
             menuItemScreenDescription.Click += MenuItemScreenDescription_Click;
             contextMenuStripScreen.Items.Add(menuItemScreenDescription);
+
+            ToolStripMenuItem menuItemApplyFontTemplate = new ToolStripMenuItem("Apply Font Template...");
+            menuItemApplyFontTemplate.Click += MenuItemApplyFontTemplate_Click;
+            contextMenuStripScreen.Items.Add(menuItemApplyFontTemplate);
+            contextMenuStripScreen.Opening += ContextMenuStripScreen_Opening;
 
             // Add Undo/Redo to a menu (if there's a menu bar) or create keyboard shortcuts
             // For now, add them to the context menu as well
@@ -201,6 +258,58 @@ namespace AtariMapMaker
             using (ScreenDescriptionDialog dialog = new ScreenDescriptionDialog(myMap, currentScreen))
             {
                 dialog.ShowDialog();
+            }
+        }
+
+        private void ContextMenuStripScreen_Opening(object sender, CancelEventArgs e)
+        {
+            // Update enabled state of Apply Font Template menu item
+            foreach (ToolStripItem item in contextMenuStripScreen.Items)
+            {
+                if (item.Text == "Apply Font Template...")
+                {
+                    bool enabled = myMap != null && myMap.MultiFontEnabled;
+                    if (enabled)
+                    {
+                        // Check if current/locked screen references another screen
+                        Point targetScreen = isScreenLocked ? lockedScreen : currentScreen;
+                        int refScreenX, refScreenY;
+                        bool isReferencing = myMap.GetFontMappingReference(targetScreen.X, targetScreen.Y, out refScreenX, out refScreenY);
+                        if (isReferencing && (refScreenX != targetScreen.X || refScreenY != targetScreen.Y))
+                        {
+                            enabled = false; // Disable if referencing another screen
+                        }
+                    }
+                    item.Enabled = enabled;
+                    break;
+                }
+            }
+        }
+
+        private void MenuItemApplyFontTemplate_Click(object sender, EventArgs e)
+        {
+            if (myMap == null || !myMap.MultiFontEnabled) return;
+            
+            // Use locked screen if locked, otherwise use current screen
+            Point targetScreen = isScreenLocked ? lockedScreen : currentScreen;
+            
+            // Check if target screen references another screen
+            int refScreenX, refScreenY;
+            bool isReferencing = myMap.GetFontMappingReference(targetScreen.X, targetScreen.Y, out refScreenX, out refScreenY);
+            if (isReferencing && (refScreenX != targetScreen.X || refScreenY != targetScreen.Y))
+            {
+                // Screen references another - template cannot be applied
+                MessageBox.Show("Cannot apply font template to a screen that references another screen's font mapping.", "Template Application", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            using (FontSelectorDialog dialog = new FontSelectorDialog(myMap, 0, targetScreen.X, targetScreen.Y, true))
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    AtariFontRenderer.ClearFontCache();
+                    RedrawEditorWindow();
+                }
             }
         }
 
@@ -329,8 +438,70 @@ namespace AtariMapMaker
             int scry = yy / myMap.ScreenSize.Height;
             int posx = xx % myMap.ScreenSize.Width;
             int posy = yy % myMap.ScreenSize.Height;
-            currentScreen.X = scrx;
-            currentScreen.Y = scry;
+            
+            // If screen is locked, only update if mouse is within the locked screen
+            if (isScreenLocked)
+            {
+                // Check if mouse is within the locked screen boundaries
+                int lockedScreenStartX = lockedScreen.X * myMap.ScreenSize.Width;
+                int lockedScreenEndX = (lockedScreen.X + 1) * myMap.ScreenSize.Width;
+                int lockedScreenStartY = lockedScreen.Y * myMap.ScreenSize.Height;
+                int lockedScreenEndY = (lockedScreen.Y + 1) * myMap.ScreenSize.Height;
+                
+                if (xx >= lockedScreenStartX && xx < lockedScreenEndX && 
+                    yy >= lockedScreenStartY && yy < lockedScreenEndY)
+                {
+                    // Mouse is within locked screen, update normally
+                    currentScreen.X = scrx;
+                    currentScreen.Y = scry;
+                    UpdateFontMappingReferenceUI();
+                }
+                else
+                {
+                    // Mouse is outside locked screen, don't update currentScreen or DLI form
+                    // Keep currentScreen as locked screen
+                    return;
+                }
+            }
+            else
+            {
+                // Screen not locked, update normally
+                // If DLI form is visible, keep the current screen as the one the DLI form is showing
+                // Don't update currentScreen if mouse is in the DLI form area (to the right of the screen)
+                if (dliForm != null && dliForm.Visible)
+                {
+                    // Get the screen that the DLI form is showing
+                    int dliScreenNumber = dliForm.screenNumber;
+                    int dliScreenX = dliScreenNumber % myMap.MapSize.Width;
+                    int dliScreenY = dliScreenNumber / myMap.MapSize.Width;
+                    
+                    // Check if mouse is in the DLI form area (to the right of the screen)
+                    int dliFormStartX = (dliScreenX + 1) * myMap.ScreenSize.Width - 1;
+                    int dliFormEndX = dliFormStartX + 6; // DLI form is 6 characters wide (5 colors + 1 font)
+                    int dliFormStartY = dliScreenY * myMap.ScreenSize.Height;
+                    int dliFormEndY = (dliScreenY + 1) * myMap.ScreenSize.Height;
+                    
+                    // If mouse is in DLI form area, keep current screen as the DLI form's screen
+                    if (xx >= dliFormStartX && xx < dliFormEndX && yy >= dliFormStartY && yy < dliFormEndY)
+                    {
+                        currentScreen.X = dliScreenX;
+                        currentScreen.Y = dliScreenY;
+                    }
+                    else
+                    {
+                        // Mouse is not in DLI form area, update normally
+                        currentScreen.X = scrx;
+                        currentScreen.Y = scry;
+                    }
+                }
+                else
+                {
+                    // DLI form not visible, update normally
+                    currentScreen.X = scrx;
+                    currentScreen.Y = scry;
+                }
+                UpdateFontMappingReferenceUI();
+            }
 
             if (e.Button == MouseButtons.Right)     //SCROLL
             {
@@ -347,7 +518,17 @@ namespace AtariMapMaker
                 }
 
                 if (checkBoxEditDli.Checked)
-                    UpdateAndShowDliForm(scrx, scry, true);
+                {
+                    if (isScreenLocked)
+                    {
+                        // Keep DLI form showing the locked screen
+                        UpdateAndShowDliForm(lockedScreen.X, lockedScreen.Y, true);
+                    }
+                    else
+                    {
+                        UpdateAndShowDliForm(scrx, scry, true);
+                    }
+                }
             }
 
 
@@ -387,6 +568,16 @@ namespace AtariMapMaker
 
         private void UpdateAndShowDliForm(int scrx,int scry, bool justUpdatePosition = false)
         {
+            // If screen is locked, only update DLI form if the requested screen is the locked screen
+            if (isScreenLocked)
+            {
+                if (scrx != lockedScreen.X || scry != lockedScreen.Y)
+                {
+                    // Don't update DLI form if mouse is outside locked screen
+                    return;
+                }
+            }
+            
             //check for out of bounds screens
             if (scrx >= myMap.MapSize.Width || scry >= myMap.MapSize.Height)
             {
@@ -468,16 +659,52 @@ namespace AtariMapMaker
                     mouseStatus = "";
                 AtariPictureTools.PreviousOffset = myMap.Offset;
 
-                if (checkBoxEditDli.Checked)
+                // Check for ALT+Right-click to toggle lock mode
+                if ((Control.ModifierKeys & Keys.Alt) == Keys.Alt)
                 {
+                    // Toggle lock mode
                     int xx = myMap.OffsetX + e.X / Globals.CharSize;
                     int yy = myMap.OffsetY + e.Y / Globals.CharSize;
                     int scrx = xx / myMap.ScreenSize.Width;
                     int scry = yy / myMap.ScreenSize.Height;
-                    UpdateAndShowDliForm(scrx, scry);
+                    
+                    if (isScreenLocked && lockedScreen.X == scrx && lockedScreen.Y == scry)
+                    {
+                        // Unlock if clicking on the same locked screen
+                        isScreenLocked = false;
+                    }
+                    else
+                    {
+                        // Lock the current screen
+                        isScreenLocked = true;
+                        lockedScreen.X = scrx;
+                        lockedScreen.Y = scry;
+                        currentScreen.X = scrx;
+                        currentScreen.Y = scry;
+                        UpdateFontMappingReferenceUI();
+                    }
+                    RedrawEditorWindow();
                 }
                 else
-                    dliForm.Hide();
+                {
+                    // Right-click without ALT - unlock if locked
+                    if (isScreenLocked)
+                    {
+                        isScreenLocked = false;
+                        RedrawEditorWindow();
+                    }
+                    
+                    if (checkBoxEditDli.Checked)
+                    {
+                        int xx = myMap.OffsetX + e.X / Globals.CharSize;
+                        int yy = myMap.OffsetY + e.Y / Globals.CharSize;
+                        int scrx = xx / myMap.ScreenSize.Width;
+                        int scry = yy / myMap.ScreenSize.Height;
+                        UpdateAndShowDliForm(scrx, scry);
+                    }
+                    else
+                        dliForm.Hide();
+                }
             }
         }
 
@@ -589,7 +816,8 @@ namespace AtariMapMaker
                 // v2.0 fields
                 FontDataArray = myMap.FontDataArray?.Select(font => font?.Select(i => (int)i).ToArray()).ToArray(),
                 FontFileNames = myMap.FontFileNames,
-                FontLineMapping = myMap.FontLineMapping?.Select(i => (int)i).ToArray(),
+                FontLineMappingPerScreen = myMap.FontLineMappingPerScreen?.Select(i => (int)i).ToArray(),
+                FontLineMappingReferences = myMap.FontLineMappingReferences,
                 FontTemplateLocked = myMap.FontTemplateLocked,
                 FontTemplatePattern = myMap.FontTemplatePattern,
                 MultiFontEnabled = myMap.MultiFontEnabled,
@@ -621,7 +849,11 @@ namespace AtariMapMaker
                     this.FillFontColorList();
                     // Update multifont checkbox
                     if (checkBoxMultiFont != null)
+                    {
                         checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
+                        checkBoxMultiFont.Enabled = true;
+                    }
+                    UpdateFontMappingReferenceUI();
                     RedrawEditorWindow();
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
@@ -675,16 +907,44 @@ namespace AtariMapMaker
                 AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
             }
             
-            // Load font line mapping
-            if (AtariJson.ParsedData.FontLineMapping != null)
+            // Load font line mapping (always per-screen now)
+            if (AtariJson.ParsedData.FontLineMappingPerScreen != null)
             {
-                myMap.FontLineMapping = AtariJson.ParsedData.FontLineMapping.Select(i => (byte)i).ToArray();
+                myMap.FontLineMappingPerScreen = AtariJson.ParsedData.FontLineMappingPerScreen.Select(i => (byte)i).ToArray();
             }
             else
             {
-                // Initialize to all font 0
+                // Initialize to all font 0 for all screens
                 myMap.SetFontForAllLines(0);
             }
+            
+            // Load font mapping references
+            if (AtariJson.ParsedData.FontLineMappingReferences != null && AtariJson.ParsedData.FontLineMappingReferences.Count > 0)
+            {
+                // Convert to ScreenReference dictionary (in case old files had Point)
+                myMap.FontLineMappingReferences = new Dictionary<string, ScreenReference>();
+                foreach (var kvp in AtariJson.ParsedData.FontLineMappingReferences)
+                {
+                    if (kvp.Value != null)
+                        myMap.FontLineMappingReferences[kvp.Key] = new ScreenReference(kvp.Value.X, kvp.Value.Y);
+                }
+            }
+            else
+            {
+                // Initialize all screens to reference screen 0,0 by default
+                myMap.FontLineMappingReferences = new Dictionary<string, ScreenReference>();
+                for (int sy = 0; sy < myMap.MapSize.Height; sy++)
+                {
+                    for (int sx = 0; sx < myMap.MapSize.Width; sx++)
+                    {
+                        string key = $"{sx},{sy}";
+                        myMap.FontLineMappingReferences[key] = new ScreenReference(0, 0);
+                    }
+                }
+            }
+            
+            // Note: Old files with FontLineMapping (shared mode) are no longer supported
+            // They would need to be migrated manually or through a converter
             
             // Load font template settings
             if (AtariJson.ParsedData.FontTemplateLocked.HasValue)
@@ -1008,6 +1268,8 @@ namespace AtariMapMaker
             if (myMap != null)
             {
                 myMap.MultiFontEnabled = checkBoxMultiFont.Checked;
+                // Enable/disable reference controls based on MultiFont
+                UpdateFontMappingReferenceUI();
                 AtariFontRenderer.ClearFontCache();
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
@@ -1020,6 +1282,81 @@ namespace AtariMapMaker
                     dliForm.Show(dliForm.screenNumber); // Refresh the form with current screen
                 }
             }
+        }
+
+        private void CheckBoxFontMappingReference_CheckedChanged(object sender, EventArgs e)
+        {
+            if (myMap != null)
+            {
+                bool useReference = checkBoxFontMappingReference.Checked;
+                int refX = (int)numericUpDownRefScreenX.Value;
+                int refY = (int)numericUpDownRefScreenY.Value;
+                
+                myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, useReference, refX, refY);
+                
+                // Enable/disable numeric updowns
+                numericUpDownRefScreenX.Enabled = useReference && myMap.MultiFontEnabled;
+                numericUpDownRefScreenY.Enabled = useReference && myMap.MultiFontEnabled;
+                labelRefScreen.Enabled = useReference && myMap.MultiFontEnabled;
+                
+                AtariFontRenderer.ClearFontCache();
+                // Use RedrawEditorWindow to preserve locked marker visibility
+                RedrawEditorWindow();
+                
+                // Update DLI form
+                if (dliForm != null && dliForm.Visible)
+                {
+                    dliForm.ZoomResize();
+                    dliForm.Show(dliForm.screenNumber);
+                }
+            }
+        }
+
+        private void NumericUpDownRefScreen_ValueChanged(object sender, EventArgs e)
+        {
+            if (myMap != null && checkBoxFontMappingReference.Checked)
+            {
+                int refX = (int)numericUpDownRefScreenX.Value;
+                int refY = (int)numericUpDownRefScreenY.Value;
+                
+                myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, true, refX, refY);
+                
+                AtariFontRenderer.ClearFontCache();
+                // Use RedrawEditorWindow to preserve locked marker visibility
+                RedrawEditorWindow();
+                
+                // Update DLI form
+                if (dliForm != null && dliForm.Visible)
+                {
+                    dliForm.ZoomResize();
+                    dliForm.Show(dliForm.screenNumber);
+                }
+            }
+        }
+
+        private void UpdateFontMappingReferenceUI()
+        {
+            if (myMap == null || checkBoxFontMappingReference == null)
+                return;
+            
+            // Get current screen reference settings
+            bool useReference;
+            int refX, refY;
+            useReference = myMap.GetFontMappingReference(currentScreen.X, currentScreen.Y, out refX, out refY);
+            
+            checkBoxFontMappingReference.Checked = useReference;
+            numericUpDownRefScreenX.Value = Math.Max(0, Math.Min(myMap.MapSize.Width - 1, refX));
+            numericUpDownRefScreenY.Value = Math.Max(0, Math.Min(myMap.MapSize.Height - 1, refY));
+            
+            bool enabled = myMap.MultiFontEnabled;
+            checkBoxFontMappingReference.Enabled = enabled;
+            numericUpDownRefScreenX.Enabled = enabled && useReference;
+            numericUpDownRefScreenY.Enabled = enabled && useReference;
+            labelRefScreen.Enabled = enabled && useReference;
+            
+            // Update max values
+            numericUpDownRefScreenX.Maximum = myMap.MapSize.Width - 1;
+            numericUpDownRefScreenY.Maximum = myMap.MapSize.Height - 1;
         }
 
         private void UpdateMultiFontUI()
@@ -1262,7 +1599,7 @@ namespace AtariMapMaker
         private void RedrawEditorWindow()
         {
             //AtariFontRenderer.RenderMapData(myMap, AtariFontRenderer.offset, dataImage); //redraw data
-            AtariPictureTools.Redraw(Globals.WindowType.Editor); //dataImage);                         //redraw grids
+            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen); //dataImage);                         //redraw grids
             if (!ScreenSelectionShown)  //refresh only when selection is not supposed to be drawn (prevents flickering)
                 pictureBoxMap.Refresh();
             ScreenSelectionShown = false;

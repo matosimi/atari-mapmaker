@@ -22,7 +22,8 @@ namespace AtariMapMaker
         // New properties for v2.0+
         public byte[][] FontDataArray { get; set; }  // Multiple fonts (max 8)
         public string[] FontFileNames { get; set; }  // Font file names (one per slot)
-        public byte[] FontLineMapping { get; set; }  // Font index per line (one per screen line)
+        public byte[] FontLineMappingPerScreen { get; set; }  // Font index per line (per-screen: MapSize.Width * MapSize.Height * ScreenSize.Height)
+        public Dictionary<string, ScreenReference> FontLineMappingReferences { get; set; }  // Key: "x,y" -> Value: referenced screen coordinates (x,y)
         public bool FontTemplateLocked { get; set; }
         public string FontTemplatePattern { get; set; }
         public bool MultiFontEnabled { get; set; }  // Enable/disable multifont features
@@ -50,7 +51,8 @@ namespace AtariMapMaker
         {
             FontDataArray = new byte[8][];  // Max 8 fonts
             FontFileNames = new string[8];  // Font file names
-            FontLineMapping = new byte[ScreenSize.Height];
+            FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+            FontLineMappingReferences = new Dictionary<string, ScreenReference>();
             FontTemplateLocked = false;
             FontTemplatePattern = "All Font0";
             MultiFontEnabled = false;  // Default to single font mode
@@ -63,6 +65,16 @@ namespace AtariMapMaker
             BitmapTileset = null;
             ElementLibrary = new Dictionary<string, LibraryElement>();
             ScreenLinks = new List<ScreenLink>();
+            
+            // Initialize all screens to reference screen 0,0 by default
+            for (int sy = 0; sy < MapSize.Height; sy++)
+            {
+                for (int sx = 0; sx < MapSize.Width; sx++)
+                {
+                    string key = $"{sx},{sy}";
+                    FontLineMappingReferences[key] = new ScreenReference(0, 0);
+                }
+            }
         }
 
         public void CopyDliColorsFullScreen(int localScreenNumber, AtariMap targetMap, int targetScreenNumber)
@@ -226,27 +238,158 @@ namespace AtariMapMaker
         }
 
         // Font management methods
-        public byte GetFontForLine(int line)
+        // Check if a screen references another screen's font mapping
+        private Point GetReferencedScreen(int screenx, int screeny)
         {
-            if (FontLineMapping == null || line < 0 || line >= FontLineMapping.Length)
-                return 0;
-            return FontLineMapping[line];
+            if (FontLineMappingReferences == null)
+                return new Point(screenx, screeny);  // No reference, use own screen
+            
+            string key = $"{screenx},{screeny}";
+            if (FontLineMappingReferences.ContainsKey(key))
+            {
+                ScreenReference refScreen = FontLineMappingReferences[key];
+                return new Point(refScreen.X, refScreen.Y);
+            }
+            
+            return new Point(screenx, screeny);  // No reference, use own screen
         }
 
+        // Set whether a screen references another screen
+        public void SetFontMappingReference(int screenx, int screeny, bool useReference, int refScreenX, int refScreenY)
+        {
+            if (FontLineMappingReferences == null)
+                FontLineMappingReferences = new Dictionary<string, ScreenReference>();
+            
+            string key = $"{screenx},{screeny}";
+            if (useReference)
+            {
+                FontLineMappingReferences[key] = new ScreenReference(refScreenX, refScreenY);
+            }
+            else
+            {
+                FontLineMappingReferences.Remove(key);
+            }
+        }
+
+        // Get whether a screen references another screen
+        public bool GetFontMappingReference(int screenx, int screeny, out int refScreenX, out int refScreenY)
+        {
+            refScreenX = screenx;
+            refScreenY = screeny;
+            
+            if (FontLineMappingReferences == null)
+                return false;
+            
+            string key = $"{screenx},{screeny}";
+            if (FontLineMappingReferences.ContainsKey(key))
+            {
+                ScreenReference refScreen = FontLineMappingReferences[key];
+                if (refScreen.X != screenx || refScreen.Y != screeny)
+                {
+                    refScreenX = refScreen.X;
+                    refScreenY = refScreen.Y;
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        // Legacy method for backward compatibility - defaults to screen 0,0
+        public byte GetFontForLine(int line)
+        {
+            return GetFontForLine(0, 0, line);
+        }
+
+        // Get font for a line, checking references
+        public byte GetFontForLine(int screenx, int screeny, int line)
+        {
+            // Check if this screen references another screen
+            Point actualScreen = GetReferencedScreen(screenx, screeny);
+            int actualScreenX = actualScreen.X;
+            int actualScreenY = actualScreen.Y;
+            
+            // Clamp to valid range
+            if (actualScreenX < 0) actualScreenX = 0;
+            if (actualScreenX >= MapSize.Width) actualScreenX = MapSize.Width - 1;
+            if (actualScreenY < 0) actualScreenY = 0;
+            if (actualScreenY >= MapSize.Height) actualScreenY = MapSize.Height - 1;
+            
+            // Get font from the actual screen (which may be the referenced one)
+            if (FontLineMappingPerScreen == null)
+                return 0;
+            
+            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * ScreenSize.Height;
+            int index = screenOffset + line;
+            if (index >= 0 && index < FontLineMappingPerScreen.Length)
+                return FontLineMappingPerScreen[index];
+            return 0;
+        }
+
+        // Legacy method for backward compatibility - defaults to screen 0,0
         public void SetFontForLine(int line, byte fontIndex)
         {
-            if (FontLineMapping == null)
-                FontLineMapping = new byte[ScreenSize.Height];
-            if (line >= 0 && line < FontLineMapping.Length && fontIndex < 8)
-                FontLineMapping[line] = fontIndex;
+            SetFontForLine(0, 0, line, fontIndex);
+        }
+
+        // Set font for a line, checking references
+        // Note: When a screen references another, setting will modify the referenced screen's data
+        public void SetFontForLine(int screenx, int screeny, int line, byte fontIndex)
+        {
+            // Check if this screen references another screen
+            Point actualScreen = GetReferencedScreen(screenx, screeny);
+            int actualScreenX = actualScreen.X;
+            int actualScreenY = actualScreen.Y;
+            
+            // Clamp to valid range
+            if (actualScreenX < 0) actualScreenX = 0;
+            if (actualScreenX >= MapSize.Width) actualScreenX = MapSize.Width - 1;
+            if (actualScreenY < 0) actualScreenY = 0;
+            if (actualScreenY >= MapSize.Height) actualScreenY = MapSize.Height - 1;
+            
+            // Set font in the actual screen (which may be the referenced one)
+            if (FontLineMappingPerScreen == null)
+                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+            
+            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * ScreenSize.Height;
+            int index = screenOffset + line;
+            if (index >= 0 && index < FontLineMappingPerScreen.Length && fontIndex < 8)
+                FontLineMappingPerScreen[index] = fontIndex;
         }
 
         public void SetFontForAllLines(byte fontIndex)
         {
-            if (FontLineMapping == null)
-                FontLineMapping = new byte[ScreenSize.Height];
-            for (int i = 0; i < FontLineMapping.Length; i++)
-                FontLineMapping[i] = fontIndex;
+            // Set for all screens
+            if (FontLineMappingPerScreen == null)
+                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+            for (int i = 0; i < FontLineMappingPerScreen.Length; i++)
+                FontLineMappingPerScreen[i] = fontIndex;
+        }
+
+        // Set font for all lines in a specific screen (respects references)
+        public void SetFontForAllLinesInScreen(int screenx, int screeny, byte fontIndex)
+        {
+            // Check if this screen references another screen
+            Point actualScreen = GetReferencedScreen(screenx, screeny);
+            int actualScreenX = actualScreen.X;
+            int actualScreenY = actualScreen.Y;
+            
+            // Clamp to valid range
+            if (actualScreenX < 0) actualScreenX = 0;
+            if (actualScreenX >= MapSize.Width) actualScreenX = MapSize.Width - 1;
+            if (actualScreenY < 0) actualScreenY = 0;
+            if (actualScreenY >= MapSize.Height) actualScreenY = MapSize.Height - 1;
+            
+            if (FontLineMappingPerScreen == null)
+                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+            
+            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * ScreenSize.Height;
+            for (int i = 0; i < ScreenSize.Height; i++)
+            {
+                int index = screenOffset + i;
+                if (index >= 0 && index < FontLineMappingPerScreen.Length)
+                    FontLineMappingPerScreen[index] = fontIndex;
+            }
         }
 
         public int GetAvailableFontSlot()

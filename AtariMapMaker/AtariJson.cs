@@ -27,7 +27,8 @@ namespace AtariMapMaker
             // New optional fields (v2.0+)
             public int[][] FontDataArray { get; set; }  // Multiple fonts
             public string[] FontFileNames { get; set; }  // Font file names
-            public int[] FontLineMapping { get; set; }  // Font index per line
+            public int[] FontLineMappingPerScreen { get; set; }  // Font index per line (per-screen: MapSize.Width * MapSize.Height * ScreenSize.Height)
+            public Dictionary<string, ScreenReference> FontLineMappingReferences { get; set; }  // Key: "x,y" -> Value: referenced screen coordinates
             public bool? FontTemplateLocked { get; set; }  // Lock/unlock font templates
             public string FontTemplatePattern { get; set; }  // Template pattern name
             public bool? MultiFontEnabled { get; set; }  // Enable/disable multifont features
@@ -166,11 +167,10 @@ namespace AtariMapMaker
                     ParsedData.FontDataArray = new int[][] { ParsedData.FontData };
                 }
 
-                // Initialize FontLineMapping if null
-                if (ParsedData.FontLineMapping == null)
+                // Initialize FontLineMappingReferences if null (for old files)
+                if (ParsedData.FontLineMappingReferences == null)
                 {
-                    // We need screen height to initialize, but we don't have it yet
-                    // This will be handled in LoadMap when we create the AtariMap
+                    ParsedData.FontLineMappingReferences = new Dictionary<string, ScreenReference>();
                 }
 
                 // Initialize other collections if null
@@ -197,7 +197,8 @@ namespace AtariMapMaker
         {
             // Determine version based on whether new features are used
             bool hasV2Features = atrmap.FontDataArray != null || 
-                                 atrmap.FontLineMapping != null ||
+                                 atrmap.FontLineMappingPerScreen != null ||
+                                 (atrmap.FontLineMappingReferences != null && atrmap.FontLineMappingReferences.Count > 0) ||
                                  !string.IsNullOrEmpty(atrmap.MapDescription) ||
                                  (atrmap.ScreenDescriptions != null && atrmap.ScreenDescriptions.Count > 0) ||
                                  (atrmap.ScreenMetadataDict != null && atrmap.ScreenMetadataDict.Count > 0) ||

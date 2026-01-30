@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -45,10 +46,34 @@ namespace AtariMapMaker
                 submap.SetFontData(parsedData.FontData.Select(i => (byte)i).ToArray(), 0);
             }
 
-            // Load font line mapping
-            if (parsedData.FontLineMapping != null)
+            // Load font line mapping (per-screen)
+            if (parsedData.FontLineMappingPerScreen != null)
             {
-                submap.FontLineMapping = parsedData.FontLineMapping.Select(i => (byte)i).ToArray();
+                submap.FontLineMappingPerScreen = parsedData.FontLineMappingPerScreen.Select(i => (byte)i).ToArray();
+            }
+            else
+            {
+                // Initialize to all font 0
+                submap.SetFontForAllLines(0);
+            }
+            
+            // Load font mapping references
+            if (parsedData.FontLineMappingReferences != null)
+            {
+                submap.FontLineMappingReferences = parsedData.FontLineMappingReferences;
+            }
+            else
+            {
+                // Initialize all screens to reference screen 0,0 by default
+                submap.FontLineMappingReferences = new Dictionary<string, ScreenReference>();
+                for (int sy = 0; sy < submap.MapSize.Height; sy++)
+                {
+                    for (int sx = 0; sx < submap.MapSize.Width; sx++)
+                    {
+                        string key = $"{sx},{sy}";
+                        submap.FontLineMappingReferences[key] = new ScreenReference(0, 0);
+                    }
+                }
             }
 
             // Load DLI data
