@@ -26,7 +26,8 @@ namespace AtariMapMaker
         {
             this.screenMap = screenMap;
             this.pictureBoxScreen = pictureBoxScreen;
-            int lines = screenMap.ScreenSize.Height;
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int lines = GetScreenCharHeight(screenMap);
             clipBoard = new byte[lines, 6];
             dliMap = new AtariMap(new Size(1, 1), new Size(6, lines));
             byte[] dliFormFontData = new byte[1024];
@@ -107,17 +108,34 @@ namespace AtariMapMaker
             fontData[offset + 7] = r7;
         }
 
+        /// <summary>
+        /// Get screen height in character lines (for tilemaps, converts from tiles to characters)
+        /// </summary>
+        private int GetScreenCharHeight(AtariMap map)
+        {
+            if (map.IsTilemap && map.TilemapInfo != null)
+            {
+                return map.ScreenSize.Height * map.TilemapInfo.TileHeight;
+            }
+            return map.ScreenSize.Height;
+        }
+
         public AtariMap DliMap { get { return dliMap; } }
         public void Show(int screenNumber)
         {
             this.screenNumber = screenNumber;
             int screenX = screenNumber % screenMap.MapSize.Width;
             int screenY = screenNumber / screenMap.MapSize.Width;
+            int screenCharHeight = GetScreenCharHeight(screenMap);
+            
+            // Copy colors from screenMap to dliMap (this was done in UpdateAndShowDliForm, but we need to ensure it's done here too)
+            // The CopyDliColorsFullScreen is called in UpdateAndShowDliForm before Show(), so dliMap should already have the colors
+            
             // Update font numbers in column 5 from FontLineMapping (only if MultiFont is enabled)
             bool showFontColumn = screenMap.MultiFontEnabled;
             if (showFontColumn)
             {
-                for (int line = 0; line < screenMap.ScreenSize.Height; line++)
+                for (int line = 0; line < screenCharHeight; line++)
                 {
                     byte fontIndex = screenMap.GetFontForLine(screenX, screenY, line);
                     int charOffset = 5 + line * dliMap.Stride;
@@ -127,7 +145,7 @@ namespace AtariMapMaker
             else if (!showFontColumn)
             {
                 // Hide font column by setting it to space or background
-                for (int line = 0; line < screenMap.ScreenSize.Height; line++)
+                for (int line = 0; line < screenCharHeight; line++)
                 {
                     int charOffset = 5 + line * dliMap.Stride;
                     dliMap.Data[charOffset] = 0x20; // Space character
@@ -152,8 +170,9 @@ namespace AtariMapMaker
         {
             bool showFontColumn = screenMap.MultiFontEnabled;
             int numColumns = showFontColumn ? 6 : 5;
+            int screenCharHeight = GetScreenCharHeight(screenMap);
             pictureBoxDli.Width = numColumns * Globals.CharSize;
-            pictureBoxDli.Height = AtariPictureTools.windows[window].map.ScreenSize.Height * Globals.CharSize;
+            pictureBoxDli.Height = screenCharHeight * Globals.CharSize;
             pictureBoxDli.Image = new Bitmap(pictureBoxDli.Width, pictureBoxDli.Height);
             this.Width = numColumns * Globals.CharSize + 2; // +2 for border
             AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxDli.Image, dliMap);
@@ -174,7 +193,8 @@ namespace AtariMapMaker
             // Handle font number column (column 5) - only if MultiFont is enabled
             if (xchar == 5 && screenMap.MultiFontEnabled)
             {
-                if (ychar < 0 || ychar >= screenMap.ScreenSize.Height)
+                int screenCharHeight = GetScreenCharHeight(screenMap);
+                if (ychar < 0 || ychar >= screenCharHeight)
                     return;
 
                 int screenX = screenNumber % screenMap.MapSize.Width;
@@ -292,7 +312,8 @@ namespace AtariMapMaker
         {
             fillDown5ToolStripMenuItem.DropDownItems.Clear();
             fillDown1ToolStripMenuItem.DropDownItems.Clear();
-            for (int i = 1; i < dliMap.ScreenSize.Height - clickedChar.Y; i++)
+            int screenCharHeight = GetScreenCharHeight(screenMap);
+            for (int i = 1; i < screenCharHeight - clickedChar.Y; i++)
             {
                 ToolStripItem tsi = fillDown5ToolStripMenuItem.DropDownItems.Add(i.ToString());
                 tsi.Click += Number_Click;
@@ -374,7 +395,8 @@ namespace AtariMapMaker
                 
                 // Fill down font numbers
                 byte fontIndex = screenMap.GetFontForLine(screenX, screenY, clickedChar.Y);
-                for (int j = 0; j < lines && (startingLine + j) < screenMap.ScreenSize.Height; j++)
+                int screenCharHeight = GetScreenCharHeight(screenMap);
+                for (int j = 0; j < lines && (startingLine + j) < screenCharHeight; j++)
                 {
                     screenMap.SetFontForLine(screenX, screenY, startingLine + j, fontIndex);
                     int charOffset = 5 + (startingLine + j) * dliMap.Stride;
@@ -440,7 +462,8 @@ namespace AtariMapMaker
         {
             int screenX = screenNumber % screenMap.MapSize.Width;
             int screenY = screenNumber / screenMap.MapSize.Width;
-            for (int i = 0; i < dliMap.ScreenSize.Height; i++)
+            int screenCharHeight = GetScreenCharHeight(screenMap);
+            for (int i = 0; i < screenCharHeight; i++)
             {
                 byte[] color5 = dliMap.GetDliColor5(i * 6);
                 for (int j = 0; j < 5; j++)
@@ -493,7 +516,8 @@ namespace AtariMapMaker
         private void PasteAllFromClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
             byte[] color5 = new byte[5];
-            for (int j = 0; j < dliMap.ScreenSize.Height; j++)
+            int screenCharHeight = GetScreenCharHeight(screenMap);
+            for (int j = 0; j < screenCharHeight; j++)
             {
                 for (int i = 0; i < 5; i++)
                     color5[i] = clipBoard[j, i];
@@ -518,7 +542,8 @@ namespace AtariMapMaker
         {
             int screenX = screenNumber % screenMap.MapSize.Width;
             int screenY = screenNumber / screenMap.MapSize.Width;
-            for (int i = 0; i < dliMap.ScreenSize.Height; i++)
+            int screenCharHeight = GetScreenCharHeight(screenMap);
+            for (int i = 0; i < screenCharHeight; i++)
             {
                 clipBoard[i, 5] = screenMap.GetFontForLine(screenX, screenY, i);
             }
@@ -539,7 +564,8 @@ namespace AtariMapMaker
                 return;
             }
             
-            for (int j = 0; j < dliMap.ScreenSize.Height; j++)
+            int screenCharHeight = GetScreenCharHeight(screenMap);
+            for (int j = 0; j < screenCharHeight; j++)
             {
                 if (screenMap.MultiFontEnabled)
                 {
@@ -573,7 +599,8 @@ namespace AtariMapMaker
             
             // Fill down font numbers
             byte fontIndex = screenMap.GetFontForLine(screenX, screenY, clickedChar.Y);
-            for (int j = 0; j < lines && (startingLine + j) < screenMap.ScreenSize.Height; j++)
+            int screenCharHeight = GetScreenCharHeight(screenMap);
+            for (int j = 0; j < lines && (startingLine + j) < screenCharHeight; j++)
             {
                 screenMap.SetFontForLine(screenX, screenY, startingLine + j, fontIndex);
                 int charOffset = 5 + (startingLine + j) * dliMap.Stride;

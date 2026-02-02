@@ -47,7 +47,6 @@ namespace AtariMapMaker
             unsafe
             {
                 byte* row = (byte*)bmd.Scan0;
-                int adrOffset = tilemap.Offset;
 
                 for (int y = 0; y < height; y++)
                 {
@@ -62,9 +61,11 @@ namespace AtariMapMaker
                         int pixelXInTile = absoluteX % tileWidth;
 
                         // Get tile index from tilemap data
+                        // Data array is indexed by tile coordinates, not character coordinates
                         int tileIndex = 0;
-                        if (adrOffset + x < tilemap.Data.Length)
-                            tileIndex = tilemap.Data[adrOffset + x];
+                        int tileDataIndex = tileY * tilemap.Stride + tileX;
+                        if (tileDataIndex >= 0 && tileDataIndex < tilemap.Data.Length)
+                            tileIndex = tilemap.Data[tileDataIndex];
 
                         // Get corresponding screen from submap
                         int submapScreenIndex = GetSubmapScreenIndex(tilemap, tileX, tileY, tileIndex);
@@ -84,8 +85,6 @@ namespace AtariMapMaker
                             RenderCharFromSubmap(submap, charValue, pixelXInTile, pixelYInTile, row, x, y, bmd.Stride);
                         }
                     }
-
-                    adrOffset += tilemap.Stride;
                 }
 
                 // Fill off-map area

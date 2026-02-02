@@ -301,6 +301,7 @@ namespace AtariMapMaker
                 if (File.Exists(textBoxSubmapPath.Text))
                 {
                     map.SubmapPath = textBoxSubmapPath.Text;
+                    map.ClearSubmapCache(); // Clear cache when submap path changes
                 }
                 else
                 {

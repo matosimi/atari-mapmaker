@@ -253,7 +253,20 @@ namespace AtariMapMaker
 
             AtariFont defaultFont = fonts[fontType];
 
-            byte[] data = myMap.Data;
+            // For tilemaps, use CharData array (expanded character data) instead of Data array (tile indexes)
+            byte[] data;
+            if (myMap.IsTilemap && myMap.CharData != null && myMap.CharData.Length > 0)
+            {
+                data = myMap.CharData;
+                // For CharData, stride is in character units: MapSize.Width * ScreenSize.Width * TileWidth
+                // But we need to use the character stride, not tile stride
+                // Offset is already in character coordinates for CharData
+            }
+            else
+            {
+                data = myMap.Data;
+            }
+            
             int adrOffset = myMap.Offset;
             if (adrOffset < 0)
             {
@@ -264,13 +277,24 @@ namespace AtariMapMaker
             int height = outBmp.Height / 8;
             int widthFull = width;
             int heightFull = height;
-            if (myMap.OffsetX + width > myMap.Stride)
+            
+            // For tilemaps using CharData, stride is in character units
+            int charStride = myMap.CharStride;
+            int charHeight = myMap.MapSize.Height * myMap.ScreenSize.Height;
+            
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
             {
-                width = myMap.Stride - myMap.OffsetX;
+                // For tilemaps, ScreenSize is in tiles, so multiply by tile dimensions
+                charHeight = myMap.MapSize.Height * myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
             }
-            if (myMap.OffsetY + height > myMap.MapSize.Height * myMap.ScreenSize.Height)
+            
+            if (myMap.OffsetX + width > charStride)
             {
-                height = myMap.ScreenSize.Height * myMap.MapSize.Height - myMap.OffsetY;
+                width = charStride - myMap.OffsetX;
+            }
+            if (myMap.OffsetY + height > charHeight)
+            {
+                height = charHeight - myMap.OffsetY;
                 height = Math.Max(height, 0);
             }
 
@@ -283,18 +307,32 @@ namespace AtariMapMaker
                 AtariFont currentFont = defaultFont;
                 BitmapData fntd = currentFont.bitmap.LockBits(new Rectangle(0, 0, currentFont.bitmap.Width, currentFont.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
                 
+                // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+                int screenCharHeight = myMap.ScreenSize.Height;
+                if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.TileHeight > 0)
+                {
+                    screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                }
+                
                 for (int y = 0; y < height; y++)
                 {
                     // Determine which font to use for this line
                     int absoluteLine = myMap.OffsetY + y;
-                    int lineInScreen = absoluteLine % myMap.ScreenSize.Height;
-                    int screenY = absoluteLine / myMap.ScreenSize.Height;
+                    int lineInScreen = absoluteLine % screenCharHeight;
+                    int screenY = absoluteLine / screenCharHeight;
                     // Clamp screen Y to valid range
                     if (screenY < 0) screenY = 0;
                     if (screenY >= myMap.MapSize.Height) screenY = myMap.MapSize.Height - 1;
                     
                     // Track current screen X to detect when we cross screen boundaries
                     int lastScreenX = -1;
+                    
+                    // For tilemaps, ScreenSize.Width is in tiles, so convert to character lines
+                    int screenCharWidth = myMap.ScreenSize.Width;
+                    if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.TileWidth > 0)
+                    {
+                        screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                    }
                     
                     for (int scln = 0; scln < 8; scln++)
                     {
@@ -303,7 +341,7 @@ namespace AtariMapMaker
                         {
                             // Calculate which screen this character belongs to
                             int absoluteX = myMap.OffsetX + x;
-                            int screenX = absoluteX / myMap.ScreenSize.Width;
+                            int screenX = absoluteX / screenCharWidth;
                             // Clamp screen X to valid range
                             if (screenX < 0) screenX = 0;
                             if (screenX >= myMap.MapSize.Width) screenX = myMap.MapSize.Width - 1;
@@ -366,7 +404,8 @@ namespace AtariMapMaker
 
                         row += bmd.Stride;
                     }
-                    adrOffset += myMap.Stride;
+                    // For tilemaps with CharData, use character stride; otherwise use tile stride
+                    adrOffset += charStride;
                 }
                 
                 currentFont.bitmap.UnlockBits(fntd);

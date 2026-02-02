@@ -458,19 +458,29 @@ namespace AtariMapMaker
         {
             int xx = myMap.OffsetX + e.X / Globals.CharSize;
             int yy = myMap.OffsetY + e.Y / Globals.CharSize;
-            int scrx = xx / myMap.ScreenSize.Width;
-            int scry = yy / myMap.ScreenSize.Height;
-            int posx = xx % myMap.ScreenSize.Width;
-            int posy = yy % myMap.ScreenSize.Height;
+            
+            // For tilemaps, ScreenSize is in tiles, so convert to character units
+            int screenCharWidth = myMap.ScreenSize.Width;
+            int screenCharHeight = myMap.ScreenSize.Height;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+            }
+            
+            int scrx = xx / screenCharWidth;
+            int scry = yy / screenCharHeight;
+            int posx = xx % screenCharWidth;
+            int posy = yy % screenCharHeight;
             
             // If screen is locked, only update if mouse is within the locked screen
             if (isScreenLocked)
             {
                 // Check if mouse is within the locked screen boundaries
-                int lockedScreenStartX = lockedScreen.X * myMap.ScreenSize.Width;
-                int lockedScreenEndX = (lockedScreen.X + 1) * myMap.ScreenSize.Width;
-                int lockedScreenStartY = lockedScreen.Y * myMap.ScreenSize.Height;
-                int lockedScreenEndY = (lockedScreen.Y + 1) * myMap.ScreenSize.Height;
+                int lockedScreenStartX = lockedScreen.X * screenCharWidth;
+                int lockedScreenEndX = (lockedScreen.X + 1) * screenCharWidth;
+                int lockedScreenStartY = lockedScreen.Y * screenCharHeight;
+                int lockedScreenEndY = (lockedScreen.Y + 1) * screenCharHeight;
                 
                 if (xx >= lockedScreenStartX && xx < lockedScreenEndX && 
                     yy >= lockedScreenStartY && yy < lockedScreenEndY)
@@ -578,11 +588,29 @@ namespace AtariMapMaker
             }
             
 
-            if (xx < myMap.Stride && yy < myMap.MapSize.Height * myMap.ScreenSize.Height)
+            // For tilemaps, use CharStride and calculate max height in characters
+            int maxCharStride = myMap.Stride;
+            int maxCharHeight = myMap.MapSize.Height * myMap.ScreenSize.Height;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                maxCharStride = myMap.CharStride;
+                maxCharHeight = myMap.MapSize.Height * myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+            }
+            
+            if (xx < maxCharStride && yy < maxCharHeight)
             {
                 labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
                 labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
-                byte charVal = myMap.Data[xx + yy * myMap.Stride];
+                // For tilemaps, use CharData; for normal maps, use Data
+                byte charVal;
+                if (myMap.IsTilemap && myMap.CharData != null)
+                {
+                    charVal = myMap.CharData[xx + yy * myMap.CharStride];
+                }
+                else
+                {
+                    charVal = myMap.Data[xx + yy * myMap.Stride];
+                }
                 labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
                 //calculate the occurence
                 (int idx, int amnt) = myMap.CharOccurence(new Point(currentScreen.X,currentScreen.Y), posx, posy, charVal);
@@ -634,10 +662,19 @@ namespace AtariMapMaker
 
         private Point DliFormOrigin(int scrx, int scry)
         {
-            int xmin = (scrx + 1) * myMap.ScreenSize.Width - 1;
-            int xmax = (scrx + 1) * myMap.ScreenSize.Width + 4;
-            int ymin = scry * myMap.ScreenSize.Height;
-            int ymax = (scry + 1) * myMap.ScreenSize.Height;
+            // For tilemaps, ScreenSize is in tiles, so convert to character units
+            int screenCharWidth = myMap.ScreenSize.Width;
+            int screenCharHeight = myMap.ScreenSize.Height;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+            }
+            
+            int xmin = (scrx + 1) * screenCharWidth - 1;
+            int xmax = (scrx + 1) * screenCharWidth + 4;
+            int ymin = scry * screenCharHeight;
+            int ymax = (scry + 1) * screenCharHeight;
 
             Rectangle visibleArea = new Rectangle(myMap.OffsetX, myMap.OffsetY, Globals.editorWindowSizeInChars.Width, Globals.editorWindowSizeInChars.Height);
             if (visibleArea.Contains(new Rectangle(xmin, ymin, xmax - xmin, ymax - ymin)))
@@ -654,28 +691,63 @@ namespace AtariMapMaker
 
                 if (AtariClipboard.IsValid)
                 {
-                    if (myMap.OffsetX + (e.X / Globals.CharSize) + AtariClipboard.ClipboardWidth > myMap.Stride)
-                    { }
+                    AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
+                    int charX = e.X / Globals.CharSize;
+                    int charY = e.Y / Globals.CharSize;
+                    
+                    // If tilemap is enabled, snap to tile grid
+                    if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                    {
+                        int tileWidth = myMap.TilemapInfo.TileWidth;
+                        int tileHeight = myMap.TilemapInfo.TileHeight;
+                        charX = (charX / tileWidth) * tileWidth;
+                        charY = (charY / tileHeight) * tileHeight;
+                        
+                        // For tilemaps, check if clipboard contains tile indexes
+                        if (AtariClipboard.IsTileIndexes)
+                        {
+                            // Convert character coordinates to tile coordinates
+                            // charX and charY are relative to the visible area, need to add offset
+                            int absoluteCharX = myMap.OffsetX + charX;
+                            int absoluteCharY = myMap.OffsetY + charY;
+                            int tileX = absoluteCharX / tileWidth;
+                            int tileY = absoluteCharY / tileHeight;
+                            
+                            // Calculate character offset for Paste
+                            // For tilemaps, use CharStride (character stride)
+                            int charStride = myMap.CharStride;
+                            int charOffset = absoluteCharX + charStride * absoluteCharY;
+                            AtariClipboard.Paste(myMap.Offset + charOffset);
+                        }
+                        else
+                        {
+                            // Paste characters (normal mode, but snapped to tile grid)
+                            // For tilemaps, we need to use character stride, not tile stride
+                            int charStride = myMap.CharStride;
+                            if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= charStride)
+                            {
+                                // Need to add the offset from the map
+                                int absoluteCharX = myMap.OffsetX + charX;
+                                int absoluteCharY = myMap.OffsetY + charY;
+                                int absoluteCharOffset = absoluteCharX + charStride * absoluteCharY;
+                                AtariClipboard.Paste(myMap.Offset + absoluteCharOffset);
+                            }
+                        }
+                    }
                     else
                     {
-                        AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
-                        int charX = e.X / Globals.CharSize;
-                        int charY = e.Y / Globals.CharSize;
-                        
-                        // If tilemap is enabled, snap to tile grid
-                        if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                        // Normal map - paste characters
+                        if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= myMap.Stride)
                         {
-                            int tileWidth = myMap.TilemapInfo.TileWidth;
-                            int tileHeight = myMap.TilemapInfo.TileHeight;
-                            charX = (charX / tileWidth) * tileWidth;
-                            charY = (charY / tileHeight) * tileHeight;
+                            int absoluteCharX = myMap.OffsetX + charX;
+                            int absoluteCharY = myMap.OffsetY + charY;
+                            int addoffset = absoluteCharX + myMap.Stride * absoluteCharY;
+                            AtariClipboard.Paste(myMap.Offset + addoffset);
                         }
-                        
-                        int addoffset = charX + myMap.Stride * charY;
-                        AtariClipboard.Paste(myMap.Offset + addoffset);
-                        //RedrawEditorWindow();
-                        AtariPictureTools.Redraw(Globals.WindowType.Editor);
                     }
+                    
+                    //RedrawEditorWindow();
+                    AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 }
                 else
                 {
@@ -701,8 +773,18 @@ namespace AtariMapMaker
                     // Toggle lock mode
                     int xx = myMap.OffsetX + e.X / Globals.CharSize;
                     int yy = myMap.OffsetY + e.Y / Globals.CharSize;
-                    int scrx = xx / myMap.ScreenSize.Width;
-                    int scry = yy / myMap.ScreenSize.Height;
+                    
+                    // For tilemaps, ScreenSize is in tiles, so convert to character units
+                    int screenCharWidth = myMap.ScreenSize.Width;
+                    int screenCharHeight = myMap.ScreenSize.Height;
+                    if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                    {
+                        screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                        screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                    }
+                    
+                    int scrx = xx / screenCharWidth;
+                    int scry = yy / screenCharHeight;
                     
                     if (isScreenLocked && lockedScreen.X == scrx && lockedScreen.Y == scry)
                     {
@@ -734,8 +816,18 @@ namespace AtariMapMaker
                     {
                         int xx = myMap.OffsetX + e.X / Globals.CharSize;
                         int yy = myMap.OffsetY + e.Y / Globals.CharSize;
-                        int scrx = xx / myMap.ScreenSize.Width;
-                        int scry = yy / myMap.ScreenSize.Height;
+                        
+                        // For tilemaps, ScreenSize is in tiles, so convert to character units
+                        int screenCharWidth = myMap.ScreenSize.Width;
+                        int screenCharHeight = myMap.ScreenSize.Height;
+                        if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                        {
+                            screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                            screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                        }
+                        
+                        int scrx = xx / screenCharWidth;
+                        int scry = yy / screenCharHeight;
                         UpdateAndShowDliForm(scrx, scry);
                     }
                     else
@@ -1017,7 +1109,10 @@ namespace AtariMapMaker
             if (AtariJson.ParsedData.ScreenMetadataDict != null)
                 myMap.ScreenMetadata = AtariJson.ParsedData.ScreenMetadataDict;
             if (!string.IsNullOrEmpty(AtariJson.ParsedData.SubmapPath))
+            {
                 myMap.SubmapPath = AtariJson.ParsedData.SubmapPath;
+                myMap.ClearSubmapCache(); // Clear cache when loading from file
+            }
             if (AtariJson.ParsedData.IsTilemap.HasValue)
                 myMap.IsTilemap = AtariJson.ParsedData.IsTilemap.Value;
             if (AtariJson.ParsedData.TilemapInfo != null)
@@ -1789,16 +1884,28 @@ namespace AtariMapMaker
                         int tileWidth = tempSubmap.ScreenSize.Width;
                         int tileHeight = tempSubmap.ScreenSize.Height;
                         
+                        // Copy Color5 from submap (AtariJson.ParsedData contains the parsed submap data)
+                        // Note: SubmapManager.LoadSubmap calls AtariJson.ParseAtrmap, so ParsedData is available
+                        if (AtariJson.ParsedData.Color5 != null && AtariJson.ParsedData.Color5.Length > 0)
+                        {
+                            AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
+                        }
+                        
                         // For tilemaps:
                         // - MapSize: number of screens (e.g., 2x2 screens)
-                        // - ScreenSize: size of each screen in TILES (e.g., 10x10 tiles per screen)
+                        // - ScreenSize: size of each screen in TILES (e.g., 5x5 tiles per screen)
                         // - Tile dimensions come from submap (e.g., 2x2 chars per tile)
-                        // - Data array stores tile indexes: (MapSize.Width * ScreenSize.Width) x (MapSize.Height * ScreenSize.Height)
+                        // - Data array stores tile indexes: (MapSize.Width * ScreenSize.Width) x (MapSize.Height * ScreenSize.Height) tiles
+                        // - Total map size: 2x2 screens * 5x5 tiles = 10x10 tiles = 20x20 chars (for 2x2 tiles)
                         
                         // Create map with screen size in TILES (not chars)
+                        // MapSize: 2x2 screens, ScreenSize: 5x5 tiles per screen
+                        // So Data array will be: (2 * 5) x (2 * 5) = 10x10 tiles
                         myMap = new AtariMap(mapSize, screenSize);
                         myMap.IsTilemap = true;
                         myMap.SubmapPath = submapPath;
+                        // Clear submap cache when path changes
+                        myMap.ClearSubmapCache();
                         
                         // Initialize tilemap info
                         myMap.TilemapInfo = new TilemapData();
@@ -1806,6 +1913,18 @@ namespace AtariMapMaker
                         myMap.TilemapInfo.TileHeight = tileHeight;
                         myMap.TilemapInfo.NumberingPattern = "row-major";
                         myMap.TilemapInfo.Use16BitIndexes = false; // Default to 8-bit, can be changed later
+                        
+                        // Initialize CharData array for fast rendering
+                        // CharData size: (MapSize.Width * ScreenSize.Width * TileWidth) x (MapSize.Height * ScreenSize.Height * TileHeight)
+                        // Example: (2 * 5 * 2) x (2 * 5 * 2) = 20x20 chars
+                        myMap.InitializeCharData();
+                        
+                        // Reinitialize ColorData with correct size for tilemaps (character lines, not tile lines)
+                        myMap.InitDliColorFullMap();
+                        
+                        // Reinitialize FontLineMappingPerScreen with correct size for tilemaps (character lines, not tile lines)
+                        int screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                        myMap.FontLineMappingPerScreen = new byte[myMap.MapSize.Width * myMap.MapSize.Height * screenCharHeight];
                         
                         // For tilemaps, automatically enable multi-font (fonts come from tiles)
                         myMap.MultiFontEnabled = true;

@@ -67,30 +67,61 @@ namespace AtariMapMaker
  
         public static void SelectionStart(Point firstCorner, Globals.WindowType window)
         {
-            mouseSelection.X = firstCorner.X - (firstCorner.X % Globals.CharSize);
-            mouseSelection.Y = firstCorner.Y - (firstCorner.Y % Globals.CharSize);
-            mouseSelection.Width = Globals.CharSize;
-            mouseSelection.Height = Globals.CharSize;
+            AtariMap myMap = windows[window].map;
+            
+            // For tilemaps, snap to tile boundaries; otherwise snap to char boundaries
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                int tileWidth = myMap.TilemapInfo.TileWidth;
+                int tileHeight = myMap.TilemapInfo.TileHeight;
+                int tilePixelWidth = tileWidth * Globals.CharSize;
+                int tilePixelHeight = tileHeight * Globals.CharSize;
+                
+                mouseSelection.X = (firstCorner.X / tilePixelWidth) * tilePixelWidth;
+                mouseSelection.Y = (firstCorner.Y / tilePixelHeight) * tilePixelHeight;
+                mouseSelection.Width = tilePixelWidth;
+                mouseSelection.Height = tilePixelHeight;
+            }
+            else
+            {
+                mouseSelection.X = firstCorner.X - (firstCorner.X % Globals.CharSize);
+                mouseSelection.Y = firstCorner.Y - (firstCorner.Y % Globals.CharSize);
+                mouseSelection.Width = Globals.CharSize;
+                mouseSelection.Height = Globals.CharSize;
+            }
             DrawSelection(window);
         }
 
         public static void SelectionChange(Point newCorner, Globals.WindowType window)
         {
-            int mx = newCorner.X - (newCorner.X % Globals.CharSize);
-            int my = newCorner.Y - (newCorner.Y % Globals.CharSize);
+            AtariMap myMap = windows[window].map;
+            int alignSizeX = Globals.CharSize;
+            int alignSizeY = Globals.CharSize;
+            
+            // For tilemaps, snap to tile boundaries
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                int tileWidth = myMap.TilemapInfo.TileWidth;
+                int tileHeight = myMap.TilemapInfo.TileHeight;
+                alignSizeX = tileWidth * Globals.CharSize;
+                alignSizeY = tileHeight * Globals.CharSize;
+            }
+            
+            int mx = (newCorner.X / alignSizeX) * alignSizeX;
+            int my = (newCorner.Y / alignSizeY) * alignSizeY;
+            
             if (Math.Abs(mx - mouseSelection.X) != mouseSelection.Width ||
                 Math.Abs(my - mouseSelection.Y) != mouseSelection.Height)
             {
-
-                mouseSelection.Width = Globals.CharSize + mx - mouseSelection.X;
-                mouseSelection.Height = Globals.CharSize + my - mouseSelection.Y;
+                mouseSelection.Width = alignSizeX + mx - mouseSelection.X;
+                mouseSelection.Height = alignSizeY + my - mouseSelection.Y;
                 if (mx - mouseSelection.X < 0)
                 {
-                    mouseSelection.Width -= Globals.CharSize;
+                    mouseSelection.Width -= alignSizeX;
                 }
                 if (my - mouseSelection.Y < 0)
                 {
-                    mouseSelection.Height -= Globals.CharSize;
+                    mouseSelection.Height -= alignSizeY;
                 }
 
                 //selection out of picturebox bounds - do not copy, do not draw selection
@@ -104,10 +135,19 @@ namespace AtariMapMaker
                 }
 
                 //selection out of data bounds - do not copy, do not draw selection
-                if (mouseSelection.X / Globals.CharSize + windows[window].map.OffsetX > windows[window].map.Stride ||
-                    mouseSelection.Y / Globals.CharSize + windows[window].map.OffsetY > windows[window].map.MapSize.Height * windows[window].map.ScreenSize.Height ||
-                    (mouseSelection.X + mouseSelection.Width) / Globals.CharSize + windows[window].map.OffsetX > windows[window].map.Stride ||
-                    (mouseSelection.Y + mouseSelection.Height)/ Globals.CharSize + windows[window].map.OffsetY > windows[window].map.MapSize.Height * windows[window].map.ScreenSize.Height)
+                AtariMap map = windows[window].map;
+                int maxCharHeight = map.MapSize.Height * map.ScreenSize.Height;
+                int maxCharStride = map.Stride;
+                if (map.IsTilemap && map.TilemapInfo != null)
+                {
+                    maxCharHeight = map.MapSize.Height * map.ScreenSize.Height * map.TilemapInfo.TileHeight;
+                    maxCharStride = map.CharStride;
+                }
+                
+                if (mouseSelection.X / Globals.CharSize + map.OffsetX > maxCharStride ||
+                    mouseSelection.Y / Globals.CharSize + map.OffsetY > maxCharHeight ||
+                    (mouseSelection.X + mouseSelection.Width) / Globals.CharSize + map.OffsetX > maxCharStride ||
+                    (mouseSelection.Y + mouseSelection.Height)/ Globals.CharSize + map.OffsetY > maxCharHeight)
                 {
                     mouseSelection.Width = 0;
                     mouseSelection.Height = 0;
@@ -205,18 +245,27 @@ namespace AtariMapMaker
             //separatory screenov
             if (drawScreenBorders)
             {
-                for (int x = 0; x <= (mapImage.Size.Width / 8) / myMap.ScreenSize.Width; x++)
-                    gr.DrawLine(screenSeparatorPen, (-myMap.OffsetX % myMap.ScreenSize.Width + (x + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
-                                                 0, (-myMap.OffsetX % myMap.ScreenSize.Width + (x + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
+                // For tilemaps, ScreenSize is in tiles, so convert to character units
+                int screenCharWidth = myMap.ScreenSize.Width;
+                int screenCharHeight = myMap.ScreenSize.Height;
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                    screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                }
+                
+                for (int x = 0; x <= (mapImage.Size.Width / 8) / screenCharWidth; x++)
+                    gr.DrawLine(screenSeparatorPen, (-myMap.OffsetX % screenCharWidth + (x + 1) * screenCharWidth) * Globals.CharSize,
+                                                 0, (-myMap.OffsetX % screenCharWidth + (x + 1) * screenCharWidth) * Globals.CharSize,
                                                  mapImage.Size.Height * Globals.Zoom);
-                dliFormOrigin = new Point((-myMap.OffsetX % myMap.ScreenSize.Width + (0 + 1) * myMap.ScreenSize.Width) * Globals.CharSize,
-                (-myMap.OffsetY % myMap.ScreenSize.Height + (0 + 1) * myMap.ScreenSize.Height) * Globals.CharSize);
+                dliFormOrigin = new Point((-myMap.OffsetX % screenCharWidth + (0 + 1) * screenCharWidth) * Globals.CharSize,
+                (-myMap.OffsetY % screenCharHeight + (0 + 1) * screenCharHeight) * Globals.CharSize);
 
 
 
-                for (int y = 0; y <= (mapImage.Size.Height / 8) / myMap.ScreenSize.Height; y++)
-                    gr.DrawLine(screenSeparatorPen, 0, (-myMap.OffsetY % myMap.ScreenSize.Height + (y + 1) * myMap.ScreenSize.Height) * Globals.CharSize,
-                                      mapImage.Width * Globals.Zoom, (-myMap.OffsetY % myMap.ScreenSize.Height + (y + 1) * myMap.ScreenSize.Height) * Globals.CharSize);
+                for (int y = 0; y <= (mapImage.Size.Height / 8) / screenCharHeight; y++)
+                    gr.DrawLine(screenSeparatorPen, 0, (-myMap.OffsetY % screenCharHeight + (y + 1) * screenCharHeight) * Globals.CharSize,
+                                      mapImage.Width * Globals.Zoom, (-myMap.OffsetY % screenCharHeight + (y + 1) * screenCharHeight) * Globals.CharSize);
             }
             //grid
             if (drawGrid)
@@ -232,9 +281,18 @@ namespace AtariMapMaker
                     gridStepY = myMap.TilemapInfo.TileHeight;
                 }
                 
+                // For tilemaps, calculate character height for bounds checking
+                int maxCharStride = myMap.Stride;
+                int maxCharHeight = myMap.MapSize.Height * myMap.ScreenSize.Height;
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    maxCharStride = myMap.CharStride;
+                    maxCharHeight = myMap.MapSize.Height * myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                }
+                
                 for (int x = 0; x < (mapImage.Size.Width / 8); x += gridStepX)
                     for (int y = 0; y < (mapImage.Size.Height / 8); y += gridStepY)
-                        if (myMap.OffsetX + x < myMap.Stride && myMap.OffsetY + y < myMap.MapSize.Height * myMap.ScreenSize.Height)
+                        if (myMap.OffsetX + x < maxCharStride && myMap.OffsetY + y < maxCharHeight)
                             gr.FillRectangle(gridBrush, x * Globals.CharSize, y * Globals.CharSize, 1, 1);
                             //destImage.SetPixel(x * Globals.CharSize, y * Globals.CharSize, gridColor);
             }
@@ -257,13 +315,22 @@ namespace AtariMapMaker
             Pen yellowPen = new Pen(Color.Yellow, 2);
             int cornerSize = 5 * 8 * Globals.Zoom; // Size of the L-shape corner (5 grid points)
             
+            // For tilemaps, ScreenSize is in tiles, so convert to character units
+            int screenCharWidth = myMap.ScreenSize.Width;
+            int screenCharHeight = myMap.ScreenSize.Height;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+            }
+            
             // Calculate screen position in pixels - need to account for scrolling offset
-            int screenStartX = currentScreen.X * myMap.ScreenSize.Width;
-            int screenStartY = currentScreen.Y * myMap.ScreenSize.Height;
+            int screenStartX = currentScreen.X * screenCharWidth;
+            int screenStartY = currentScreen.Y * screenCharHeight;
             int screenPixelX = (screenStartX - myMap.OffsetX) * Globals.CharSize;
             int screenPixelY = (screenStartY - myMap.OffsetY) * Globals.CharSize;
-            int screenPixelWidth = myMap.ScreenSize.Width * Globals.CharSize;
-            int screenPixelHeight = myMap.ScreenSize.Height * Globals.CharSize;
+            int screenPixelWidth = screenCharWidth * Globals.CharSize;
+            int screenPixelHeight = screenCharHeight * Globals.CharSize;
             
             // Top-left corner
             gr.DrawLine(yellowPen, screenPixelX, screenPixelY, screenPixelX + cornerSize, screenPixelY);
@@ -287,16 +354,25 @@ namespace AtariMapMaker
             Font textFont = new Font("Arial", 12, FontStyle.Bold);
             Brush yellowBrush = new SolidBrush(Color.Yellow);
             
+            // For tilemaps, ScreenSize is in tiles, so convert to character units
+            int screenCharWidth = myMap.ScreenSize.Width;
+            int screenCharHeight = myMap.ScreenSize.Height;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+            }
+            
             // Calculate screen position in pixels - need to account for scrolling offset
-            int screenStartX = lockedScreen.X * myMap.ScreenSize.Width;
-            int screenStartY = lockedScreen.Y * myMap.ScreenSize.Height;
+            int screenStartX = lockedScreen.X * screenCharWidth;
+            int screenStartY = lockedScreen.Y * screenCharHeight;
             int screenPixelX = (screenStartX - myMap.OffsetX) * Globals.CharSize;
             int screenPixelY = (screenStartY - myMap.OffsetY) * Globals.CharSize;
             
             // Draw "locked" text above the screen
             string lockedText = "locked";
             SizeF textSize = gr.MeasureString(lockedText, textFont);
-            float textX = screenPixelX + (myMap.ScreenSize.Width * Globals.CharSize - textSize.Width) / 2;
+            float textX = screenPixelX + (screenCharWidth * Globals.CharSize - textSize.Width) / 2;
             float textY = screenPixelY - textSize.Height - 5; // 5 pixels above the screen
             
             gr.DrawString(lockedText, textFont, yellowBrush, textX, textY);
@@ -320,15 +396,61 @@ namespace AtariMapMaker
 
         public static void DrawClipBoard(Point location, Bitmap pictureBoxImage)
         {
+            AtariMap myMap = windows[Globals.WindowType.Editor].map;
+            
+            // Calculate alignment based on map type
+            int alignSizeX = Globals.CharSize;
+            int alignSizeY = Globals.CharSize;
+            
+            // For tilemaps, align to tile size instead of char size
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+            }
+            
+            // Align location to grid (tile grid for tilemaps, char grid for normal maps)
+            int alignedX = (location.X / alignSizeX) * alignSizeX;
+            int alignedY = (location.Y / alignSizeY) * alignSizeY;
+            
             //store contents editor window contents under the current clipboard position -> underimage
-            AtariClipboard.UnderImageGraphics.DrawImage(pictureBoxImage, 0, 0, new Rectangle(location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height), GraphicsUnit.Pixel);
-            //draw clipboard -> location inside editor window 
-            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(AtariClipboard.ClipboardImage, location.X - location.X % Globals.CharSize, location.Y - location.Y % Globals.CharSize);
+            int charX = alignedX / Globals.Zoom;
+            int charY = alignedY / Globals.Zoom;
+            Rectangle sourceRect = new Rectangle(charX, charY, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height);
+            AtariClipboard.UnderImageGraphics.DrawImage(pictureBoxImage, 0, 0, sourceRect, GraphicsUnit.Pixel);
+            
+            //draw clipboard -> location inside editor window (original size, not scaled, aligned to grid)
+            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(
+                AtariClipboard.ClipboardImage, 
+                alignedX, 
+                alignedY);
         }
 
         public static void DrawUnderClipBoard(Point location)
         {
-            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(AtariClipboard.UnderClipBoardImage, location.X - location .X % Globals.CharSize, location .Y - location .Y % Globals.CharSize, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height);
+            AtariMap myMap = windows[Globals.WindowType.Editor].map;
+            
+            // Calculate alignment based on map type
+            int alignSizeX = Globals.CharSize;
+            int alignSizeY = Globals.CharSize;
+            
+            // For tilemaps, align to tile size instead of char size
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+            }
+            
+            // Align location to grid (tile grid for tilemaps, char grid for normal maps)
+            int alignedX = (location.X / alignSizeX) * alignSizeX;
+            int alignedY = (location.Y / alignSizeY) * alignSizeY;
+            
+            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(
+                AtariClipboard.UnderClipBoardImage, 
+                alignedX, 
+                alignedY, 
+                AtariClipboard.ClipboardImage.Width, 
+                AtariClipboard.ClipboardImage.Height);
         }
         /*
         public static void SetDestImage(Bitmap _destImage, Graphics _gr)

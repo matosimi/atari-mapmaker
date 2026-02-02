@@ -43,6 +43,16 @@ namespace AtariMapMaker
         // For tilemaps, Data array represents tile grid, not character grid
         public ushort[] TileIndexes { get; set; }  // Optional: separate array for 16-bit indexes
         
+        // Character data array for tilemaps (expanded from tiles for fast rendering)
+        // This array stores the actual character data expanded from tile indexes
+        // Size: (MapSize.Width * ScreenSize.Width * TileWidth) x (MapSize.Height * ScreenSize.Height * TileHeight)
+        // When a tile is placed, its characters are expanded into this array
+        public byte[] CharData { get; set; }  // Character data for tilemaps (for fast display)
+        
+        // Cached submap to avoid repeated parsing during rendering
+        private AtariMap cachedSubmap;
+        private string cachedSubmapPath;
+        
         public AtariMap(Size mapSize, Size screenSize)
         {
             this.MapSize = mapSize;
@@ -57,7 +67,13 @@ namespace AtariMapMaker
         {
             FontDataArray = new byte[8][];  // Max 8 fonts
             FontFileNames = new string[8];  // Font file names
-            FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
+            FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * screenCharHeight];
             FontLineMappingReferences = new Dictionary<string, ScreenReference>();
             FontTemplateLocked = false;
             FontTemplatePattern = "All Font0";
@@ -85,16 +101,37 @@ namespace AtariMapMaker
 
         public void CopyDliColorsFullScreen(int localScreenNumber, AtariMap targetMap, int targetScreenNumber)
         {
-            int length = this.ScreenSize.Height * 5;
-            int sourceOffset = localScreenNumber * length;
-            int destOffset = targetScreenNumber * length;
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int sourceScreenCharHeight = this.ScreenSize.Height;
+            if (this.IsTilemap && this.TilemapInfo != null && this.TilemapInfo.TileHeight > 0)
+            {
+                sourceScreenCharHeight = this.ScreenSize.Height * this.TilemapInfo.TileHeight;
+            }
+            
+            int targetScreenCharHeight = targetMap.ScreenSize.Height;
+            if (targetMap.IsTilemap && targetMap.TilemapInfo != null && targetMap.TilemapInfo.TileHeight > 0)
+            {
+                targetScreenCharHeight = targetMap.ScreenSize.Height * targetMap.TilemapInfo.TileHeight;
+            }
+            
+            // Use the minimum of source and target heights to avoid out-of-bounds
+            int length = Math.Min(sourceScreenCharHeight, targetScreenCharHeight) * 5;
+            int sourceOffset = localScreenNumber * sourceScreenCharHeight * 5;
+            int destOffset = targetScreenNumber * targetScreenCharHeight * 5;
             for (int i = 0; i < length; i++)
                 targetMap.ColorData[destOffset + i] = ColorData[sourceOffset + i];
         }
 
         public void InitDliColorFullMap()
         {
-            int totalLength = MapSize.Width * MapSize.Height * ScreenSize.Height * 5;
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
+            
+            int totalLength = MapSize.Width * MapSize.Height * screenCharHeight * 5;
             this.ColorData = new byte[totalLength];
             for (int i = 0; i < totalLength; i+=5)
                 ColorData[i] = Globals.DEFAULT_COLOR; //0.color in each row indicates that no DLI was used 
@@ -108,16 +145,30 @@ namespace AtariMapMaker
 
         public int OffsetX
         {
-            get { return offset % Stride; }
+            get 
+            { 
+                // For tilemaps, offset is in character coordinates, so use CharStride
+                if (IsTilemap && CharData != null)
+                    return offset % CharStride;
+                return offset % Stride; 
+            }
         }
 
         public int OffsetY
         {
-            get { return offset / Stride; }
+            get 
+            { 
+                // For tilemaps, offset is in character coordinates, so use CharStride
+                if (IsTilemap && CharData != null)
+                    return offset / CharStride;
+                return offset / Stride; 
+            }
         }
 
         /// <summary>
         /// Vrati pocet bytov tvoriacich 1 riadok v datach mapy
+        /// For tilemaps: returns stride in tile units (ScreenSize.Width * MapSize.Width tiles)
+        /// For normal maps: returns stride in character units (ScreenSize.Width * MapSize.Width chars)
         /// </summary>
         /// <returns></returns>
         public int Stride
@@ -127,13 +178,37 @@ namespace AtariMapMaker
                 return this.ScreenSize.Width * this.MapSize.Width;
             }
         }
+        
+        /// <summary>
+        /// Get character stride for tilemaps (in character units)
+        /// For tilemaps: returns ScreenSize.Width * MapSize.Width * TileWidth (chars per row)
+        /// For normal maps: returns Stride (same as Stride property)
+        /// </summary>
+        public int CharStride
+        {
+            get
+            {
+                if (IsTilemap && TilemapInfo != null)
+                {
+                    return ScreenSize.Width * MapSize.Width * TilemapInfo.TileWidth;
+                }
+                return Stride;
+            }
+        }
 
         //set single color for multiple lines
         public void SetDliColorMultiple(int screenx, int screeny, int startingLine, int lines, int colorNumber, byte colorIndexFromPalette)
         {
-            int screenOffset = (screeny * MapSize.Width + screenx) * ScreenSize.Height * 5;
-            if (lines < 0) lines = ScreenSize.Height - startingLine;
-            if (startingLine + lines > ScreenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
+            
+            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * 5;
+            if (lines < 0) lines = screenCharHeight - startingLine;
+            if (startingLine + lines > screenCharHeight) throw new Exception($"The screen does not have that many ({lines}) lines.");
             for (int j = 0; j < lines; j++)
                 this.ColorData[screenOffset + (startingLine + j) * 5 + colorNumber] = colorIndexFromPalette;
         }
@@ -144,16 +219,43 @@ namespace AtariMapMaker
         /// <returns></returns>
         public byte[] GetDliColor5(int charOffset)
         {
-            int row = charOffset / Stride;
-            int column = charOffset % Stride;
-            int line = row % ScreenSize.Height;
-            int screenNumber = column / ScreenSize.Width + (row / ScreenSize.Height)*MapSize.Width;
+            // For tilemaps, use CharStride and convert ScreenSize from tiles to characters
+            int stride = Stride;
+            int screenCharWidth = ScreenSize.Width;
+            int screenCharHeight = ScreenSize.Height;
             
-            int dliOffset = screenNumber * ScreenSize.Height * 5 + line * 5;
+            if (IsTilemap && TilemapInfo != null)
+            {
+                stride = CharStride;
+                screenCharWidth = ScreenSize.Width * TilemapInfo.TileWidth;
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
+            
+            int row = charOffset / stride;
+            int column = charOffset % stride;
+            int line = row % screenCharHeight;
+            
+            // Calculate screen coordinates (same formula as SetDliColor uses)
+            int screenX = column / screenCharWidth;
+            int screenY = row / screenCharHeight;
+            
+            // Use same offset calculation as SetDliColor: (screeny * MapSize.Width + screenx) * screenCharHeight * 5
+            int screenOffset = (screenY * MapSize.Width + screenX) * screenCharHeight * 5;
+            int dliOffset = screenOffset + line * 5;
 
             byte[] retValue = new byte[5];
-            for (int i = 0; i < 5; i++)
-                retValue[i] = ColorData[dliOffset + i];
+            // Check bounds to prevent IndexOutOfRangeException
+            if (ColorData != null && dliOffset + 4 < ColorData.Length)
+            {
+                for (int i = 0; i < 5; i++)
+                    retValue[i] = ColorData[dliOffset + i];
+            }
+            else
+            {
+                // Return default colors if out of bounds
+                for (int i = 0; i < 5; i++)
+                    retValue[i] = Globals.DEFAULT_COLOR;
+            }
             return retValue;
         }
 
@@ -166,9 +268,16 @@ namespace AtariMapMaker
         //set all colors multiple lines based on the given 5 colors
         public void SetDliColor5Multiple(int screenx, int screeny, int startingLine, int lines, byte[] color5)
         {
-            int screenOffset = (screeny * MapSize.Width + screenx) * ScreenSize.Height * 5;
-            if (lines < 0) lines = ScreenSize.Height - startingLine;
-            if (startingLine + lines > ScreenSize.Height) throw new Exception($"The screen does not have that many ({lines}) lines.");
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
+            
+            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * 5;
+            if (lines < 0) lines = screenCharHeight - startingLine;
+            if (startingLine + lines > screenCharHeight) throw new Exception($"The screen does not have that many ({lines}) lines.");
             for (int j = 0; j < lines; j++)
                 for (int i = 0; i < 5; i++)
                     this.ColorData[screenOffset + (startingLine + j) * 5 + i] = color5[i];
@@ -176,7 +285,14 @@ namespace AtariMapMaker
 
         public void SetDliColor(int screenx, int screeny, int line, int colorNumber, byte colorIndex)
         {
-            int screenOffset = (screeny * MapSize.Width + screenx) * ScreenSize.Height * 5;
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
+            
+            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * 5;
             this.ColorData[screenOffset + line * 5 + colorNumber] = colorIndex;
         }
 
@@ -310,40 +426,60 @@ namespace AtariMapMaker
         // Get font for a line, checking references
         public byte GetFontForLine(int screenx, int screeny, int line)
         {
-            // In tilemap mode, font numbers are inherited from tiles
+            // For tilemaps, font numbers are read-only and come from submap tiles in column 0
             if (IsTilemap && TilemapInfo != null && !string.IsNullOrEmpty(SubmapPath))
             {
                 try
                 {
-                    AtariMap submap = SubmapManager.LoadSubmap(SubmapPath);
+                    // Use cached submap to avoid repeated parsing
+                    if (cachedSubmap == null || cachedSubmapPath != SubmapPath)
+                    {
+                        cachedSubmap = SubmapManager.LoadSubmap(SubmapPath);
+                        cachedSubmapPath = SubmapPath;
+                    }
+                    
+                    AtariMap submap = cachedSubmap;
                     int tileWidth = TilemapInfo.TileWidth;
                     int tileHeight = TilemapInfo.TileHeight;
                     
-                    // Calculate which tile grid line this line belongs to
-                    int tileGridLine = line / tileHeight;
-                    
-                    // Get font from tile at x==0 of this grid line
-                    int tileX = 0;
-                    int tileY = tileGridLine;
-                    
-                    // Check if there's a tile at this position
-                    // Convert screen coordinates to tile coordinates
-                    int charX = screenx * ScreenSize.Width;
-                    int charY = screeny * ScreenSize.Height + line;
-                    int mapTileX = charX / tileWidth;
-                    int mapTileY = charY / tileHeight;
-                    
-                    // Get the tile index from the map at position (0, mapTileY) within the current screen
-                    // For now, we'll get font from the first tile in submap (index 0) if no tile at x==0
-                    // This is a simplified implementation - full implementation would need to track which tile is at each position
-                    int submapTileIndex = 0; // Default to first tile
-                    
-                    // Try to get font from submap tile at index 0, line within that tile
+                    // Calculate which tile row this character line belongs to within the screen
+                    int tileRowInScreen = line / tileHeight;
                     int lineInTile = line % tileHeight;
+                    
+                    // Get the tile at column 0 of this tile row within the screen
+                    // Screen coordinates: screenx, screeny
+                    // Tile coordinates within map: (screenx * ScreenSize.Width + 0, screeny * ScreenSize.Height + tileRowInScreen)
+                    int mapTileX = screenx * ScreenSize.Width + 0; // Always column 0
+                    int mapTileY = screeny * ScreenSize.Height + tileRowInScreen;
+                    
+                    // Get tile index from Data array (tilemap stores tile indexes, not characters)
+                    int tileDataIndex = mapTileY * Stride + mapTileX;
+                    if (tileDataIndex < 0 || tileDataIndex >= Data.Length)
+                        return 0; // Out of bounds, default to font 0
+                    
+                    byte tileIndex = Data[tileDataIndex];
+                    
+                    // Get font from submap screen with this tile index
+                    // Submap screens are numbered sequentially (row-major by default)
+                    int submapScreenIndex = tileIndex;
+                    int submapScreenX = submapScreenIndex % submap.MapSize.Width;
+                    int submapScreenY = submapScreenIndex / submap.MapSize.Width;
+                    
+                    // Check if this submap screen references another screen for font mapping
+                    Point actualSubmapScreen = submap.GetReferencedScreen(submapScreenX, submapScreenY);
+                    int actualSubmapScreenX = actualSubmapScreen.X;
+                    int actualSubmapScreenY = actualSubmapScreen.Y;
+                    
+                    // Clamp to valid range
+                    if (actualSubmapScreenX < 0) actualSubmapScreenX = 0;
+                    if (actualSubmapScreenX >= submap.MapSize.Width) actualSubmapScreenX = submap.MapSize.Width - 1;
+                    if (actualSubmapScreenY < 0) actualSubmapScreenY = 0;
+                    if (actualSubmapScreenY >= submap.MapSize.Height) actualSubmapScreenY = submap.MapSize.Height - 1;
+                    
+                    // Get font number for this line within the (possibly referenced) submap tile (screen)
                     if (submap.FontLineMappingPerScreen != null && submap.MapSize.Width > 0 && submap.MapSize.Height > 0)
                     {
-                        // Get font from first tile (screen 0,0) of submap
-                        int submapScreenOffset = 0 * submap.ScreenSize.Height;
+                        int submapScreenOffset = (actualSubmapScreenY * submap.MapSize.Width + actualSubmapScreenX) * submap.ScreenSize.Height;
                         int submapIndex = submapScreenOffset + lineInTile;
                         if (submapIndex >= 0 && submapIndex < submap.FontLineMappingPerScreen.Length)
                             return submap.FontLineMappingPerScreen[submapIndex];
@@ -356,6 +492,7 @@ namespace AtariMapMaker
                 }
             }
             
+            // For normal maps (not tilemaps), use stored font mapping
             // Check if this screen references another screen
             Point actualScreen = GetReferencedScreen(screenx, screeny);
             int actualScreenX = actualScreen.X;
@@ -371,7 +508,10 @@ namespace AtariMapMaker
             if (FontLineMappingPerScreen == null)
                 return 0;
             
-            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * ScreenSize.Height;
+            // For normal maps, ScreenSize.Height is already in character lines
+            int screenCharHeight = ScreenSize.Height;
+            
+            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * screenCharHeight;
             int index = screenOffset + line;
             if (index >= 0 && index < FontLineMappingPerScreen.Length)
                 return FontLineMappingPerScreen[index];
@@ -400,10 +540,17 @@ namespace AtariMapMaker
             if (actualScreenY >= MapSize.Height) actualScreenY = MapSize.Height - 1;
             
             // Set font in the actual screen (which may be the referenced one)
-            if (FontLineMappingPerScreen == null)
-                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
             
-            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * ScreenSize.Height;
+            if (FontLineMappingPerScreen == null)
+                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * screenCharHeight];
+            
+            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * screenCharHeight;
             int index = screenOffset + line;
             if (index >= 0 && index < FontLineMappingPerScreen.Length && fontIndex < 8)
                 FontLineMappingPerScreen[index] = fontIndex;
@@ -412,8 +559,15 @@ namespace AtariMapMaker
         public void SetFontForAllLines(byte fontIndex)
         {
             // Set for all screens
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
+            
             if (FontLineMappingPerScreen == null)
-                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * screenCharHeight];
             for (int i = 0; i < FontLineMappingPerScreen.Length; i++)
                 FontLineMappingPerScreen[i] = fontIndex;
         }
@@ -432,11 +586,18 @@ namespace AtariMapMaker
             if (actualScreenY < 0) actualScreenY = 0;
             if (actualScreenY >= MapSize.Height) actualScreenY = MapSize.Height - 1;
             
-            if (FontLineMappingPerScreen == null)
-                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * ScreenSize.Height];
+            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+            {
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            }
             
-            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * ScreenSize.Height;
-            for (int i = 0; i < ScreenSize.Height; i++)
+            if (FontLineMappingPerScreen == null)
+                FontLineMappingPerScreen = new byte[MapSize.Width * MapSize.Height * screenCharHeight];
+            
+            int screenOffset = (actualScreenY * MapSize.Width + actualScreenX) * screenCharHeight;
+            for (int i = 0; i < screenCharHeight; i++)
             {
                 int index = screenOffset + i;
                 if (index >= 0 && index < FontLineMappingPerScreen.Length)
@@ -476,6 +637,97 @@ namespace AtariMapMaker
                 FontDataArray[fontIndex] = null;
                 if (FontFileNames != null)
                     FontFileNames[fontIndex] = null;
+            }
+        }
+        
+        /// <summary>
+        /// Clear the cached submap (call when SubmapPath changes)
+        /// </summary>
+        public void ClearSubmapCache()
+        {
+            cachedSubmap = null;
+            cachedSubmapPath = null;
+        }
+        
+        /// <summary>
+        /// Initialize CharData array for tilemaps (expanded character data from tiles)
+        /// CharData can only be initialized after TilemapInfo is set (tile dimensions from submap)
+        /// </summary>
+        public void InitializeCharData()
+        {
+            if (!IsTilemap || TilemapInfo == null || TilemapInfo.TileWidth == 0 || TilemapInfo.TileHeight == 0)
+                return;
+                
+            int tileWidth = TilemapInfo.TileWidth;
+            int tileHeight = TilemapInfo.TileHeight;
+            
+            // CharData size: (MapSize.Width * ScreenSize.Width * tileWidth) x (MapSize.Height * ScreenSize.Height * tileHeight)
+            // MapSize: number of screens (e.g., 2x2)
+            // ScreenSize: tiles per screen (e.g., 5x5)
+            // Total tiles: (2 * 5) x (2 * 5) = 10x10 tiles
+            // Total chars: (10 * tileWidth) x (10 * tileHeight) = 20x20 chars (for 2x2 tiles)
+            int charWidth = MapSize.Width * ScreenSize.Width * tileWidth;
+            int charHeight = MapSize.Height * ScreenSize.Height * tileHeight;
+            
+            CharData = new byte[charWidth * charHeight];
+            
+            // Initialize to all zeros (empty)
+            for (int i = 0; i < CharData.Length; i++)
+                CharData[i] = 0;
+        }
+        
+        /// <summary>
+        /// Expand a tile from submap into CharData at the specified tile position
+        /// </summary>
+        public void ExpandTileToCharData(int tileX, int tileY, byte tileIndex)
+        {
+            if (!IsTilemap || TilemapInfo == null || CharData == null)
+                return;
+                
+            if (cachedSubmap == null || cachedSubmapPath != SubmapPath)
+            {
+                if (!string.IsNullOrEmpty(SubmapPath))
+                {
+                    cachedSubmap = SubmapManager.LoadSubmap(SubmapPath);
+                    cachedSubmapPath = SubmapPath;
+                }
+                else
+                    return;
+            }
+            
+            AtariMap submap = cachedSubmap;
+            int tileWidth = TilemapInfo.TileWidth;
+            int tileHeight = TilemapInfo.TileHeight;
+            
+            // Get submap screen coordinates for this tile index
+            int submapScreenX = tileIndex % submap.MapSize.Width;
+            int submapScreenY = tileIndex / submap.MapSize.Width;
+            
+            // Calculate character position in CharData
+            int charStride = MapSize.Width * ScreenSize.Width * tileWidth;
+            int charStartX = tileX * tileWidth;
+            int charStartY = tileY * tileHeight;
+            
+            // Copy tile data from submap to CharData
+            for (int ty = 0; ty < tileHeight; ty++)
+            {
+                for (int tx = 0; tx < tileWidth; tx++)
+                {
+                    // Source: submap screen
+                    int submapCharX = submapScreenX * submap.ScreenSize.Width + tx;
+                    int submapCharY = submapScreenY * submap.ScreenSize.Height + ty;
+                    int submapIndex = submapCharX + submapCharY * submap.Stride;
+                    
+                    // Destination: CharData
+                    int charX = charStartX + tx;
+                    int charY = charStartY + ty;
+                    int charIndex = charX + charY * charStride;
+                    
+                    if (submapIndex < submap.Data.Length && charIndex < CharData.Length)
+                    {
+                        CharData[charIndex] = submap.Data[submapIndex];
+                    }
+                }
             }
         }
 
