@@ -41,30 +41,75 @@ namespace AtariMapMaker
             gr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
             gr.Dispose();
 
-            //data part - default to character mode
-            IsTileIndexes = false;
-            ClipboardWidth = mouseSelection.Width / Globals.CharSize;
-            ClipboardHeight = mouseSelection.Height / Globals.CharSize;
-            data = new byte[ClipboardWidth, ClipboardHeight];
-            int xo = mouseSelection.X / Globals.CharSize;
-            int yo = mouseSelection.Y / Globals.CharSize;
-            
-            // For tilemaps, use CharData if available; otherwise use Data
-            byte[] sourceData = dataSource.Data;
-            int sourceStride = dataSource.Stride;
-            if (dataSource.IsTilemap && dataSource.CharData != null && dataSource.CharData.Length > 0)
+            // For tilemaps, copy tile indexes instead of characters
+            if (dataSource.IsTilemap && dataSource.TilemapInfo != null)
             {
-                sourceData = dataSource.CharData;
-                sourceStride = dataSource.CharStride;
-            }
-            
-            for (int y = 0; y < ClipboardHeight; y++)
-                for (int x = 0; x < ClipboardWidth; x++)
+                int tileWidth = dataSource.TilemapInfo.TileWidth;
+                int tileHeight = dataSource.TilemapInfo.TileHeight;
+                
+                // Selection is in pixels, convert to character coordinates
+                int charX = mouseSelection.X / Globals.CharSize;
+                int charY = mouseSelection.Y / Globals.CharSize;
+                int charWidth = mouseSelection.Width / Globals.CharSize;
+                int charHeight = mouseSelection.Height / Globals.CharSize;
+                
+                // Convert to tile coordinates (relative to visible area)
+                int tileXStart = charX / tileWidth;
+                int tileYStart = charY / tileHeight;
+                int tileWidthInTiles = charWidth / tileWidth;
+                int tileHeightInTiles = charHeight / tileHeight;
+                
+                // Convert to absolute tile coordinates
+                int absoluteCharX = dataSource.OffsetX + charX;
+                int absoluteCharY = dataSource.OffsetY + charY;
+                int absoluteTileX = absoluteCharX / tileWidth;
+                int absoluteTileY = absoluteCharY / tileHeight;
+                
+                // Copy tile indexes
+                IsTileIndexes = true;
+                ClipboardWidth = tileWidthInTiles;
+                ClipboardHeight = tileHeightInTiles;
+                data = new byte[ClipboardWidth, ClipboardHeight];
+                
+                int tilesPerRow = dataSource.Stride; // Stride is in tile units for tilemaps
+                
+                for (int y = 0; y < ClipboardHeight; y++)
                 {
-                    int dataIndex = offset + x + xo + (y + yo) * sourceStride;
-                    if (dataIndex >= 0 && dataIndex < sourceData.Length)
-                        data[x, y] = sourceData[dataIndex];
-                }            
+                    for (int x = 0; x < ClipboardWidth; x++)
+                    {
+                        int destTileX = absoluteTileX + x;
+                        int destTileY = absoluteTileY + y;
+                        int tileIndex = destTileY * tilesPerRow + destTileX;
+                        
+                        if (tileIndex >= 0 && tileIndex < dataSource.Data.Length)
+                        {
+                            data[x, y] = dataSource.Data[tileIndex];
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Normal character mode
+                IsTileIndexes = false;
+                ClipboardWidth = mouseSelection.Width / Globals.CharSize;
+                ClipboardHeight = mouseSelection.Height / Globals.CharSize;
+                data = new byte[ClipboardWidth, ClipboardHeight];
+                int xo = mouseSelection.X / Globals.CharSize;
+                int yo = mouseSelection.Y / Globals.CharSize;
+                
+                // For normal maps, use Data array
+                byte[] sourceData = dataSource.Data;
+                int sourceStride = dataSource.Stride;
+                
+                for (int y = 0; y < ClipboardHeight; y++)
+                    for (int x = 0; x < ClipboardWidth; x++)
+                    {
+                        int dataIndex = offset + x + xo + (y + yo) * sourceStride;
+                        if (dataIndex >= 0 && dataIndex < sourceData.Length)
+                            data[x, y] = sourceData[dataIndex];
+                    }
+            }
         }
         
         /// <summary>

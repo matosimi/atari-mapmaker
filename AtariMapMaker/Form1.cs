@@ -611,7 +611,42 @@ namespace AtariMapMaker
                 {
                     charVal = myMap.Data[xx + yy * myMap.Stride];
                 }
-                labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
+                
+                // For tilemaps, also show tile index
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    int tileWidth = myMap.TilemapInfo.TileWidth;
+                    int tileHeight = myMap.TilemapInfo.TileHeight;
+                    int tileX = xx / tileWidth;
+                    int tileY = yy / tileHeight;
+                    int tileIndex = tileY * myMap.Stride + tileX;
+                    byte tileIdx = 0;
+                    if (tileIndex >= 0 && tileIndex < myMap.Data.Length)
+                    {
+                        tileIdx = myMap.Data[tileIndex];
+                    }
+                    // Compact format: Char $XX (N) | Tile N @ (X,Y)
+                    labelChar.Text = $"Char ${charVal:X2} ({charVal}) | Tile {tileIdx} @ ({tileX},{tileY})";
+                    // Disable auto-size and set fixed width to allow text wrapping
+                    int maxWidth = panelStatus.Width - labelChar.Left - 5;
+                    if (maxWidth > 0)
+                    {
+                        labelChar.AutoSize = false;
+                        labelChar.Width = maxWidth;
+                        labelChar.Height = 40; // Allow for 2 lines
+                    }
+                    else
+                    {
+                        labelChar.AutoSize = true;
+                    }
+                }
+                else
+                {
+                    labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
+                    labelChar.AutoSize = true;
+                    labelChar.Height = 20; // Reset to single line height
+                }
+                
                 //calculate the occurence
                 (int idx, int amnt) = myMap.CharOccurence(new Point(currentScreen.X,currentScreen.Y), posx, posy, charVal);
                 labelCharOccurence.Text = $"{idx} of {amnt}";

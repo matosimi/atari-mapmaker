@@ -433,7 +433,7 @@ namespace AtariMapMaker
             // labelCharOccurence
             // 
             this.labelCharOccurence.AutoSize = true;
-            this.labelCharOccurence.Location = new System.Drawing.Point(205, 34);
+            this.labelCharOccurence.Location = new System.Drawing.Point(157, 43);
             this.labelCharOccurence.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelCharOccurence.Name = "labelCharOccurence";
             this.labelCharOccurence.Size = new System.Drawing.Size(49, 20);
@@ -443,7 +443,7 @@ namespace AtariMapMaker
             // labelScreen
             // 
             this.labelScreen.AutoSize = true;
-            this.labelScreen.Location = new System.Drawing.Point(5, 14);
+            this.labelScreen.Location = new System.Drawing.Point(5, 0);
             this.labelScreen.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelScreen.Name = "labelScreen";
             this.labelScreen.Size = new System.Drawing.Size(86, 20);
@@ -453,7 +453,7 @@ namespace AtariMapMaker
             // labelChar
             // 
             this.labelChar.AutoSize = true;
-            this.labelChar.Location = new System.Drawing.Point(202, 14);
+            this.labelChar.Location = new System.Drawing.Point(157, 0);
             this.labelChar.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelChar.Name = "labelChar";
             this.labelChar.Size = new System.Drawing.Size(97, 20);
