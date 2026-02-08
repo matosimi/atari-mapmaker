@@ -17,8 +17,7 @@ namespace AtariMapMaker
     }
     public class ScreenMetadata
     {
-        public string RawText { get; set; }
-        public string RegexPattern { get; set; }
+        /// <summary>Metadata elements for this screen (user-defined via map layer or list dialog).</summary>
         public List<MetadataLayerItem> ParsedItems { get; set; }
 
         public ScreenMetadata()
@@ -34,6 +33,19 @@ namespace AtariMapMaker
         public string Text { get; set; }
         public int Value { get; set; }
         public byte Color { get; set; }
+    }
+
+    /// <summary>Holds a single copied metadata item for paste (CTRL+click to copy, click to paste).</summary>
+    public static class MetadataItemClipboard
+    {
+        public static MetadataLayerItem CopiedItem { get; private set; }
+        public static bool HasItem => CopiedItem != null;
+        public static void Copy(MetadataLayerItem item)
+        {
+            if (item == null) { CopiedItem = null; return; }
+            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Value = item.Value, Color = item.Color };
+        }
+        public static void Clear() { CopiedItem = null; }
     }
 
     public class TilemapData

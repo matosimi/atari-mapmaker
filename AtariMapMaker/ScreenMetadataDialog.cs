@@ -9,141 +9,185 @@ namespace AtariMapMaker
     {
         private AtariMap map;
         private Point screen;
-        private TextBox textBoxRawText;
-        private TextBox textBoxRegex;
+        private ListView listViewItems;
+        private Button buttonAdd;
+        private Button buttonEdit;
+        private Button buttonDelete;
+        private Button buttonExport;
         private Button buttonOK;
-        private Button buttonCancel;
-        private Button buttonParse;
 
         public ScreenMetadataDialog(AtariMap map, Point screen)
         {
             this.map = map;
             this.screen = screen;
             InitializeComponent();
-            LoadMetadata();
+            LoadItems();
+        }
+
+        private string Key => $"{screen.X},{screen.Y}";
+
+        private ScreenMetadata GetOrCreateMetadata()
+        {
+            if (map.ScreenMetadata == null)
+                map.ScreenMetadata = new Dictionary<string, ScreenMetadata>();
+            if (!map.ScreenMetadata.ContainsKey(Key))
+                map.ScreenMetadata[Key] = new ScreenMetadata();
+            return map.ScreenMetadata[Key];
         }
 
         private void InitializeComponent()
         {
-            this.textBoxRawText = new TextBox();
-            this.textBoxRegex = new TextBox();
+            this.listViewItems = new ListView();
+            this.listViewItems.View = View.Details;
+            this.listViewItems.FullRowSelect = true;
+            this.listViewItems.GridLines = true;
+            this.listViewItems.Columns.Add("X", 40);
+            this.listViewItems.Columns.Add("Y", 40);
+            this.listViewItems.Columns.Add("Text", 120);
+            this.listViewItems.Columns.Add("Value", 50);
+            this.listViewItems.Columns.Add("Color", 50);
+            this.listViewItems.Location = new Point(12, 12);
+            this.listViewItems.Size = new Size(400, 180);
+            this.listViewItems.DoubleClick += (s, e) => ButtonEdit_Click(s, e);
+
+            this.buttonAdd = new Button();
+            this.buttonAdd.Text = "Add";
+            this.buttonAdd.Location = new Point(12, 200);
+            this.buttonAdd.Size = new Size(60, 25);
+            this.buttonAdd.Click += ButtonAdd_Click;
+
+            this.buttonEdit = new Button();
+            this.buttonEdit.Text = "Edit";
+            this.buttonEdit.Location = new Point(78, 200);
+            this.buttonEdit.Size = new Size(60, 25);
+            this.buttonEdit.Click += ButtonEdit_Click;
+
+            this.buttonDelete = new Button();
+            this.buttonDelete.Text = "Delete";
+            this.buttonDelete.Location = new Point(144, 200);
+            this.buttonDelete.Size = new Size(60, 25);
+            this.buttonDelete.Click += ButtonDelete_Click;
+
+            this.buttonExport = new Button();
+            this.buttonExport.Text = "Export...";
+            this.buttonExport.Location = new Point(210, 200);
+            this.buttonExport.Size = new Size(75, 25);
+            this.buttonExport.Click += ButtonExport_Click;
+
             this.buttonOK = new Button();
-            this.buttonCancel = new Button();
-            this.buttonParse = new Button();
-            Label label1 = new Label();
-            Label label2 = new Label();
-            this.SuspendLayout();
-
-            // label1
-            label1.AutoSize = true;
-            label1.Location = new Point(12, 15);
-            label1.Text = "Metadata Text:";
-
-            // textBoxRawText
-            this.textBoxRawText.Location = new Point(12, 35);
-            this.textBoxRawText.Multiline = true;
-            this.textBoxRawText.Size = new Size(400, 100);
-            this.textBoxRawText.ScrollBars = ScrollBars.Vertical;
-
-            // label2
-            label2.AutoSize = true;
-            label2.Location = new Point(12, 145);
-            label2.Text = "Regex Pattern:";
-
-            // textBoxRegex
-            this.textBoxRegex.Location = new Point(12, 165);
-            this.textBoxRegex.Size = new Size(400, 20);
-
-            // buttonParse
-            this.buttonParse.Text = "Parse";
-            this.buttonParse.Location = new Point(12, 195);
-            this.buttonParse.Size = new Size(75, 23);
-            this.buttonParse.Click += ButtonParse_Click;
-
-            // buttonOK
-            this.buttonOK.DialogResult = DialogResult.OK;
-            this.buttonOK.Location = new Point(256, 195);
-            this.buttonOK.Size = new Size(75, 23);
             this.buttonOK.Text = "OK";
-            this.buttonOK.UseVisualStyleBackColor = true;
-            this.buttonOK.Click += ButtonOK_Click;
+            this.buttonOK.DialogResult = DialogResult.OK;
+            this.buttonOK.Location = new Point(337, 200);
+            this.buttonOK.Size = new Size(75, 25);
 
-            // buttonCancel
-            this.buttonCancel.DialogResult = DialogResult.Cancel;
-            this.buttonCancel.Location = new Point(337, 195);
-            this.buttonCancel.Size = new Size(75, 23);
-            this.buttonCancel.Text = "Cancel";
-            this.buttonCancel.UseVisualStyleBackColor = true;
-
-            // ScreenMetadataDialog
             this.AcceptButton = this.buttonOK;
-            this.CancelButton = this.buttonCancel;
-            this.ClientSize = new Size(424, 230);
-            this.Controls.Add(this.buttonCancel);
+            this.CancelButton = new Button { DialogResult = DialogResult.Cancel };
+            this.ClientSize = new Size(424, 235);
+            this.Controls.Add(this.listViewItems);
+            this.Controls.Add(this.buttonAdd);
+            this.Controls.Add(this.buttonEdit);
+            this.Controls.Add(this.buttonDelete);
+            this.Controls.Add(this.buttonExport);
             this.Controls.Add(this.buttonOK);
-            this.Controls.Add(this.buttonParse);
-            this.Controls.Add(this.textBoxRegex);
-            this.Controls.Add(label2);
-            this.Controls.Add(this.textBoxRawText);
-            this.Controls.Add(label1);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.Name = "ScreenMetadataDialog";
+            this.Text = $"Screen Metadata - ({screen.X},{screen.Y})";
             this.StartPosition = FormStartPosition.CenterParent;
-            this.Text = $"Screen Metadata - {screen.X},{screen.Y}";
-            this.ResumeLayout(false);
-            this.PerformLayout();
         }
 
-        private void LoadMetadata()
+        private void LoadItems()
         {
-            if (map != null && map.ScreenMetadata != null)
+            listViewItems.Items.Clear();
+            if (map?.ScreenMetadata == null) return;
+            if (!map.ScreenMetadata.ContainsKey(Key)) return;
+            var meta = map.ScreenMetadata[Key];
+            if (meta?.ParsedItems == null) return;
+            foreach (var item in meta.ParsedItems)
             {
-                string key = $"{screen.X},{screen.Y}";
-                if (map.ScreenMetadata.ContainsKey(key))
+                string valueHex = item.Value >= 0 && item.Value <= 255 ? "$" + item.Value.ToString("X2") : "$" + item.Value.ToString("X4");
+                var li = new ListViewItem(new[] {
+                    item.X.ToString(),
+                    item.Y.ToString(),
+                    item.Text ?? "",
+                    valueHex,
+                    "$" + item.Color.ToString("X2")
+                });
+                li.Tag = item;
+                listViewItems.Items.Add(li);
+            }
+        }
+
+        private void ButtonAdd_Click(object sender, EventArgs e)
+        {
+            var meta = GetOrCreateMetadata();
+            var item = new MetadataLayerItem { X = 0, Y = 0, Text = "", Value = 0, Color = 0 };
+            meta.ParsedItems.Add(item);
+            bool isTilemap = map != null && map.IsTilemap;
+            using (var edit = new MetadataItemEditDialog(item, "Add metadata item", isTilemap))
+            {
+                if (edit.ShowDialog() == DialogResult.OK)
+                    RefreshItem(item);
+            }
+            LoadItems();
+        }
+
+        private void ButtonEdit_Click(object sender, EventArgs e)
+        {
+            if (listViewItems.SelectedItems.Count == 0) return;
+            var item = listViewItems.SelectedItems[0].Tag as MetadataLayerItem;
+            if (item == null) return;
+            var meta = GetOrCreateMetadata();
+            bool isTilemap = map != null && map.IsTilemap;
+            using (var edit = new MetadataItemEditDialog(item, "Edit metadata item", isTilemap))
+            {
+                if (edit.ShowDialog() == DialogResult.OK)
                 {
-                    ScreenMetadata metadata = map.ScreenMetadata[key];
-                    if (metadata != null)
-                    {
-                        textBoxRawText.Text = metadata.RawText ?? "";
-                        textBoxRegex.Text = metadata.RegexPattern ?? "";
-                    }
+                    if (edit.RemoveRequested)
+                        meta.ParsedItems.Remove(item);
+                    else
+                        RefreshItem(item);
+                }
+            }
+            LoadItems();
+        }
+
+        private void RefreshItem(MetadataLayerItem item)
+        {
+            foreach (ListViewItem li in listViewItems.Items)
+            {
+                if (li.Tag == item)
+                {
+                    li.SubItems[0].Text = item.X.ToString();
+                    li.SubItems[1].Text = item.Y.ToString();
+                    li.SubItems[2].Text = item.Text ?? "";
+                    li.SubItems[3].Text = item.Value.ToString();
+                    li.SubItems[4].Text = item.Color.ToString();
+                    break;
                 }
             }
         }
 
-        private void ButtonParse_Click(object sender, EventArgs e)
+        private void ButtonDelete_Click(object sender, EventArgs e)
         {
-            if (map == null) return;
-            string key = $"{screen.X},{screen.Y}";
-            if (map.ScreenMetadata == null)
-                map.ScreenMetadata = new Dictionary<string, ScreenMetadata>();
-
-            if (!map.ScreenMetadata.ContainsKey(key))
-                map.ScreenMetadata[key] = new ScreenMetadata();
-
-            ScreenMetadata metadata = map.ScreenMetadata[key];
-            metadata.RawText = textBoxRawText.Text;
-            metadata.RegexPattern = textBoxRegex.Text;
-            MetadataParser.UpdateScreenMetadata(map, screen.X, screen.Y);
-            MessageBox.Show($"Parsed {metadata.ParsedItems.Count} items.", "Parse Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (listViewItems.SelectedItems.Count == 0) return;
+            var item = listViewItems.SelectedItems[0].Tag as MetadataLayerItem;
+            if (item == null) return;
+            var meta = GetOrCreateMetadata();
+            meta.ParsedItems.Remove(item);
+            LoadItems();
         }
 
-        private void ButtonOK_Click(object sender, EventArgs e)
+        private void ButtonExport_Click(object sender, EventArgs e)
         {
-            if (map == null) return;
-            string key = $"{screen.X},{screen.Y}";
-            if (map.ScreenMetadata == null)
-                map.ScreenMetadata = new Dictionary<string, ScreenMetadata>();
-
-            if (!map.ScreenMetadata.ContainsKey(key))
-                map.ScreenMetadata[key] = new ScreenMetadata();
-
-            ScreenMetadata metadata = map.ScreenMetadata[key];
-            metadata.RawText = textBoxRawText.Text;
-            metadata.RegexPattern = textBoxRegex.Text;
-            MetadataParser.UpdateScreenMetadata(map, screen.X, screen.Y);
+            var meta = GetOrCreateMetadata();
+            if (meta?.ParsedItems == null || meta.ParsedItems.Count == 0)
+            {
+                MessageBox.Show("No metadata items to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            using (var exportForm = new MetadataExportForm(map, screen, meta.ParsedItems))
+            {
+                exportForm.ShowDialog();
+            }
         }
     }
 }

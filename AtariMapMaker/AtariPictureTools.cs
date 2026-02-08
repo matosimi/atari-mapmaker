@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -270,7 +270,25 @@ namespace AtariMapMaker
                 // Clear the destination bitmap before rendering to ensure fresh data
                 gr.Clear(Color.FromArgb(AtariPalette.GetPalette().Entries[0].ToArgb()));
                 AtariFontRenderer.RenderMapData(myMap, windows[window].fontType, mapImage);
-                gr.DrawImage(mapImage, 0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
+                Rectangle destRect = new Rectangle(0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
+                Rectangle srcRect = new Rectangle(0, 0, mapImage.Width, mapImage.Height);
+                if (window == Globals.WindowType.Editor && Globals.MetadataLayerVisible)
+                {
+                    // Draw map at 50% opacity so metadata text is visible on top
+                    var cm = new ColorMatrix();
+                    cm.Matrix00 = cm.Matrix11 = cm.Matrix22 = 1f;
+                    cm.Matrix33 = 0.5f;
+                    cm.Matrix44 = 1f;
+                    using (var ia = new ImageAttributes())
+                    {
+                        ia.SetColorMatrix(cm);
+                        gr.DrawImage(mapImage, destRect, 0, 0, mapImage.Width, mapImage.Height, GraphicsUnit.Pixel, ia);
+                    }
+                }
+                else
+                {
+                    gr.DrawImage(mapImage, destRect, srcRect, GraphicsUnit.Pixel);
+                }
             }
             //separatory screenov
             if (drawScreenBorders)
@@ -341,6 +359,13 @@ namespace AtariMapMaker
             if (window == Globals.WindowType.Editor && isLocked && lockedScreen != Point.Empty)
             {
                 DrawLockedText(gr, myMap, lockedScreen);
+            }
+
+            // Draw metadata layer overlay when enabled
+            if (window == Globals.WindowType.Editor && Globals.MetadataLayerVisible)
+            {
+                Rectangle viewport = new Rectangle(0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
+                MetadataLayerRenderer.RenderMetadataLayer(myMap, gr, viewport, Globals.Zoom);
             }
         }
         
@@ -609,6 +634,50 @@ namespace AtariMapMaker
                 alignedY, 
                 AtariClipboard.ClipboardImage.Width, 
                 AtariClipboard.ClipboardImage.Height);
+        }
+
+        /// <summary>Restore map content under the metadata overlay at the given location (aligns to grid).</summary>
+        public static void DrawMetadataUnder(Point location, Bitmap underImage)
+        {
+            if (underImage == null) return;
+            AtariMap myMap = windows[Globals.WindowType.Editor].map;
+            Graphics gr = windows[Globals.WindowType.Editor].pictureBoxGraphics;
+            int alignSizeX = Globals.CharSize;
+            int alignSizeY = Globals.CharSize;
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+            }
+            int alignedX = (location.X / alignSizeX) * alignSizeX;
+            int alignedY = (location.Y / alignSizeY) * alignSizeY;
+            gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+            gr.DrawImage(underImage, alignedX, alignedY, underImage.Width, underImage.Height);
+        }
+
+        /// <summary>Capture map under cursor into underImage, draw previewImage at aligned location. Alignment matches character/tile grid.</summary>
+        public static void DrawMetadataOverlay(Point location, Bitmap mapImage, Bitmap underImage, Bitmap previewImage)
+        {
+            if (mapImage == null || underImage == null || previewImage == null) return;
+            AtariMap myMap = windows[Globals.WindowType.Editor].map;
+            Graphics gr = windows[Globals.WindowType.Editor].pictureBoxGraphics;
+            int alignSizeX = Globals.CharSize;
+            int alignSizeY = Globals.CharSize;
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+            }
+            int alignedX = (location.X / alignSizeX) * alignSizeX;
+            int alignedY = (location.Y / alignSizeY) * alignSizeY;
+            int w = previewImage.Width;
+            int h = previewImage.Height;
+            if (underImage.Width != w || underImage.Height != h)
+                return;
+            gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+            using (var underGr = Graphics.FromImage(underImage))
+                underGr.DrawImage(mapImage, 0, 0, new Rectangle(alignedX, alignedY, w, h), GraphicsUnit.Pixel);
+            gr.DrawImage(previewImage, alignedX, alignedY, w, h);
         }
         /*
         public static void SetDestImage(Bitmap _destImage, Graphics _gr)

@@ -1307,6 +1307,8 @@ namespace AtariMapMaker
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.CheckBox checkBoxEditDli;
         private System.Windows.Forms.CheckBox checkBoxShowDli;
+        private System.Windows.Forms.CheckBox checkBoxMetadataLayer;
+        private System.Windows.Forms.CheckBox checkBoxMetadataShowText;
         private System.Windows.Forms.Label labelDliMask;
         private System.Windows.Forms.MaskedTextBox maskedTextBoxDli;
         private System.Windows.Forms.TabPage tabPage4;

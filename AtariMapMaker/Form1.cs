@@ -33,6 +33,10 @@ namespace AtariMapMaker
         private Point lockedScreen = new Point(0, 0);
         private bool isContinuousPasteMode = false;  // Track if CTRL+Left mouse is held for continuous paste
         private Point? lastContinuousPasteCell = null;  // Track last grid cell where we pasted in continuous mode
+        // Metadata paste-mode overlay: show copied metadata cell under cursor
+        private Bitmap metadataUnderImage = null;
+        private Bitmap metadataPreviewImage = null;
+        private Point? previousMetadataOverlayLocation = null;
         public MainForm()
         {
             InitializeComponent();
@@ -197,6 +201,23 @@ namespace AtariMapMaker
             buttonTilemapConfig.Click += ButtonTilemapConfig_Click;
             flowLayoutPanel1.Controls.Add(buttonTilemapConfig);
 
+            // Metadata layer checkbox (edit mode: click map to add/edit metadata)
+            checkBoxMetadataLayer = new CheckBox();
+            checkBoxMetadataLayer.Text = "Metadata layer";
+            checkBoxMetadataLayer.Location = new Point(checkBoxEditDli.Location.X, checkBoxEditDli.Location.Y + checkBoxEditDli.Height + 5);
+            checkBoxMetadataLayer.Size = new Size(120, 20);
+            checkBoxMetadataLayer.CheckedChanged += CheckBoxMetadataLayer_CheckedChanged;
+            groupBoxDli.Controls.Add(checkBoxMetadataLayer);
+
+            checkBoxMetadataShowText = new CheckBox();
+            checkBoxMetadataShowText.Text = "Show metadata text";
+            checkBoxMetadataShowText.Location = new Point(checkBoxMetadataLayer.Location.X, checkBoxMetadataLayer.Location.Y + checkBoxMetadataLayer.Height + 2);
+            checkBoxMetadataShowText.Size = new Size(140, 20);
+            checkBoxMetadataShowText.Checked = true;
+            Globals.MetadataLayerShowText = true;
+            checkBoxMetadataShowText.CheckedChanged += CheckBoxMetadataShowText_CheckedChanged;
+            groupBoxDli.Controls.Add(checkBoxMetadataShowText);
+
             // Add Export Font button (for single font)
             Button buttonExportFont = new Button();
             buttonExportFont.Text = "Export Font";
@@ -224,6 +245,10 @@ namespace AtariMapMaker
             ToolStripMenuItem menuItemScreenMetadata = new ToolStripMenuItem("Screen Metadata...");
             menuItemScreenMetadata.Click += MenuItemScreenMetadata_Click;
             contextMenuStripScreen.Items.Add(menuItemScreenMetadata);
+
+            ToolStripMenuItem menuItemExportMetadata = new ToolStripMenuItem("Export metadata...");
+            menuItemExportMetadata.Click += MenuItemExportMetadata_Click;
+            contextMenuStripScreen.Items.Add(menuItemExportMetadata);
 
             ToolStripMenuItem menuItemScreenDescription = new ToolStripMenuItem("Screen Description...");
             menuItemScreenDescription.Click += MenuItemScreenDescription_Click;
@@ -286,10 +311,51 @@ namespace AtariMapMaker
         private void MenuItemScreenMetadata_Click(object sender, EventArgs e)
         {
             if (myMap == null) return;
-            using (ScreenMetadataDialog dialog = new ScreenMetadataDialog(myMap, currentScreen))
+            Point screen = isScreenLocked ? lockedScreen : currentScreen;
+            using (ScreenMetadataDialog dialog = new ScreenMetadataDialog(myMap, screen))
             {
-                dialog.ShowDialog();
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    RedrawEditorWindow();
+                    pictureBoxMap.Refresh();
+                }
             }
+        }
+
+        private void MenuItemExportMetadata_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            Point screen = isScreenLocked ? lockedScreen : currentScreen;
+            string key = $"{screen.X},{screen.Y}";
+            if (myMap.ScreenMetadata == null || !myMap.ScreenMetadata.ContainsKey(key))
+            {
+                MessageBox.Show("No metadata for this screen.", "Export metadata", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            var meta = myMap.ScreenMetadata[key];
+            if (meta?.ParsedItems == null || meta.ParsedItems.Count == 0)
+            {
+                MessageBox.Show("No metadata items for this screen.", "Export metadata", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            using (var exportForm = new MetadataExportForm(myMap, screen, meta.ParsedItems))
+            {
+                exportForm.ShowDialog();
+            }
+        }
+
+        private void CheckBoxMetadataLayer_CheckedChanged(object sender, EventArgs e)
+        {
+            Globals.MetadataLayerVisible = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            RedrawEditorWindow();
+            pictureBoxMap.Refresh();
+        }
+
+        private void CheckBoxMetadataShowText_CheckedChanged(object sender, EventArgs e)
+        {
+            Globals.MetadataLayerShowText = checkBoxMetadataShowText != null && checkBoxMetadataShowText.Checked;
+            RedrawEditorWindow();
+            pictureBoxMap.Refresh();
         }
 
         private void MenuItemScreenDescription_Click(object sender, EventArgs e)
@@ -630,15 +696,11 @@ namespace AtariMapMaker
                     lastContinuousPasteCell = null;
                 }
                 
-                try
-                {
-                    toolStripStatusLabel1.Text = $"{e.X},{e.Y} Prev:{AtariPictureTools.PreviousClipboardLocation.Value.X},{AtariPictureTools.PreviousClipboardLocation.Value.Y}";
-                    toolStripStatusLabel2.Text = $"pre mouse:{AtariPictureTools.PreviousMouseLocation.X},{AtariPictureTools.PreviousMouseLocation.Y}";
-                }
-                catch (Exception ex)
-                {
-                    toolStripStatusLabel1.Text = "no data";
-                }
+                var prevClip = AtariPictureTools.PreviousClipboardLocation;
+                toolStripStatusLabel1.Text = prevClip.HasValue
+                    ? $"{e.X},{e.Y} Prev:{prevClip.Value.X},{prevClip.Value.Y}"
+                    : $"{e.X},{e.Y}";
+                toolStripStatusLabel2.Text = $"pre mouse:{AtariPictureTools.PreviousMouseLocation.X},{AtariPictureTools.PreviousMouseLocation.Y}";
                 if (AtariClipboard.IsValid)  //copy mode (shows alpha blended clipBoard)
                 {
                     // Calculate current grid cell based on map type
@@ -674,6 +736,52 @@ namespace AtariMapMaker
                         AtariPictureTools.PreviousClipboardGridCell = currentGridCell;
                         
                         // Refresh to show changes
+                        pictureBoxMap.Refresh();
+                    }
+                }
+                else if (MetadataItemClipboard.HasItem)
+                {
+                    // Show metadata paste preview under cursor (same as pictureBoxClipboard: tile-sized with text when tilemap)
+                    int zoom = Math.Max(1, Globals.Zoom);
+                    int alignSizeX = Globals.CharSize;
+                    int alignSizeY = Globals.CharSize;
+                    int cellPxW = 8 * zoom;
+                    int cellPxH = 8 * zoom;
+                    bool tileSized = false;
+                    if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                    {
+                        alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                        alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+                        cellPxW = myMap.TilemapInfo.TileWidth * 8 * zoom;
+                        cellPxH = myMap.TilemapInfo.TileHeight * 8 * zoom;
+                        tileSized = true;
+                    }
+                    int alignedX = (e.Location.X / alignSizeX) * alignSizeX;
+                    int alignedY = (e.Location.Y / alignSizeY) * alignSizeY;
+                    bool cellChanged = !previousMetadataOverlayLocation.HasValue ||
+                        previousMetadataOverlayLocation.Value.X != alignedX || previousMetadataOverlayLocation.Value.Y != alignedY;
+                    if (cellChanged)
+                    {
+                        if (previousMetadataOverlayLocation.HasValue && metadataUnderImage != null)
+                        {
+                            AtariPictureTools.DrawMetadataUnder(previousMetadataOverlayLocation.Value, metadataUnderImage);
+                        }
+                        metadataPreviewImage?.Dispose();
+                        metadataPreviewImage = tileSized
+                            ? MetadataLayerRenderer.CreateMetadataItemPreviewBitmap(MetadataItemClipboard.CopiedItem, 8 * zoom, cellOnly: false, cellWidthPixels: cellPxW, cellHeightPixels: cellPxH)
+                            : MetadataLayerRenderer.CreateMetadataItemPreviewBitmap(MetadataItemClipboard.CopiedItem, 8 * zoom, cellOnly: true);
+                        if (metadataPreviewImage != null && (Bitmap)pictureBoxMap.Image != null)
+                        {
+                            int w = metadataPreviewImage.Width;
+                            int h = metadataPreviewImage.Height;
+                            if (metadataUnderImage == null || metadataUnderImage.Width != w || metadataUnderImage.Height != h)
+                            {
+                                metadataUnderImage?.Dispose();
+                                metadataUnderImage = new Bitmap(w, h);
+                            }
+                            AtariPictureTools.DrawMetadataOverlay(e.Location, (Bitmap)pictureBoxMap.Image, metadataUnderImage, metadataPreviewImage);
+                            previousMetadataOverlayLocation = new Point(alignedX, alignedY);
+                        }
                         pictureBoxMap.Refresh();
                     }
                 }
@@ -898,6 +1006,92 @@ namespace AtariMapMaker
                     
                     pictureBoxMap.Refresh();
                 }
+                else if (Globals.MetadataLayerVisible)
+                {
+                    // Metadata layer: add or edit metadata at this position (tile position for tilemap, char position otherwise)
+                    int xx = myMap.OffsetX + e.X / Globals.CharSize;
+                    int yy = myMap.OffsetY + e.Y / Globals.CharSize;
+                    int screenCharWidth = myMap.ScreenSize.Width;
+                    int screenCharHeight = myMap.ScreenSize.Height;
+                    if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                    {
+                        screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                        screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                    }
+                    int scrx = xx / screenCharWidth;
+                    int scry = yy / screenCharHeight;
+                    if (scrx < 0) scrx = 0;
+                    if (scry < 0) scry = 0;
+                    if (scrx >= myMap.MapSize.Width) scrx = myMap.MapSize.Width - 1;
+                    if (scry >= myMap.MapSize.Height) scry = myMap.MapSize.Height - 1;
+                    int charX = xx - scrx * screenCharWidth;
+                    int charY = yy - scry * screenCharHeight;
+                    int cellX, cellY;
+                    int cellWidth, cellHeight;
+                    if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                    {
+                        int tw = myMap.TilemapInfo.TileWidth;
+                        int th = myMap.TilemapInfo.TileHeight;
+                        cellX = charX / tw;
+                        cellY = charY / th;
+                        cellWidth = myMap.ScreenSize.Width;
+                        cellHeight = myMap.ScreenSize.Height;
+                    }
+                    else
+                    {
+                        cellX = charX;
+                        cellY = charY;
+                        cellWidth = screenCharWidth;
+                        cellHeight = screenCharHeight;
+                    }
+                    if (cellX < 0 || cellX >= cellWidth || cellY < 0 || cellY >= cellHeight)
+                        return;
+                    var key = $"{scrx},{scry}";
+                    if (myMap.ScreenMetadata == null)
+                        myMap.ScreenMetadata = new Dictionary<string, ScreenMetadata>();
+                    if (!myMap.ScreenMetadata.ContainsKey(key))
+                        myMap.ScreenMetadata[key] = new ScreenMetadata();
+                    var meta = myMap.ScreenMetadata[key];
+                    var existing = meta.ParsedItems?.Find(i => i.X == cellX && i.Y == cellY);
+                    bool ctrl = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                    if (ctrl && existing != null)
+                    {
+                        MetadataItemClipboard.Copy(existing);
+                        UpdateMetadataClipboardPreview();
+                        RedrawEditorWindow();
+                        pictureBoxMap.Refresh();
+                        return;
+                    }
+                    if (!ctrl && MetadataItemClipboard.HasItem)
+                    {
+                        var copied = MetadataItemClipboard.CopiedItem;
+                        meta.ParsedItems.RemoveAll(i => i.X == cellX && i.Y == cellY);
+                        meta.ParsedItems.Add(new MetadataLayerItem { X = cellX, Y = cellY, Text = copied.Text ?? "", Value = copied.Value, Color = copied.Color });
+                        previousMetadataOverlayLocation = null;
+                        RedrawEditorWindow();
+                        pictureBoxMap.Refresh();
+                        return;
+                    }
+                    if (existing != null)
+                    {
+                        using (var edit = new MetadataItemEditDialog(existing, "Edit metadata item", myMap.IsTilemap))
+                        {
+                            if (edit.ShowDialog() == DialogResult.OK && edit.RemoveRequested)
+                                meta.ParsedItems.Remove(existing);
+                        }
+                    }
+                    else
+                    {
+                        var item = new MetadataLayerItem { X = cellX, Y = cellY, Text = "", Value = 0, Color = 0 };
+                        using (var edit = new MetadataItemEditDialog(item, "Add metadata item", myMap.IsTilemap))
+                        {
+                            if (edit.ShowDialog() == DialogResult.OK && !edit.RemoveRequested)
+                                meta.ParsedItems.Add(item);
+                        }
+                    }
+                    RedrawEditorWindow();
+                    pictureBoxMap.Refresh();
+                }
                 else
                 {
                     if (mouseStatus == "")
@@ -1020,6 +1214,21 @@ namespace AtariMapMaker
         {
             if (e.Button == MouseButtons.Right)
             {
+                if (MetadataItemClipboard.HasItem)
+                {
+                    if (previousMetadataOverlayLocation.HasValue && metadataUnderImage != null)
+                    {
+                        AtariPictureTools.DrawMetadataUnder(previousMetadataOverlayLocation.Value, metadataUnderImage);
+                        pictureBoxMap.Refresh();
+                    }
+                    previousMetadataOverlayLocation = null;
+                    metadataUnderImage?.Dispose();
+                    metadataUnderImage = null;
+                    metadataPreviewImage?.Dispose();
+                    metadataPreviewImage = null;
+                    MetadataItemClipboard.Clear();
+                    UpdateMetadataClipboardPreview();
+                }
                 // Restore previous clipboard position before clearing
                 if (AtariPictureTools.PreviousClipboardLocation.HasValue)
                 {
@@ -2498,15 +2707,67 @@ namespace AtariMapMaker
         }
         
         /// <summary>
-        /// Keyboard handler - 'i' key toggles clipboard inverse
+        /// Keyboard handler - 'i' key toggles clipboard inverse; ESC exits metadata paste mode
         /// </summary>
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
+            if (e.KeyCode == Keys.Escape && MetadataItemClipboard.HasItem)
+            {
+                if (previousMetadataOverlayLocation.HasValue && metadataUnderImage != null)
+                {
+                    AtariPictureTools.DrawMetadataUnder(previousMetadataOverlayLocation.Value, metadataUnderImage);
+                    pictureBoxMap.Refresh();
+                }
+                previousMetadataOverlayLocation = null;
+                metadataUnderImage?.Dispose();
+                metadataUnderImage = null;
+                metadataPreviewImage?.Dispose();
+                metadataPreviewImage = null;
+                MetadataItemClipboard.Clear();
+                UpdateMetadataClipboardPreview();
+                e.Handled = true;
+                return;
+            }
             if (e.KeyCode == Keys.I && buttonClipboardInverse != null && buttonClipboardInverse.Enabled)
             {
                 InvertClipboard();
                 e.Handled = true;
             }
+        }
+
+        /// <summary>Updates pictureBoxClipboard to show metadata item preview when HasItem; otherwise restores char/tile clipboard or clears.</summary>
+        private void UpdateMetadataClipboardPreview()
+        {
+            var current = pictureBoxClipboard.Image;
+            bool currentIsClipboardImage = AtariClipboard.IsValid && current == AtariClipboard.ClipboardImage;
+            if (MetadataItemClipboard.HasItem)
+            {
+                int zoom = Math.Max(1, Globals.Zoom);
+                int cellSizePixels = 8 * zoom;
+                int cellW = cellSizePixels, cellH = cellSizePixels;
+                bool tileSized = false;
+                if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    cellW = myMap.TilemapInfo.TileWidth * 8 * zoom;
+                    cellH = myMap.TilemapInfo.TileHeight * 8 * zoom;
+                    tileSized = true;
+                }
+                System.Drawing.Bitmap newBmp;
+                if (tileSized)
+                    newBmp = MetadataLayerRenderer.CreateMetadataItemPreviewBitmap(MetadataItemClipboard.CopiedItem, cellSizePixels, cellOnly: false, cellWidthPixels: cellW, cellHeightPixels: cellH);
+                else
+                    newBmp = MetadataLayerRenderer.CreateMetadataItemPreviewBitmap(MetadataItemClipboard.CopiedItem, cellSizePixels, cellOnly: true);
+                if (current != null && !currentIsClipboardImage)
+                    current.Dispose();
+                pictureBoxClipboard.Image = newBmp;
+            }
+            else
+            {
+                if (current != null && !currentIsClipboardImage)
+                    current.Dispose();
+                pictureBoxClipboard.Image = AtariClipboard.IsValid ? AtariClipboard.ClipboardImage : null;
+            }
+            pictureBoxClipboard.Refresh();
         }
         
         /// <summary>
