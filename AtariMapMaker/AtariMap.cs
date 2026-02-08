@@ -730,6 +730,39 @@ namespace AtariMapMaker
                 }
             }
         }
+        
+        /// <summary>
+        /// Regenerate CharData from all tile indexes in the Data array
+        /// This should be called after importing tile indexes to update the character representation
+        /// </summary>
+        public void RegenerateCharDataFromTiles()
+        {
+            if (!IsTilemap || TilemapInfo == null || Data == null)
+                return;
+                
+            // First ensure CharData is initialized
+            if (CharData == null)
+            {
+                InitializeCharData();
+            }
+            
+            // Iterate through all tiles and expand each one
+            int tileWidth = MapSize.Width * ScreenSize.Width;
+            int tileHeight = MapSize.Height * ScreenSize.Height;
+            
+            for (int tileY = 0; tileY < tileHeight; tileY++)
+            {
+                for (int tileX = 0; tileX < tileWidth; tileX++)
+                {
+                    int tileIndex = tileY * Stride + tileX;
+                    if (tileIndex < Data.Length)
+                    {
+                        byte tileIdx = Data[tileIndex];
+                        ExpandTileToCharData(tileX, tileY, tileIdx);
+                    }
+                }
+            }
+        }
 
         public byte[] GetFontData(int fontIndex)
         {

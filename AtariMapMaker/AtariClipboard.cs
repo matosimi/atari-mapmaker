@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,11 +14,20 @@ namespace AtariMapMaker
         private static Graphics gr;
         public static int ClipboardWidth { get; private set; }
         public static int ClipboardHeight { get; private set; }
-        public static Bitmap ClipboardImage { get; private set; }
+        public static Bitmap ClipboardImage { get; set; }
         public static Bitmap UnderClipBoardImage { get; set; }
         public static Graphics UnderImageGraphics { get; set; }
         public static bool IsValid { get; set; }
         public static bool IsTileIndexes { get; set; }  // True if clipboard contains tile indexes (for tilemaps), false if characters
+        public static bool SkipZero { get; set; }  // If true, skip pasting 0 chars/tiles (transparency)
+        
+        /// <summary>
+        /// Gets the clipboard data array (for inverse operation)
+        /// </summary>
+        public static byte[,] GetData()
+        {
+            return data;
+        }
         public static void SetDataSource(AtariMap myMap)
         {
             dataSource = myMap;
@@ -34,12 +43,109 @@ namespace AtariMapMaker
             {
                 ClipboardImage.Dispose();
             }
-            ClipboardImage = new Bitmap(mouseSelection.Width, mouseSelection.Height);
-            gr = Graphics.FromImage(ClipboardImage);
-            gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-            gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
-            gr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
-            gr.Dispose();
+            
+            // If SkipZero is enabled, create a 32-bit ARGB bitmap to support transparency
+            // Otherwise use 8-bit indexed for better performance
+            if (SkipZero)
+            {
+                // Create 32-bit ARGB bitmap for transparency support.
+                // tempBitmap is 32bpp (default); we must lock it as Format32bppArgb when reading.
+                Bitmap tempBitmap = new Bitmap(mouseSelection.Width, mouseSelection.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (Graphics tempGr = Graphics.FromImage(tempBitmap))
+                {
+                    tempGr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                    tempGr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                    tempGr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
+                }
+                
+                ClipboardImage = new Bitmap(tempBitmap.Width, tempBitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                BitmapData srcData = tempBitmap.LockBits(
+                    new Rectangle(0, 0, tempBitmap.Width, tempBitmap.Height),
+                    System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                BitmapData dstData = ClipboardImage.LockBits(
+                    new Rectangle(0, 0, ClipboardImage.Width, ClipboardImage.Height),
+                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                unsafe
+                {
+                    int* srcPtr = (int*)srcData.Scan0;
+                    int* dstPtr = (int*)dstData.Scan0;
+                    int w = tempBitmap.Width;
+                    int h = tempBitmap.Height;
+                    int srcStride = srcData.Stride / 4;
+                    int dstStride = dstData.Stride / 4;
+                    for (int y = 0; y < h; y++)
+                        for (int x = 0; x < w; x++)
+                            dstPtr[y * dstStride + x] = srcPtr[y * srcStride + x];
+                }
+                tempBitmap.UnlockBits(srcData);
+                ClipboardImage.UnlockBits(dstData);
+                tempBitmap.Dispose();
+            }
+            else
+            {
+                // Use 8-bit indexed bitmap for normal operation
+                // First draw to a 32-bit bitmap (Graphics can't be created from 8-bit indexed)
+                Bitmap temp32Bit = new Bitmap(mouseSelection.Width, mouseSelection.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (Graphics tempGr = Graphics.FromImage(temp32Bit))
+                {
+                    tempGr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                    tempGr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                    tempGr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
+                }
+                
+                // Convert 32-bit ARGB to 8-bit indexed using palette
+                ClipboardImage = new Bitmap(mouseSelection.Width, mouseSelection.Height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
+                ClipboardImage.Palette = AtariPalette.GetPalette();
+                Color[] palette = AtariPalette.GetPalette().Entries;
+                
+                BitmapData srcData = temp32Bit.LockBits(
+                    new Rectangle(0, 0, temp32Bit.Width, temp32Bit.Height),
+                    System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                BitmapData dstData = ClipboardImage.LockBits(
+                    new Rectangle(0, 0, ClipboardImage.Width, ClipboardImage.Height),
+                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                    System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
+                
+                unsafe
+                {
+                    int* srcPtr = (int*)srcData.Scan0;
+                    byte* dstPtr = (byte*)dstData.Scan0;
+                    
+                    for (int y = 0; y < temp32Bit.Height; y++)
+                    {
+                        for (int x = 0; x < temp32Bit.Width; x++)
+                        {
+                            int argb = srcPtr[y * srcData.Stride / 4 + x];
+                            Color color = Color.FromArgb(argb);
+                            
+                            // Find closest palette color
+                            int bestIndex = 0;
+                            double minDistance = double.MaxValue;
+                            for (int i = 0; i < palette.Length; i++)
+                            {
+                                double distance = Math.Sqrt(
+                                    Math.Pow(color.R - palette[i].R, 2) +
+                                    Math.Pow(color.G - palette[i].G, 2) +
+                                    Math.Pow(color.B - palette[i].B, 2));
+                                if (distance < minDistance)
+                                {
+                                    minDistance = distance;
+                                    bestIndex = i;
+                                }
+                            }
+                            
+                            dstPtr[y * dstData.Stride + x] = (byte)bestIndex;
+                        }
+                    }
+                }
+                
+                temp32Bit.UnlockBits(srcData);
+                ClipboardImage.UnlockBits(dstData);
+                temp32Bit.Dispose();
+            }
 
             // For tilemaps, copy tile indexes instead of characters
             if (dataSource.IsTilemap && dataSource.TilemapInfo != null)
@@ -192,6 +298,11 @@ namespace AtariMapMaker
                             if (tileIndex >= 0 && tileIndex < dataSource.Data.Length)
                             {
                                 byte tileIdx = data[x, y];
+                                
+                                // Skip zero tiles if SkipZero is enabled
+                                if (SkipZero && tileIdx == 0)
+                                    continue;
+                                
                                 dataSource.Data[tileIndex] = tileIdx;
                                 
                                 // Expand tile to CharData array for fast rendering
@@ -223,7 +334,13 @@ namespace AtariMapMaker
                             
                             if (destIndex >= 0 && destIndex < dataSource.Data.Length)
                             {
-                                dataSource.Data[destIndex] = data[x, y];
+                                byte charVal = data[x, y];
+                                
+                                // Skip zero chars if SkipZero is enabled
+                                if (SkipZero && charVal == 0)
+                                    continue;
+                                
+                                dataSource.Data[destIndex] = charVal;
                             }
                         }
                     }

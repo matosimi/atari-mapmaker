@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Drawing;
 using System.Security.Cryptography;
+using System.Drawing.Imaging;
 
 namespace AtariMapMaker
 {
@@ -23,6 +24,8 @@ namespace AtariMapMaker
         //private static Bitmap destImage;
         private static Point prevMouseLoc;
         private static int previousOffset;
+        private static Point? previousClipboardLocation = null;  // Track previous clipboard position to restore it
+        private static Point? previousClipboardGridCell = null;  // Track previous grid cell to optimize redraws
         private static readonly Pen screenSeparatorPen = new Pen(Color.Red);
         private static readonly Pen selectionPen = new Pen(Color.Lime);
         private static readonly Color gridColor = Color.White;
@@ -202,6 +205,31 @@ namespace AtariMapMaker
                 prevMouseLoc = value;
             }
         }
+        
+        public static Point? PreviousClipboardLocation
+        {
+            get
+            {
+                return previousClipboardLocation;
+            }
+            set
+            {
+                previousClipboardLocation = value;
+                previousClipboardGridCell = null;  // Reset grid cell when location is reset
+            }
+        }
+        
+        public static Point? PreviousClipboardGridCell
+        {
+            get
+            {
+                return previousClipboardGridCell;
+            }
+            set
+            {
+                previousClipboardGridCell = value;
+            }
+        }
 
         public static int PreviousOffset
         {
@@ -239,6 +267,8 @@ namespace AtariMapMaker
             gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             if (drawData)
             {
+                // Clear the destination bitmap before rendering to ensure fresh data
+                gr.Clear(Color.FromArgb(AtariPalette.GetPalette().Entries[0].ToArgb()));
                 AtariFontRenderer.RenderMapData(myMap, windows[window].fontType, mapImage);
                 gr.DrawImage(mapImage, 0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
             }
@@ -298,7 +328,11 @@ namespace AtariMapMaker
             }
             
             // Draw yellow L-shaped corners for current screen (on top of red borders)
-            if (window == Globals.WindowType.Editor && currentScreen != Point.Empty)
+            // Check if currentScreen is valid (within map bounds) instead of != Point.Empty
+            // This allows screen 0,0 to be drawn
+            if (window == Globals.WindowType.Editor && 
+                currentScreen.X >= 0 && currentScreen.Y >= 0 && 
+                currentScreen.X < myMap.MapSize.Width && currentScreen.Y < myMap.MapSize.Height)
             {
                 DrawCurrentScreenCorners(gr, myMap, currentScreen);
             }
@@ -385,8 +419,31 @@ namespace AtariMapMaker
         /// <returns>True if scrolled.</returns>
         public static bool Scroll(Point newMouseLoc, Globals.WindowType window)
         {
-            windows[window].map.Offset = previousOffset;
-            bool newOffset = AtariFontRenderer.CalculateOffset((newMouseLoc.X - prevMouseLoc.X) / Globals.CharSize, (newMouseLoc.Y - prevMouseLoc.Y) / Globals.CharSize, windows[window].map);
+            AtariMap myMap = windows[window].map;
+            myMap.Offset = previousOffset;
+            
+            // For tilemaps, scroll by tiles; for normal maps, scroll by characters
+            int deltaX, deltaY;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                // Scroll by tile size for tilemaps
+                int tilePixelWidth = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                int tilePixelHeight = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+                int tileDeltaX = (newMouseLoc.X - prevMouseLoc.X) / tilePixelWidth;
+                int tileDeltaY = (newMouseLoc.Y - prevMouseLoc.Y) / tilePixelHeight;
+                
+                // Convert tile deltas to character deltas (since OffsetX/OffsetY are in character units)
+                deltaX = tileDeltaX * myMap.TilemapInfo.TileWidth;
+                deltaY = tileDeltaY * myMap.TilemapInfo.TileHeight;
+            }
+            else
+            {
+                // Scroll by character size for normal maps
+                deltaX = (newMouseLoc.X - prevMouseLoc.X) / Globals.CharSize;
+                deltaY = (newMouseLoc.Y - prevMouseLoc.Y) / Globals.CharSize;
+            }
+            
+            bool newOffset = AtariFontRenderer.CalculateOffset(deltaX, deltaY, myMap);
 
             if (newOffset)
                 Redraw(window);
@@ -397,6 +454,10 @@ namespace AtariMapMaker
         public static void DrawClipBoard(Point location, Bitmap pictureBoxImage)
         {
             AtariMap myMap = windows[Globals.WindowType.Editor].map;
+            Graphics gr = windows[Globals.WindowType.Editor].pictureBoxGraphics;
+            
+            // Ensure PixelOffsetMode matches the one used for grid drawing
+            gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             
             // Calculate alignment based on map type
             int alignSizeX = Globals.CharSize;
@@ -409,26 +470,123 @@ namespace AtariMapMaker
                 alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
             }
             
-            // Align location to grid (tile grid for tilemaps, char grid for normal maps)
+            // Align location to grid using truncation
             int alignedX = (location.X / alignSizeX) * alignSizeX;
             int alignedY = (location.Y / alignSizeY) * alignSizeY;
             
             //store contents editor window contents under the current clipboard position -> underimage
-            int charX = alignedX / Globals.Zoom;
-            int charY = alignedY / Globals.Zoom;
-            Rectangle sourceRect = new Rectangle(charX, charY, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height);
+            // pictureBoxImage is the zoomed image, so sourceRect should use pixel coordinates (alignedX, alignedY)
+            // The UnderClipBoardImage is the same size as ClipboardImage (unzoomed), so we draw at 0,0
+            Rectangle sourceRect = new Rectangle(alignedX, alignedY, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height);
             AtariClipboard.UnderImageGraphics.DrawImage(pictureBoxImage, 0, 0, sourceRect, GraphicsUnit.Pixel);
             
             //draw clipboard -> location inside editor window (original size, not scaled, aligned to grid)
-            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(
-                AtariClipboard.ClipboardImage, 
-                alignedX, 
-                alignedY);
+            // If SkipZero is enabled, create a mask for 0 chars/tiles based on clipboard data
+            if (AtariClipboard.SkipZero)
+            {
+                // Get clipboard data to check for 0 chars/tiles
+                byte[,] clipboardData = AtariClipboard.GetData();
+                if (clipboardData != null)
+                {
+                    // Create a 32-bit ARGB bitmap with transparency for 0 chars/tiles
+                    Bitmap transparentClipboard = new Bitmap(AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    
+                    // Lock bits with appropriate format based on clipboard image format
+                    System.Drawing.Imaging.PixelFormat srcFormat = AtariClipboard.ClipboardImage.PixelFormat == System.Drawing.Imaging.PixelFormat.Format32bppArgb
+                        ? System.Drawing.Imaging.PixelFormat.Format32bppArgb
+                        : System.Drawing.Imaging.PixelFormat.Format8bppIndexed;
+                    
+                    BitmapData srcData = AtariClipboard.ClipboardImage.LockBits(
+                        new Rectangle(0, 0, AtariClipboard.ClipboardImage.Width, AtariClipboard.ClipboardImage.Height),
+                        System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                        srcFormat);
+                    BitmapData dstData = transparentClipboard.LockBits(
+                        new Rectangle(0, 0, transparentClipboard.Width, transparentClipboard.Height),
+                        System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                        System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    
+                    unsafe
+                    {
+                        int* dstPtr = (int*)dstData.Scan0;
+                        Color[] palette = AtariPalette.GetPalette().Entries;
+                        
+                        // Each character is 8x8 pixels at 1x zoom, but clipboard image is zoomed
+                        int charWidth = 8 * Globals.Zoom;
+                        int charHeight = 8 * Globals.Zoom;
+                        
+                        bool is32Bit = (srcFormat == System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                        
+                        for (int y = 0; y < AtariClipboard.ClipboardImage.Height; y++)
+                        {
+                            for (int x = 0; x < AtariClipboard.ClipboardImage.Width; x++)
+                            {
+                                // Calculate which character/tile this pixel belongs to (accounting for zoom)
+                                int charX = x / charWidth;
+                                int charY = y / charHeight;
+                                
+                                // Check if this character/tile is 0 in the clipboard data
+                                bool isZero = false;
+                                if (charX < AtariClipboard.ClipboardWidth && charY < AtariClipboard.ClipboardHeight)
+                                {
+                                    byte dataVal = clipboardData[charX, charY];
+                                    isZero = (dataVal == 0);
+                                }
+                                
+                                if (isZero)
+                                {
+                                    // Make transparent
+                                    dstPtr[y * dstData.Stride / 4 + x] = 0;
+                                }
+                                else
+                                {
+                                    // Copy pixel from source
+                                    if (is32Bit)
+                                    {
+                                        // Already 32-bit ARGB, copy directly
+                                        int* src32Ptr = (int*)srcData.Scan0;
+                                        dstPtr[y * dstData.Stride / 4 + x] = src32Ptr[y * srcData.Stride / 4 + x];
+                                    }
+                                    else
+                                    {
+                                        // 8-bit indexed, convert via palette
+                                        byte* srcPtr = (byte*)srcData.Scan0;
+                                        byte paletteIndex = srcPtr[y * srcData.Stride + x];
+                                        Color color = palette[paletteIndex];
+                                        dstPtr[y * dstData.Stride / 4 + x] = color.ToArgb();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    AtariClipboard.ClipboardImage.UnlockBits(srcData);
+                    transparentClipboard.UnlockBits(dstData);
+                    
+                    gr.DrawImage(transparentClipboard, alignedX, alignedY);
+                    transparentClipboard.Dispose();
+                }
+                else
+                {
+                    // Fallback: draw normally if data is not available
+                    gr.DrawImage(AtariClipboard.ClipboardImage, alignedX, alignedY);
+                }
+            }
+            else
+            {
+                gr.DrawImage(
+                    AtariClipboard.ClipboardImage, 
+                    alignedX, 
+                    alignedY);
+            }
         }
 
         public static void DrawUnderClipBoard(Point location)
         {
             AtariMap myMap = windows[Globals.WindowType.Editor].map;
+            Graphics gr = windows[Globals.WindowType.Editor].pictureBoxGraphics;
+            
+            // Ensure PixelOffsetMode matches the one used for grid drawing
+            gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
             
             // Calculate alignment based on map type
             int alignSizeX = Globals.CharSize;
@@ -441,11 +599,11 @@ namespace AtariMapMaker
                 alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
             }
             
-            // Align location to grid (tile grid for tilemaps, char grid for normal maps)
+            // Align location to grid using truncation (must match DrawClipBoard alignment)
             int alignedX = (location.X / alignSizeX) * alignSizeX;
             int alignedY = (location.Y / alignSizeY) * alignSizeY;
             
-            windows[Globals.WindowType.Editor].pictureBoxGraphics.DrawImage(
+            gr.DrawImage(
                 AtariClipboard.UnderClipBoardImage, 
                 alignedX, 
                 alignedY, 

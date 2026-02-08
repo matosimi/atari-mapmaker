@@ -99,7 +99,15 @@ namespace AtariMapMaker
             if (subY < 0)
                 deltaY = myMap.OffsetY;
 
-            int offsetChange = deltaX + deltaY * myMap.Stride;
+            // For tilemaps, use CharStride (character units) instead of Stride (tile units)
+            // because OffsetX/OffsetY are in character units for rendering CharData
+            int stride = myMap.Stride;
+            if (myMap.IsTilemap && myMap.CharStride > 0)
+            {
+                stride = myMap.CharStride;
+            }
+
+            int offsetChange = deltaX + deltaY * stride;
             myMap.Offset -= offsetChange;
             return offsetChange != 0;
         }
@@ -238,6 +246,45 @@ namespace AtariMapMaker
         }
 
         /// <summary>
+        /// Renders clipboard character data directly to an 8bpp bitmap using the Screen font.
+        /// Use this for clipboard preview/inverse so all lines render correctly without map/DLI logic.
+        /// </summary>
+        public static void RenderClipboardData(byte[,] data, int width, int height, Bitmap outBmp)
+        {
+            if (data == null || outBmp.PixelFormat != PixelFormat.Format8bppIndexed)
+                return;
+            if (outBmp.Width < width * 8 || outBmp.Height < height * 8)
+                return;
+            AtariFont font = fonts[Globals.FontType.Screen];
+            BitmapData outData = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+            BitmapData fntData = font.bitmap.LockBits(new Rectangle(0, 0, font.bitmap.Width, font.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            unsafe
+            {
+                byte* outRow = (byte*)outData.Scan0;
+                byte* fntRow = (byte*)fntData.Scan0;
+                for (int cy = 0; cy < height; cy++)
+                {
+                    for (int py = 0; py < 8; py++)
+                    {
+                        for (int cx = 0; cx < width; cx++)
+                        {
+                            byte charValue = data[cx, cy];
+                            if (charValue * 8 + 7 >= fntData.Width)
+                                charValue = 0;
+                            for (int px = 0; px < 8; px++)
+                            {
+                                byte pixel = fntRow[py * fntData.Stride + charValue * 8 + px];
+                                outRow[(cy * 8 + py) * outData.Stride + cx * 8 + px] = pixel;
+                            }
+                        }
+                    }
+                }
+            }
+            outBmp.UnlockBits(outData);
+            font.bitmap.UnlockBits(fntData);
+        }
+
+        /// <summary>
         /// Try avoid calling this method outside AtariPictureTools
         /// outBmp has to be already properly sized (windowCharsHorizontal*8, windowCharsVertical*8)
         /// </summary>
@@ -363,11 +410,22 @@ namespace AtariMapMaker
                             }
                             
                             index = adrOffset + x;
+                            
+                            // Bounds check for data array
+                            if (index < 0 || index >= data.Length)
+                                continue;
+                            
+                            byte charValue = data[index];
+                            
+                            // Bounds check for font data (font has 256 characters, each 8 bytes wide)
+                            if (charValue * 8 + 7 >= fntd.Stride * fntd.Height)
+                                charValue = 0; // Use character 0 if out of bounds
+                            
                             byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : color5;
                             if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
                             for (int c = 0; c < 8; c++)
                             {
-                                int colorIndex = fntRow[data[index] * 8 + c];
+                                int colorIndex = fntRow[charValue * 8 + c];
                                 byte color;
                                 if (color5.Length > 5)
                                 {
