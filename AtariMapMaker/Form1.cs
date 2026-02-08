@@ -218,6 +218,13 @@ namespace AtariMapMaker
             checkBoxMetadataShowText.CheckedChanged += CheckBoxMetadataShowText_CheckedChanged;
             groupBoxDli.Controls.Add(checkBoxMetadataShowText);
 
+            Button buttonMassChangeMetadata = new Button();
+            buttonMassChangeMetadata.Text = "Mass change metadata...";
+            buttonMassChangeMetadata.Location = new Point(checkBoxMetadataShowText.Location.X, checkBoxMetadataShowText.Location.Y + checkBoxMetadataShowText.Height + 4);
+            buttonMassChangeMetadata.Size = new Size(140, 24);
+            buttonMassChangeMetadata.Click += ButtonMassChangeMetadata_Click;
+            groupBoxDli.Controls.Add(buttonMassChangeMetadata);
+
             // Add Export Font button (for single font)
             Button buttonExportFont = new Button();
             buttonExportFont.Text = "Export Font";
@@ -356,6 +363,16 @@ namespace AtariMapMaker
             Globals.MetadataLayerShowText = checkBoxMetadataShowText != null && checkBoxMetadataShowText.Checked;
             RedrawEditorWindow();
             pictureBoxMap.Refresh();
+        }
+
+        private void ButtonMassChangeMetadata_Click(object sender, EventArgs e)
+        {
+            if (myMap == null) return;
+            var form = new MetadataMassChangeForm(
+                myMap,
+                () => isScreenLocked ? lockedScreen : currentScreen,
+                () => { RedrawEditorWindow(); pictureBoxMap.Refresh(); });
+            form.Show(this);
         }
 
         private void MenuItemScreenDescription_Click(object sender, EventArgs e)

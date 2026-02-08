@@ -36,6 +36,8 @@ namespace AtariMapMaker
             this.tabPageColors = new System.Windows.Forms.TabPage();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.groupBoxClipBoard = new System.Windows.Forms.GroupBox();
+            this.checkBoxClipboardSkip0 = new System.Windows.Forms.CheckBox();
+            this.buttonClipboardInverse = new System.Windows.Forms.Button();
             this.pictureBoxClipboard = new System.Windows.Forms.PictureBox();
             this.groupBoxUnderClipboard = new System.Windows.Forms.GroupBox();
             this.pictureBoxUnderClipBoard = new System.Windows.Forms.PictureBox();
@@ -117,8 +119,6 @@ namespace AtariMapMaker
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.buttonClipboardInverse = new System.Windows.Forms.Button();
-            this.checkBoxClipboardSkip0 = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -253,6 +253,25 @@ namespace AtariMapMaker
             this.groupBoxClipBoard.TabIndex = 10;
             this.groupBoxClipBoard.TabStop = false;
             this.groupBoxClipBoard.Text = "Clipboard";
+            // 
+            // checkBoxClipboardSkip0
+            // 
+            this.checkBoxClipboardSkip0.AutoSize = true;
+            this.checkBoxClipboardSkip0.Location = new System.Drawing.Point(100, 177);
+            this.checkBoxClipboardSkip0.Name = "checkBoxClipboardSkip0";
+            this.checkBoxClipboardSkip0.Size = new System.Drawing.Size(79, 24);
+            this.checkBoxClipboardSkip0.TabIndex = 8;
+            this.checkBoxClipboardSkip0.Text = "Skip 0";
+            this.checkBoxClipboardSkip0.UseVisualStyleBackColor = true;
+            // 
+            // buttonClipboardInverse
+            // 
+            this.buttonClipboardInverse.Location = new System.Drawing.Point(16, 174);
+            this.buttonClipboardInverse.Name = "buttonClipboardInverse";
+            this.buttonClipboardInverse.Size = new System.Drawing.Size(75, 29);
+            this.buttonClipboardInverse.TabIndex = 7;
+            this.buttonClipboardInverse.Text = "Inverse";
+            this.buttonClipboardInverse.UseVisualStyleBackColor = true;
             // 
             // pictureBoxClipboard
             // 
@@ -1159,25 +1178,6 @@ namespace AtariMapMaker
             this.toolStripStatusLabel2.Name = "toolStripStatusLabel2";
             this.toolStripStatusLabel2.Size = new System.Drawing.Size(179, 25);
             this.toolStripStatusLabel2.Text = "toolStripStatusLabel2";
-            // 
-            // buttonClipboardInverse
-            // 
-            this.buttonClipboardInverse.Location = new System.Drawing.Point(16, 174);
-            this.buttonClipboardInverse.Name = "buttonClipboardInverse";
-            this.buttonClipboardInverse.Size = new System.Drawing.Size(75, 29);
-            this.buttonClipboardInverse.TabIndex = 7;
-            this.buttonClipboardInverse.Text = "Inverse";
-            this.buttonClipboardInverse.UseVisualStyleBackColor = true;
-            // 
-            // checkBoxClipboardSkip0
-            // 
-            this.checkBoxClipboardSkip0.AutoSize = true;
-            this.checkBoxClipboardSkip0.Location = new System.Drawing.Point(100, 177);
-            this.checkBoxClipboardSkip0.Name = "checkBoxClipboardSkip0";
-            this.checkBoxClipboardSkip0.Size = new System.Drawing.Size(79, 24);
-            this.checkBoxClipboardSkip0.TabIndex = 8;
-            this.checkBoxClipboardSkip0.Text = "Skip 0";
-            this.checkBoxClipboardSkip0.UseVisualStyleBackColor = true;
             // 
             // MainForm
             // 

@@ -115,7 +115,7 @@ namespace AtariMapMaker
 
             var sb = new StringBuilder();
             if (header)
-                sb.AppendLine(coordOrder == 2 ? "\t; dta a(index),a(value) ;text" : "\t; dta x,y,value ;text");
+                sb.AppendLine(coordOrder == 2 ? "; dta a(index)[,value] ;text" : "; dta x,y[,value] ;text");
 
             for (int g = 0; g < groups.Count; g++)
             {
@@ -277,9 +277,9 @@ namespace AtariMapMaker
 
         private static string GroupComment(int groupBy, object key)
         {
-            if (groupBy == 1) return "; ##### color $" + ((int)(byte)key).ToString("X2") + " #####";
-            if (groupBy == 2) return "; ##### value $" + (key is int v ? (v <= 255 ? v.ToString("X2") : (v & 0xFFFF).ToString("X4")) : key.ToString()) + " #####";
-            if (groupBy == 3) return "; ##### text: \"" + (key.ToString().Replace("\"", "\\\"")) + "\" #####";
+            if (groupBy == 1) return "; ##### color $" + ((int)(byte)key).ToString("X2") + " ##########";
+            if (groupBy == 2) return "; ##### value $" + (key is int v ? (v <= 255 ? v.ToString("X2") : (v & 0xFFFF).ToString("X4")) : key.ToString()) + " ##########";
+            if (groupBy == 3) return "; ##### text: \"" + (key.ToString().Replace("\"", "\\\"")) + "\" ##########";
             return "";
         }
 
