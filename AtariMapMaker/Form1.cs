@@ -81,9 +81,13 @@ namespace AtariMapMaker
             dliForm = new DliForm(myMap, pictureBoxMap);
             dliForm.RenderData();
 
-            // Add new UI elements for v2.0 features
-            AddV2UIElements();
-            
+            // Set initial state for V2 UI (controls are in Designer)
+            checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
+            Globals.MetadataLayerShowText = checkBoxMetadataShowText.Checked;
+            UpdateFontMappingReferenceUI();
+            UpdateMultiFontUI();
+            UpdateMetadataLayerUI();
+
             // Set up clipboard-related event handlers
             pictureBoxClipboard.Click += PictureBoxClipboard_Click;
             if (buttonClipboardInverse != null)
@@ -101,183 +105,6 @@ namespace AtariMapMaker
             
             // Update button state based on map type
             UpdateClipboardInverseButtonState();
-        }
-
-        private CheckBox checkBoxMultiFont;
-        private CheckBox checkBoxFontMappingReference;
-        private NumericUpDown numericUpDownRefScreenX;
-        private NumericUpDown numericUpDownRefScreenY;
-        private Label labelRefScreen;
-
-        private void AddV2UIElements()
-        {
-            // Add MultiFont checkbox in the Colors group
-            checkBoxMultiFont = new CheckBox();
-            checkBoxMultiFont.Text = "Enable Multi-Font";
-            checkBoxMultiFont.Location = new Point(checkBoxShowDli.Location.X + 10, checkBoxShowDli.Location.Y + checkBoxShowDli.Height + 10);
-            checkBoxMultiFont.Size = new Size(150, 20);
-            checkBoxMultiFont.Checked = myMap != null ? myMap.MultiFontEnabled : false;
-            checkBoxMultiFont.CheckedChanged += CheckBoxMultiFont_CheckedChanged;
-            groupBoxDli.Controls.Add(checkBoxMultiFont);
-            
-            // Add Font Mapping Reference checkbox and controls
-            checkBoxFontMappingReference = new CheckBox();
-            checkBoxFontMappingReference.Text = "Reference Font Mapping";
-            checkBoxFontMappingReference.Location = new Point(checkBoxMultiFont.Location.X, checkBoxMultiFont.Location.Y + checkBoxMultiFont.Height + 5);
-            checkBoxFontMappingReference.Size = new Size(150, 20);
-            checkBoxFontMappingReference.CheckedChanged += CheckBoxFontMappingReference_CheckedChanged;
-            checkBoxFontMappingReference.Enabled = myMap != null ? myMap.MultiFontEnabled : false;
-            groupBoxDli.Controls.Add(checkBoxFontMappingReference);
-            
-            labelRefScreen = new Label();
-            labelRefScreen.Text = "Reference Screen:";
-            labelRefScreen.Location = new Point(checkBoxFontMappingReference.Location.X, checkBoxFontMappingReference.Location.Y + checkBoxFontMappingReference.Height + 5);
-            labelRefScreen.Size = new Size(100, 20);
-            labelRefScreen.Enabled = false;
-            groupBoxDli.Controls.Add(labelRefScreen);
-            
-            numericUpDownRefScreenX = new NumericUpDown();
-            numericUpDownRefScreenX.Location = new Point(labelRefScreen.Location.X + labelRefScreen.Width, labelRefScreen.Location.Y);
-            numericUpDownRefScreenX.Size = new Size(50, 20);
-            numericUpDownRefScreenX.Minimum = 0;
-            numericUpDownRefScreenX.Maximum = myMap != null ? myMap.MapSize.Width - 1 : 0;
-            numericUpDownRefScreenX.Value = 0;
-            numericUpDownRefScreenX.Enabled = false;
-            numericUpDownRefScreenX.ValueChanged += NumericUpDownRefScreen_ValueChanged;
-            groupBoxDli.Controls.Add(numericUpDownRefScreenX);
-            
-            Label labelComma = new Label();
-            labelComma.Text = ",";
-            labelComma.Location = new Point(numericUpDownRefScreenX.Location.X + numericUpDownRefScreenX.Width, labelRefScreen.Location.Y);
-            labelComma.Size = new Size(10, 20);
-            labelComma.Enabled = false;
-            groupBoxDli.Controls.Add(labelComma);
-            
-            numericUpDownRefScreenY = new NumericUpDown();
-            numericUpDownRefScreenY.Location = new Point(labelComma.Location.X + labelComma.Width, labelRefScreen.Location.Y);
-            numericUpDownRefScreenY.Size = new Size(50, 20);
-            numericUpDownRefScreenY.Minimum = 0;
-            numericUpDownRefScreenY.Maximum = myMap != null ? myMap.MapSize.Height - 1 : 0;
-            numericUpDownRefScreenY.Value = 0;
-            numericUpDownRefScreenY.Enabled = false;
-            numericUpDownRefScreenY.ValueChanged += NumericUpDownRefScreen_ValueChanged;
-            groupBoxDli.Controls.Add(numericUpDownRefScreenY);
-            
-            // Update UI based on current screen
-            UpdateFontMappingReferenceUI();
-            
-            // Update font template button and element library button visibility based on multifont
-            UpdateMultiFontUI();
-
-            // Add Font Template button next to Load Font button
-            Button buttonFontTemplate = new Button();
-            buttonFontTemplate.Text = "Font Templates";
-            buttonFontTemplate.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y - 45);
-            buttonFontTemplate.Size = new Size(112, 35);
-            buttonFontTemplate.Click += ButtonFontTemplate_Click;
-            flowLayoutPanel1.Controls.Add(buttonFontTemplate);
-
-            // Add Element Library button
-            Button buttonElementLibrary = new Button();
-            buttonElementLibrary.Text = "Element Library";
-            buttonElementLibrary.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y + 45);
-            buttonElementLibrary.Size = new Size(112, 35);
-            buttonElementLibrary.Click += ButtonElementLibrary_Click;
-            flowLayoutPanel1.Controls.Add(buttonElementLibrary);
-
-            // Add Map Description button
-            Button buttonMapDescription = new Button();
-            buttonMapDescription.Text = "Map Description";
-            buttonMapDescription.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y + 90);
-            buttonMapDescription.Size = new Size(112, 35);
-            buttonMapDescription.Click += ButtonMapDescription_Click;
-            flowLayoutPanel1.Controls.Add(buttonMapDescription);
-
-            // Add Tilemap/Submap Configuration button
-            Button buttonTilemapConfig = new Button();
-            buttonTilemapConfig.Text = "Tilemap Config";
-            buttonTilemapConfig.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y + 135);
-            buttonTilemapConfig.Size = new Size(112, 35);
-            buttonTilemapConfig.Click += ButtonTilemapConfig_Click;
-            flowLayoutPanel1.Controls.Add(buttonTilemapConfig);
-
-            // Metadata layer checkbox (edit mode: click map to add/edit metadata)
-            checkBoxMetadataLayer = new CheckBox();
-            checkBoxMetadataLayer.Text = "Metadata layer";
-            checkBoxMetadataLayer.Location = new Point(checkBoxEditDli.Location.X, checkBoxEditDli.Location.Y + checkBoxEditDli.Height + 5);
-            checkBoxMetadataLayer.Size = new Size(120, 20);
-            checkBoxMetadataLayer.CheckedChanged += CheckBoxMetadataLayer_CheckedChanged;
-            groupBoxDli.Controls.Add(checkBoxMetadataLayer);
-
-            checkBoxMetadataShowText = new CheckBox();
-            checkBoxMetadataShowText.Text = "Show metadata text";
-            checkBoxMetadataShowText.Location = new Point(checkBoxMetadataLayer.Location.X, checkBoxMetadataLayer.Location.Y + checkBoxMetadataLayer.Height + 2);
-            checkBoxMetadataShowText.Size = new Size(140, 20);
-            checkBoxMetadataShowText.Checked = true;
-            Globals.MetadataLayerShowText = true;
-            checkBoxMetadataShowText.CheckedChanged += CheckBoxMetadataShowText_CheckedChanged;
-            groupBoxDli.Controls.Add(checkBoxMetadataShowText);
-
-            Button buttonMassChangeMetadata = new Button();
-            buttonMassChangeMetadata.Text = "Mass change metadata...";
-            buttonMassChangeMetadata.Location = new Point(checkBoxMetadataShowText.Location.X, checkBoxMetadataShowText.Location.Y + checkBoxMetadataShowText.Height + 4);
-            buttonMassChangeMetadata.Size = new Size(140, 24);
-            buttonMassChangeMetadata.Click += ButtonMassChangeMetadata_Click;
-            groupBoxDli.Controls.Add(buttonMassChangeMetadata);
-
-            // Add Export Font button (for single font)
-            Button buttonExportFont = new Button();
-            buttonExportFont.Text = "Export Font";
-            buttonExportFont.Size = new Size(112, 35);
-            buttonExportFont.Top = buttonLoadFont.Bottom + 10;
-            buttonExportFont.Click += ButtonExportFont_Click;
-            groupBoxFont.Controls.Add(buttonExportFont);
-
-            // Add "Show Tiles" button (will be shown when tilemap is enabled)
-            Button buttonShowTiles = new Button();
-            buttonShowTiles.Text = "Show Tiles";
-            buttonShowTiles.Size = new Size(112, 35);
-            buttonShowTiles.Location = new Point(buttonLoadFont.Location.X, buttonLoadFont.Location.Y);
-            buttonShowTiles.Click += ButtonShowTiles_Click;
-            buttonShowTiles.Visible = false;
-            buttonShowTiles.Name = "buttonShowTiles";
-            groupBoxFont.Controls.Add(buttonShowTiles);
-
-            // Add context menu items for screen operations
-            ToolStripMenuItem menuItemLinkScreen = new ToolStripMenuItem("Link to Screen...");
-            menuItemLinkScreen.Click += MenuItemLinkScreen_Click;
-            contextMenuStripScreen.Items.Add(new ToolStripSeparator());
-            contextMenuStripScreen.Items.Add(menuItemLinkScreen);
-
-            ToolStripMenuItem menuItemScreenMetadata = new ToolStripMenuItem("Screen Metadata...");
-            menuItemScreenMetadata.Click += MenuItemScreenMetadata_Click;
-            contextMenuStripScreen.Items.Add(menuItemScreenMetadata);
-
-            ToolStripMenuItem menuItemExportMetadata = new ToolStripMenuItem("Export metadata...");
-            menuItemExportMetadata.Click += MenuItemExportMetadata_Click;
-            contextMenuStripScreen.Items.Add(menuItemExportMetadata);
-
-            ToolStripMenuItem menuItemScreenDescription = new ToolStripMenuItem("Screen Description...");
-            menuItemScreenDescription.Click += MenuItemScreenDescription_Click;
-            contextMenuStripScreen.Items.Add(menuItemScreenDescription);
-
-            ToolStripMenuItem menuItemApplyFontTemplate = new ToolStripMenuItem("Apply Font Template...");
-            menuItemApplyFontTemplate.Click += MenuItemApplyFontTemplate_Click;
-            contextMenuStripScreen.Items.Add(menuItemApplyFontTemplate);
-            contextMenuStripScreen.Opening += ContextMenuStripScreen_Opening;
-
-            // Add Undo/Redo to a menu (if there's a menu bar) or create keyboard shortcuts
-            // For now, add them to the context menu as well
-            ToolStripMenuItem menuItemUndo = new ToolStripMenuItem("Undo");
-            menuItemUndo.ShortcutKeys = Keys.Control | Keys.Z;
-            menuItemUndo.Click += MenuItemUndo_Click;
-            contextMenuStripScreen.Items.Add(new ToolStripSeparator());
-            contextMenuStripScreen.Items.Add(menuItemUndo);
-
-            ToolStripMenuItem menuItemRedo = new ToolStripMenuItem("Redo");
-            menuItemRedo.ShortcutKeys = Keys.Control | Keys.Y;
-            menuItemRedo.Click += MenuItemRedo_Click;
-            contextMenuStripScreen.Items.Add(menuItemRedo);
         }
 
         private UndoManager undoManager;
@@ -354,8 +181,20 @@ namespace AtariMapMaker
         private void CheckBoxMetadataLayer_CheckedChanged(object sender, EventArgs e)
         {
             Globals.MetadataLayerVisible = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            UpdateMetadataLayerUI();
             RedrawEditorWindow();
             pictureBoxMap.Refresh();
+        }
+
+        private void UpdateMetadataLayerUI()
+        {
+            bool metadataChecked = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            if (groupBoxDli != null)
+                groupBoxDli.Enabled = !metadataChecked;
+            if (groupBoxFont != null)
+                groupBoxFont.Enabled = !metadataChecked;
+            if (buttonMassChangeMetadata != null)
+                buttonMassChangeMetadata.Enabled = metadataChecked;
         }
 
         private void CheckBoxMetadataShowText_CheckedChanged(object sender, EventArgs e)
@@ -451,21 +290,21 @@ namespace AtariMapMaker
 
         private void FillFontColorList()
         {
-            listViewColors.Clear();
+            listViewColors.Items.Clear();
             listViewColors.LargeImageList = GetFontColorImageList(AtariFontRenderer.Color5);
-            listViewColors.Columns.Add("Color");
-            listViewColors.Columns.Add("Value");
-            listViewColors.Columns.Add("Address");
+            //listViewColors.Columns.Add("Color");
+            //listViewColors.Columns.Add("Value");
+            // listViewColors.Columns.Add("Address");
             listViewColors.SmallImageList = listViewColors.LargeImageList;
             for (int i = 0; i < 5; i++)
             {
                 ListViewItem lvi = new ListViewItem
                 {
                     ImageIndex = i,
-                    Text = i == 4 ? "COLBAK" : $"COLPF{i}"
+                    Text = i == 4 ? "colbak" : $"colpf{i}"
                 };
                 lvi.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[i]));
-                lvi.SubItems.Add("$" + String.Format("{0:X4}", 0xd016 + i));
+                //lvi.SubItems.Add("$" + String.Format("{0:X4}", 0xd016 + i));
                 listViewColors.Items.Add(lvi);
             }
             //add scanline alter colors only when possible
@@ -505,7 +344,7 @@ namespace AtariMapMaker
             ImageList il = new ImageList
             {
                 ColorDepth = ColorDepth.Depth24Bit,
-                ImageSize = new Size(30, 20)
+                ImageSize = new Size(32, 16)
             };
             for (int i = 0; i < color5.Length; i++)
             {
@@ -813,10 +652,22 @@ namespace AtariMapMaker
             
             if (xx < maxCharStride && yy < maxCharHeight)
             {
-                toolStripStatusLabel1.Text = $"Scr {currentScreen.X}:{currentScreen.Y} Pos {posx}:{posy} (${(posx + posy * screenCharWidth).ToString("X2")}) Glo {xx}:{yy}";
-
-                labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
-                labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    int tileWidth = myMap.TilemapInfo.TileWidth;
+                    int tileHeight = myMap.TilemapInfo.TileHeight;
+                    int posTx = posx / tileWidth;
+                    int posTy = posy / tileHeight;
+                    toolStripStatusLabel1.Text = $"Scr {currentScreen.X}:{currentScreen.Y} Tile {posTx}:{posTy} (char {posx}:{posy}) Glo {xx}:{yy}";
+                    labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
+                    labelPosition.Text = $"Position: tile {posTx}:{posTy} | char {posx}:{posy} ({xx}:{yy})";
+                }
+                else
+                {
+                    toolStripStatusLabel1.Text = $"Scr {currentScreen.X}:{currentScreen.Y} Pos {posx}:{posy} (${(posx + posy * screenCharWidth).ToString("X2")}) Glo {xx}:{yy}";
+                    labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
+                    labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
+                }
                 // For tilemaps, use CharData; for normal maps, use Data
                 byte charVal;
                 if (myMap.IsTilemap && myMap.CharData != null)
@@ -2028,6 +1879,7 @@ namespace AtariMapMaker
             numericUpDownRefScreenX.Enabled = enabled && useReference;
             numericUpDownRefScreenY.Enabled = enabled && useReference;
             labelRefScreen.Enabled = enabled && useReference;
+            labelRefScreenComma.Enabled = enabled && useReference;
         }
 
         private void UpdateMultiFontUI()
@@ -2063,6 +1915,11 @@ namespace AtariMapMaker
                     numericUpDownRefScreenY.Visible = false;
                     numericUpDownRefScreenY.Enabled = false;
                 }
+                if (labelRefScreenComma != null)
+                {
+                    labelRefScreenComma.Visible = false;
+                    labelRefScreenComma.Enabled = false;
+                }
             }
             else
             {
@@ -2089,40 +1946,38 @@ namespace AtariMapMaker
                 {
                     numericUpDownRefScreenY.Visible = true;
                 }
-            }
-            
-            // Enable/disable font template button based on multifont checkbox (only for non-tilemaps)
-            foreach (Control ctrl in flowLayoutPanel1.Controls)
-            {
-                if (ctrl is Button btn && btn.Text == "Font Templates")
+                if (labelRefScreenComma != null)
                 {
-                    btn.Enabled = !tilemapEnabled && enabled;
-                    break;
+                    labelRefScreenComma.Visible = true;
                 }
             }
             
-            // Handle groupBoxFont controls based on tilemap state
+            // Font Templates: enabled only when multifont is checked (and not tilemap)
+            if (buttonFontTemplate != null)
+                buttonFontTemplate.Enabled = !tilemapEnabled && enabled;
+            
+            // Handle groupBoxFont controls: when multifont checked, disable Load/Export/Refresh; when tilemap, show Show Tiles only
             if (groupBoxFont != null)
             {
-                // Keep groupBoxFont enabled so "Show Tiles" button can be clicked
-                groupBoxFont.Enabled = true;
+                groupBoxFont.Enabled = true; // may be overridden by UpdateMetadataLayerUI
                 
                 foreach (Control ctrl in groupBoxFont.Controls)
                 {
                     if (ctrl.Name == "buttonShowTiles")
                     {
-                        // Show "Show Tiles" button when tilemap is enabled
                         ctrl.Visible = tilemapEnabled;
                         ctrl.Enabled = tilemapEnabled;
                     }
                     else
                     {
-                        // Hide/disable other controls when tilemap is enabled
-                        ctrl.Enabled = !tilemapEnabled;
                         ctrl.Visible = !tilemapEnabled;
+                        // When multifont is checked, disable Load font, Export font, Refresh font
+                        ctrl.Enabled = !tilemapEnabled && !enabled;
                     }
                 }
             }
+            
+            UpdateMetadataLayerUI();
         }
 
         private void ButtonFontTemplate_Click(object sender, EventArgs e)
@@ -2995,10 +2850,18 @@ namespace AtariMapMaker
         {
             if (redraw)
                 RedrawEditorWindow();
-            int left = (int)numericUpDownScreenFromX.Value * myMap.ScreenSize.Width;
-            int top = (int)numericUpDownScreenFromY.Value * myMap.ScreenSize.Height;
-            int width = (int)(numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * myMap.ScreenSize.Width * Globals.CharSize;
-            int height = (int)(numericUpDownScreenToY.Value - numericUpDownScreenFromY.Value + 1) * myMap.ScreenSize.Height * Globals.CharSize;
+            // Use character units per screen (for tilemap, ScreenSize is in tiles so multiply by tile size)
+            int screenCharWidth = myMap.ScreenSize.Width;
+            int screenCharHeight = myMap.ScreenSize.Height;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+            }
+            int left = (int)numericUpDownScreenFromX.Value * screenCharWidth;
+            int top = (int)numericUpDownScreenFromY.Value * screenCharHeight;
+            int width = (int)(numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * screenCharWidth * Globals.CharSize;
+            int height = (int)(numericUpDownScreenToY.Value - numericUpDownScreenFromY.Value + 1) * screenCharHeight * Globals.CharSize;
             Graphics g = Graphics.FromImage(pictureBoxMap.Image);
             Brush b = new HatchBrush(HatchStyle.Percent80, Color.FromArgb(96, Color.GreenYellow));
             g.FillRectangle(b, (left - myMap.OffsetX) * Globals.CharSize, (top - myMap.OffsetY) * Globals.CharSize, width, height);

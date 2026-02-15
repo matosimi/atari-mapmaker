@@ -394,8 +394,10 @@ namespace AtariMapMaker
                 DrawCurrentScreenCorners(gr, myMap, currentScreen);
             }
             
-            // Draw "locked" text above locked screen
-            if (window == Globals.WindowType.Editor && isLocked && lockedScreen != Point.Empty)
+            // Draw "locked" text above/below locked screen (use bounds check so screen 0,0 is included)
+            if (window == Globals.WindowType.Editor && isLocked &&
+                lockedScreen.X >= 0 && lockedScreen.Y >= 0 &&
+                lockedScreen.X < myMap.MapSize.Width && lockedScreen.Y < myMap.MapSize.Height)
             {
                 DrawLockedText(gr, myMap, lockedScreen);
             }
@@ -411,7 +413,14 @@ namespace AtariMapMaker
         private static void DrawCurrentScreenCorners(Graphics gr, AtariMap myMap, Point currentScreen)
         {
             Pen yellowPen = new Pen(Color.Yellow, 2);
-            int cornerSize = 5 * 8 * Globals.Zoom; // Size of the L-shape corner (5 grid points)
+            // 2 chars or 2 tiles in each direction for the L-shape
+            int cornerSizeX = 2 * Globals.CharSize;
+            int cornerSizeY = 2 * Globals.CharSize;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                cornerSizeX = 2 * myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                cornerSizeY = 2 * myMap.TilemapInfo.TileHeight * Globals.CharSize;
+            }
             
             // For tilemaps, ScreenSize is in tiles, so convert to character units
             int screenCharWidth = myMap.ScreenSize.Width;
@@ -431,20 +440,20 @@ namespace AtariMapMaker
             int screenPixelHeight = screenCharHeight * Globals.CharSize;
             
             // Top-left corner
-            gr.DrawLine(yellowPen, screenPixelX, screenPixelY, screenPixelX + cornerSize, screenPixelY);
-            gr.DrawLine(yellowPen, screenPixelX, screenPixelY, screenPixelX, screenPixelY + cornerSize);
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY, screenPixelX + cornerSizeX, screenPixelY);
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY, screenPixelX, screenPixelY + cornerSizeY);
             
             // Top-right corner
-            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth - cornerSize, screenPixelY, screenPixelX + screenPixelWidth, screenPixelY);
-            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth, screenPixelY, screenPixelX + screenPixelWidth, screenPixelY + cornerSize);
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth - cornerSizeX, screenPixelY, screenPixelX + screenPixelWidth, screenPixelY);
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth, screenPixelY, screenPixelX + screenPixelWidth, screenPixelY + cornerSizeY);
             
             // Bottom-left corner
-            gr.DrawLine(yellowPen, screenPixelX, screenPixelY + screenPixelHeight - cornerSize, screenPixelX, screenPixelY + screenPixelHeight);
-            gr.DrawLine(yellowPen, screenPixelX, screenPixelY + screenPixelHeight, screenPixelX + cornerSize, screenPixelY + screenPixelHeight);
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY + screenPixelHeight - cornerSizeY, screenPixelX, screenPixelY + screenPixelHeight);
+            gr.DrawLine(yellowPen, screenPixelX, screenPixelY + screenPixelHeight, screenPixelX + cornerSizeX, screenPixelY + screenPixelHeight);
             
             // Bottom-right corner
-            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth - cornerSize, screenPixelY + screenPixelHeight, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight);
-            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight - cornerSize, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight);
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth - cornerSizeX, screenPixelY + screenPixelHeight, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight);
+            gr.DrawLine(yellowPen, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight - cornerSizeY, screenPixelX + screenPixelWidth, screenPixelY + screenPixelHeight);
         }
         
         private static void DrawLockedText(Graphics gr, AtariMap myMap, Point lockedScreen)
@@ -466,12 +475,17 @@ namespace AtariMapMaker
             int screenStartY = lockedScreen.Y * screenCharHeight;
             int screenPixelX = (screenStartX - myMap.OffsetX) * Globals.CharSize;
             int screenPixelY = (screenStartY - myMap.OffsetY) * Globals.CharSize;
+            int screenPixelHeight = screenCharHeight * Globals.CharSize;
             
-            // Draw "locked" text above the screen
-            string lockedText = "locked";
+            string lockedText = "Locked";
             SizeF textSize = gr.MeasureString(lockedText, textFont);
             float textX = screenPixelX + (screenCharWidth * Globals.CharSize - textSize.Width) / 2;
-            float textY = screenPixelY - textSize.Height - 5; // 5 pixels above the screen
+            float textY;
+            // When vertical coord is 0, show "Locked" below the screen; otherwise above
+            if (lockedScreen.Y == 0)
+                textY = screenPixelY + screenPixelHeight + 5;
+            else
+                textY = screenPixelY - textSize.Height - 5;
             
             gr.DrawString(lockedText, textFont, yellowBrush, textX, textY);
         }
@@ -569,14 +583,19 @@ namespace AtariMapMaker
                         System.Drawing.Imaging.ImageLockMode.WriteOnly,
                         System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                     
+                    // For tilemaps, one "cell" is the whole tile (tileWidth*tileHeight chars); for chars, one cell is 8x8
+                    int cellWidthPx = 8 * Globals.Zoom;
+                    int cellHeightPx = 8 * Globals.Zoom;
+                    if (AtariClipboard.IsTileIndexes && myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+                    {
+                        cellWidthPx = myMap.TilemapInfo.TileWidth * 8 * Globals.Zoom;
+                        cellHeightPx = myMap.TilemapInfo.TileHeight * 8 * Globals.Zoom;
+                    }
+                    
                     unsafe
                     {
                         int* dstPtr = (int*)dstData.Scan0;
                         Color[] palette = AtariPalette.GetPalette().Entries;
-                        
-                        // Each character is 8x8 pixels at 1x zoom, but clipboard image is zoomed
-                        int charWidth = 8 * Globals.Zoom;
-                        int charHeight = 8 * Globals.Zoom;
                         
                         bool is32Bit = (srcFormat == System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                         
@@ -584,35 +603,30 @@ namespace AtariMapMaker
                         {
                             for (int x = 0; x < AtariClipboard.ClipboardImage.Width; x++)
                             {
-                                // Calculate which character/tile this pixel belongs to (accounting for zoom)
-                                int charX = x / charWidth;
-                                int charY = y / charHeight;
+                                // Which character/tile this pixel belongs to (tile = whole tile size when in tile mode)
+                                int cellX = x / cellWidthPx;
+                                int cellY = y / cellHeightPx;
                                 
-                                // Check if this character/tile is 0 in the clipboard data
                                 bool isZero = false;
-                                if (charX < AtariClipboard.ClipboardWidth && charY < AtariClipboard.ClipboardHeight)
+                                if (cellX < AtariClipboard.ClipboardWidth && cellY < AtariClipboard.ClipboardHeight)
                                 {
-                                    byte dataVal = clipboardData[charX, charY];
+                                    byte dataVal = clipboardData[cellX, cellY];
                                     isZero = (dataVal == 0);
                                 }
                                 
                                 if (isZero)
                                 {
-                                    // Make transparent
                                     dstPtr[y * dstData.Stride / 4 + x] = 0;
                                 }
                                 else
                                 {
-                                    // Copy pixel from source
                                     if (is32Bit)
                                     {
-                                        // Already 32-bit ARGB, copy directly
                                         int* src32Ptr = (int*)srcData.Scan0;
                                         dstPtr[y * dstData.Stride / 4 + x] = src32Ptr[y * srcData.Stride / 4 + x];
                                     }
                                     else
                                     {
-                                        // 8-bit indexed, convert via palette
                                         byte* srcPtr = (byte*)srcData.Scan0;
                                         byte paletteIndex = srcPtr[y * srcData.Stride + x];
                                         Color color = palette[paletteIndex];
