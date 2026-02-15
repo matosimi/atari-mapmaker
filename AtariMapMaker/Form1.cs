@@ -712,12 +712,9 @@ namespace AtariMapMaker
                     isContinuousPasteMode = false;
                     lastContinuousPasteCell = null;
                 }
-                
-                var prevClip = AtariPictureTools.PreviousClipboardLocation;
-                toolStripStatusLabel1.Text = prevClip.HasValue
-                    ? $"{e.X},{e.Y} Prev:{prevClip.Value.X},{prevClip.Value.Y}"
-                    : $"{e.X},{e.Y}";
-                toolStripStatusLabel2.Text = $"pre mouse:{AtariPictureTools.PreviousMouseLocation.X},{AtariPictureTools.PreviousMouseLocation.Y}";
+
+              
+              
                 if (AtariClipboard.IsValid)  //copy mode (shows alpha blended clipBoard)
                 {
                     // Calculate current grid cell based on map type
@@ -816,6 +813,8 @@ namespace AtariMapMaker
             
             if (xx < maxCharStride && yy < maxCharHeight)
             {
+                toolStripStatusLabel1.Text = $"Scr {currentScreen.X}:{currentScreen.Y} Pos {posx}:{posy} (${(posx + posy * screenCharWidth).ToString("X2")}) Glo {xx}:{yy}";
+
                 labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
                 labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
                 // For tilemaps, use CharData; for normal maps, use Data
@@ -844,6 +843,7 @@ namespace AtariMapMaker
                     }
                     // Compact format: Char $XX (N) | Tile N @ (X,Y)
                     labelChar.Text = $"Char ${charVal:X2} ({charVal}) | Tile {tileIdx} @ ({tileX},{tileY})";
+                    toolStripStatusLabel2.Text = $"Char ${charVal:X2} ({charVal}) | Tile {tileIdx} @ ({tileX},{tileY})";
                     // Disable auto-size and set fixed width to allow text wrapping
                     int maxWidth = panelStatus.Width - labelChar.Left - 5;
                     if (maxWidth > 0)
@@ -860,6 +860,7 @@ namespace AtariMapMaker
                 else
                 {
                     labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
+                    toolStripStatusLabel2.Text = $"Char: ${charVal:X2} ({charVal})";
                     labelChar.AutoSize = true;
                     labelChar.Height = 20; // Reset to single line height
                 }

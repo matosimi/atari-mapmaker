@@ -8,18 +8,10 @@ using System.Windows.Forms;
 namespace AtariMapMaker
 {
     /// <summary>Popup for mass changing metadata: filter by Text/Value/Color, then set Text/Value/Color. Global or current screen.</summary>
-    public class MetadataMassChangeForm : Form
+    public partial class MetadataMassChangeForm : Form
     {
         private AtariMap map;
         private Func<Point> getScreenForLocal;
-        private ComboBox comboFilterBy;
-        private TextBox textFilterValue;
-        private ComboBox comboChangeField;
-        private TextBox textNewValue;
-        private CheckBox checkGlobal;
-        private Label labelCount;
-        private Button buttonApply;
-        private Button buttonDelete;
         private Action onApply;
 
         public MetadataMassChangeForm(AtariMap map, Func<Point> getScreenForLocal, Action onApplyCallback)
@@ -28,52 +20,7 @@ namespace AtariMapMaker
             this.getScreenForLocal = getScreenForLocal ?? (() => new Point(0, 0));
             this.onApply = onApplyCallback;
             InitializeComponent();
-            UpdateCount();
-        }
-
-        private void InitializeComponent()
-        {
-            int y = 12;
-            var lblFilter = new Label { Text = "Filter by:", Location = new Point(12, y), AutoSize = true };
-            comboFilterBy = new ComboBox { Location = new Point(120, y - 2), Width = 100, DropDownStyle = ComboBoxStyle.DropDownList };
-            comboFilterBy.Items.AddRange(new object[] { "Text", "Value", "Color" });
-            comboFilterBy.SelectedIndex = 0;
-            comboFilterBy.SelectedIndexChanged += (s, e) => UpdateCount();
-            y += 28;
-            var lblFilterVal = new Label { Text = "Filter value:", Location = new Point(12, y), AutoSize = true };
-            textFilterValue = new TextBox { Location = new Point(120, y - 2), Width = 180 };
-            textFilterValue.TextChanged += (s, e) => UpdateCount();
-            y += 28;
-            var lblChange = new Label { Text = "Change:", Location = new Point(12, y), AutoSize = true };
-            comboChangeField = new ComboBox { Location = new Point(120, y - 2), Width = 100, DropDownStyle = ComboBoxStyle.DropDownList };
-            comboChangeField.Items.AddRange(new object[] { "Text", "Value", "Color" });
-            comboChangeField.SelectedIndex = 0;
-            y += 28;
-            var lblNewVal = new Label { Text = "New value:", Location = new Point(12, y), AutoSize = true };
-            textNewValue = new TextBox { Location = new Point(120, y - 2), Width = 180 };
-            y += 28;
-            checkGlobal = new CheckBox { Text = "Global (all screens)", Location = new Point(12, y), AutoSize = true, Checked = true };
-            checkGlobal.CheckedChanged += (s, e) => UpdateCount();
-            y += 26;
-            labelCount = new Label { Text = "0 items selected", Location = new Point(12, y), AutoSize = true };
-            y += 28;
-            buttonApply = new Button { Text = "Apply", Location = new Point(12, y), Size = new Size(85, 28) };
-            buttonApply.Click += ButtonApply_Click;
-            buttonDelete = new Button { Text = "Delete", Location = new Point(105, y), Size = new Size(85, 28) };
-            buttonDelete.Click += ButtonDelete_Click;
-            this.ClientSize = new Size(312, y + 40);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.Text = "Mass change metadata";
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.Controls.Add(lblFilter); this.Controls.Add(comboFilterBy);
-            this.Controls.Add(lblFilterVal); this.Controls.Add(textFilterValue);
-            this.Controls.Add(lblChange); this.Controls.Add(comboChangeField);
-            this.Controls.Add(lblNewVal); this.Controls.Add(textNewValue);
-            this.Controls.Add(checkGlobal);
-            this.Controls.Add(labelCount);
-            this.Controls.Add(buttonApply); this.Controls.Add(buttonDelete);
+            UpdateCount(null, EventArgs.Empty);
         }
 
         private IEnumerable<MetadataLayerItem> GetItemsInScope()
@@ -151,7 +98,7 @@ namespace AtariMapMaker
             }
         }
 
-        private void UpdateCount()
+        private void UpdateCount(object sender, EventArgs e)
         {
             int filterBy = comboFilterBy.SelectedIndex;
             string filterVal = textFilterValue?.Text ?? "";
@@ -204,7 +151,7 @@ namespace AtariMapMaker
             }
 
             onApply?.Invoke();
-            UpdateCount();
+            UpdateCount(null, EventArgs.Empty);
             MessageBox.Show(count + " item(s) updated.", "Mass change", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -233,7 +180,7 @@ namespace AtariMapMaker
                     meta.ParsedItems.Remove(p.Value);
             }
             onApply?.Invoke();
-            UpdateCount();
+            UpdateCount(null, EventArgs.Empty);
             MessageBox.Show(toRemove.Count + " item(s) deleted.", "Mass change", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }

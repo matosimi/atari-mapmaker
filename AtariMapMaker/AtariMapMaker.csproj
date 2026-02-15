@@ -184,8 +184,14 @@
     <Compile Include="MetadataExportForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="MetadataExportForm.Designer.cs">
+      <DependentUpon>MetadataExportForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="MetadataMassChangeForm.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MetadataMassChangeForm.Designer.cs">
+      <DependentUpon>MetadataMassChangeForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -195,9 +201,15 @@
     <Compile Include="ScreenLinkDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ScreenLinkDialog.Designer.cs">
+      <DependentUpon>ScreenLinkDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="ScreenLinkRenderer.cs" />
     <Compile Include="ScreenMetadataDialog.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScreenMetadataDialog.Designer.cs">
+      <DependentUpon>ScreenMetadataDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="SubmapManager.cs" />
     <Compile Include="TilemapConfigDialog.cs">

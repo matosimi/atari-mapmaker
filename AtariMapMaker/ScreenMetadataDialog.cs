@@ -9,18 +9,13 @@ namespace AtariMapMaker
     {
         private AtariMap map;
         private Point screen;
-        private ListView listViewItems;
-        private Button buttonAdd;
-        private Button buttonEdit;
-        private Button buttonDelete;
-        private Button buttonExport;
-        private Button buttonOK;
 
         public ScreenMetadataDialog(AtariMap map, Point screen)
         {
             this.map = map;
             this.screen = screen;
             InitializeComponent();
+            this.Text = $"Screen Metadata - ({screen.X},{screen.Y})";
             LoadItems();
         }
 
@@ -33,65 +28,6 @@ namespace AtariMapMaker
             if (!map.ScreenMetadata.ContainsKey(Key))
                 map.ScreenMetadata[Key] = new ScreenMetadata();
             return map.ScreenMetadata[Key];
-        }
-
-        private void InitializeComponent()
-        {
-            this.listViewItems = new ListView();
-            this.listViewItems.View = View.Details;
-            this.listViewItems.FullRowSelect = true;
-            this.listViewItems.GridLines = true;
-            this.listViewItems.Columns.Add("X", 40);
-            this.listViewItems.Columns.Add("Y", 40);
-            this.listViewItems.Columns.Add("Text", 120);
-            this.listViewItems.Columns.Add("Value", 50);
-            this.listViewItems.Columns.Add("Color", 50);
-            this.listViewItems.Location = new Point(12, 12);
-            this.listViewItems.Size = new Size(400, 180);
-            this.listViewItems.DoubleClick += (s, e) => ButtonEdit_Click(s, e);
-
-            this.buttonAdd = new Button();
-            this.buttonAdd.Text = "Add";
-            this.buttonAdd.Location = new Point(12, 200);
-            this.buttonAdd.Size = new Size(60, 25);
-            this.buttonAdd.Click += ButtonAdd_Click;
-
-            this.buttonEdit = new Button();
-            this.buttonEdit.Text = "Edit";
-            this.buttonEdit.Location = new Point(78, 200);
-            this.buttonEdit.Size = new Size(60, 25);
-            this.buttonEdit.Click += ButtonEdit_Click;
-
-            this.buttonDelete = new Button();
-            this.buttonDelete.Text = "Delete";
-            this.buttonDelete.Location = new Point(144, 200);
-            this.buttonDelete.Size = new Size(60, 25);
-            this.buttonDelete.Click += ButtonDelete_Click;
-
-            this.buttonExport = new Button();
-            this.buttonExport.Text = "Export...";
-            this.buttonExport.Location = new Point(210, 200);
-            this.buttonExport.Size = new Size(75, 25);
-            this.buttonExport.Click += ButtonExport_Click;
-
-            this.buttonOK = new Button();
-            this.buttonOK.Text = "OK";
-            this.buttonOK.DialogResult = DialogResult.OK;
-            this.buttonOK.Location = new Point(337, 200);
-            this.buttonOK.Size = new Size(75, 25);
-
-            this.AcceptButton = this.buttonOK;
-            this.CancelButton = new Button { DialogResult = DialogResult.Cancel };
-            this.ClientSize = new Size(424, 235);
-            this.Controls.Add(this.listViewItems);
-            this.Controls.Add(this.buttonAdd);
-            this.Controls.Add(this.buttonEdit);
-            this.Controls.Add(this.buttonDelete);
-            this.Controls.Add(this.buttonExport);
-            this.Controls.Add(this.buttonOK);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.Text = $"Screen Metadata - ({screen.X},{screen.Y})";
-            this.StartPosition = FormStartPosition.CenterParent;
         }
 
         private void LoadItems()

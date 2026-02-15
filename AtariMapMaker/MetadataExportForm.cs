@@ -7,17 +7,11 @@ using System.Windows.Forms;
 
 namespace AtariMapMaker
 {
-    public class MetadataExportForm : Form
+    public partial class MetadataExportForm : Form
     {
         private AtariMap map;
         private Point screen;
         private List<MetadataLayerItem> items;
-        private ComboBox comboGroupBy;
-        private ComboBox comboCoordOrder;
-        private CheckBox checkHeader;
-        private TextBox textBoxOutput;
-        private Button buttonCopy;
-        private Button buttonClose;
         private int screenCharWidth;
         private int screenCharHeight;
 
@@ -30,63 +24,29 @@ namespace AtariMapMaker
             screenCharHeight = map?.ScreenSize.Height ?? 25;
             if (map?.IsTilemap == true && map.TilemapInfo != null)
             {
-                // For tilemap, metadata X,Y are tile positions; index = tile index (tiles per row = ScreenSize.Width)
                 screenCharWidth = map.ScreenSize.Width;
                 screenCharHeight = map.ScreenSize.Height;
             }
             InitializeComponent();
-            RegenerateOutput();
+            RegenerateOutput(null, EventArgs.Empty);
         }
 
-        private void InitializeComponent()
+        private void ButtonCopy_Click(object sender, EventArgs e)
         {
-            int y = 12;
-            var lblGroup = new Label { Text = "Group by:", Location = new Point(12, y), AutoSize = true };
-            comboGroupBy = new ComboBox { Location = new Point(100, y - 2), Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
-            comboGroupBy.Items.AddRange(new object[] { "None", "Color", "Value", "Text" });
-            comboGroupBy.SelectedIndex = 0;
-            comboGroupBy.SelectedIndexChanged += (s, e) => RegenerateOutput();
-            y += 28;
-            var lblCoord = new Label { Text = "Coordinate / order:", Location = new Point(12, y), AutoSize = true };
-            comboCoordOrder = new ComboBox { Location = new Point(140, y - 2), Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
-            comboCoordOrder.Items.AddRange(new object[] { "x,y (order Y then X)", "x,y (order X then Y)", "index dta a($xxxx)" });
-            comboCoordOrder.SelectedIndex = 0;
-            comboCoordOrder.SelectedIndexChanged += (s, e) => RegenerateOutput();
-            y += 28;
-            checkHeader = new CheckBox { Text = "Include header line", Location = new Point(12, y), Checked = false };
-            checkHeader.CheckedChanged += (s, e) => RegenerateOutput();
-            y += 28;
-            var lblOut = new Label { Text = "Export output:", Location = new Point(12, y), AutoSize = true };
-            y += 22;
-            textBoxOutput = new TextBox { Location = new Point(12, y), Size = new Size(520, 320), Multiline = true, ScrollBars = ScrollBars.Both, ReadOnly = true, Font = new Font("Consolas", 9) };
-            y += 328;
-            buttonCopy = new Button { Text = "Copy to clipboard", Location = new Point(12, y), Size = new Size(120, 28) };
-            buttonCopy.Click += (s, e) =>
+            try
             {
-                try
-                {
-                    Clipboard.SetText(textBoxOutput.Text);
-                    MessageBox.Show("Copied to clipboard.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex) { MessageBox.Show(ex.Message, "Copy failed", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-            };
-            buttonClose = new Button { Text = "Close", Location = new Point(272, y), Size = new Size(120, 28), DialogResult = DialogResult.OK };
-            this.AcceptButton = buttonClose;
-            this.CancelButton = buttonClose;
-            this.ClientSize = new Size(544, y + 40);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.Text = "Export metadata";
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.Controls.Add(lblGroup); this.Controls.Add(comboGroupBy);
-            this.Controls.Add(lblCoord); this.Controls.Add(comboCoordOrder);
-            this.Controls.Add(checkHeader);
-            this.Controls.Add(lblOut); this.Controls.Add(textBoxOutput);
-            this.Controls.Add(buttonCopy); this.Controls.Add(buttonClose);
+                Clipboard.SetText(textBoxOutput.Text);
+                MessageBox.Show("Copied to clipboard.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Copy failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private const int AddressListPerLine = 8;
 
-        private void RegenerateOutput()
+        private void RegenerateOutput(object sender, EventArgs e)
         {
             var sorted = SortItems();
             int groupBy = comboGroupBy.SelectedIndex;
