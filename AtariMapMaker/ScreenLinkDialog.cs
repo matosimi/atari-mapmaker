@@ -13,6 +13,7 @@ namespace AtariMapMaker
         private TrackBar trackBarTransparency;
         private Label labelTransparency;
         private Button buttonOK;
+        private Button buttonUnlink;
         private Button buttonCancel;
 
         public ScreenLinkDialog(AtariMap map, Point sourceScreen)
@@ -20,6 +21,18 @@ namespace AtariMapMaker
             this.map = map;
             this.sourceScreen = sourceScreen;
             InitializeComponent();
+            LoadExistingLink();
+        }
+
+        private void LoadExistingLink()
+        {
+            if (map?.ScreenLinks == null) return;
+            var existing = map.ScreenLinks.Find(l => l.SourceScreen.X == sourceScreen.X && l.SourceScreen.Y == sourceScreen.Y);
+            if (existing == null) return;
+            numericUpDownLinkedX.Value = Math.Max(numericUpDownLinkedX.Minimum, Math.Min(numericUpDownLinkedX.Maximum, existing.LinkedScreen.X));
+            numericUpDownLinkedY.Value = Math.Max(numericUpDownLinkedY.Minimum, Math.Min(numericUpDownLinkedY.Maximum, existing.LinkedScreen.Y));
+            trackBarTransparency.Value = (int)(existing.Transparency * 100);
+            labelTransparency.Text = $"Transparency: {trackBarTransparency.Value}%";
         }
 
         private void InitializeComponent()
@@ -29,6 +42,7 @@ namespace AtariMapMaker
             this.trackBarTransparency = new TrackBar();
             this.labelTransparency = new Label();
             this.buttonOK = new Button();
+            this.buttonUnlink = new Button();
             this.buttonCancel = new Button();
             Label label1 = new Label();
             Label label2 = new Label();
@@ -72,15 +86,22 @@ namespace AtariMapMaker
 
             // buttonOK
             this.buttonOK.DialogResult = DialogResult.OK;
-            this.buttonOK.Location = new Point(156, 120);
+            this.buttonOK.Location = new Point(12, 120);
             this.buttonOK.Size = new Size(75, 23);
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
             this.buttonOK.Click += ButtonOK_Click;
 
+            // buttonUnlink
+            this.buttonUnlink.Location = new Point(93, 120);
+            this.buttonUnlink.Size = new Size(75, 23);
+            this.buttonUnlink.Text = "Unlink";
+            this.buttonUnlink.UseVisualStyleBackColor = true;
+            this.buttonUnlink.Click += ButtonUnlink_Click;
+
             // buttonCancel
             this.buttonCancel.DialogResult = DialogResult.Cancel;
-            this.buttonCancel.Location = new Point(237, 120);
+            this.buttonCancel.Location = new Point(174, 120);
             this.buttonCancel.Size = new Size(75, 23);
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
@@ -89,6 +110,7 @@ namespace AtariMapMaker
             this.AcceptButton = this.buttonOK;
             this.CancelButton = this.buttonCancel;
             this.ClientSize = new Size(324, 155);
+            this.Controls.Add(this.buttonUnlink);
             this.Controls.Add(this.buttonCancel);
             this.Controls.Add(this.buttonOK);
             this.Controls.Add(this.trackBarTransparency);
@@ -116,13 +138,23 @@ namespace AtariMapMaker
         {
             if (map != null && map.ScreenLinks != null)
             {
-                ScreenLink link = new ScreenLink
+                map.ScreenLinks.RemoveAll(l => l.SourceScreen.X == sourceScreen.X && l.SourceScreen.Y == sourceScreen.Y);
+                map.ScreenLinks.Add(new ScreenLink
                 {
                     SourceScreen = sourceScreen,
                     LinkedScreen = new Point((int)numericUpDownLinkedX.Value, (int)numericUpDownLinkedY.Value),
                     Transparency = trackBarTransparency.Value / 100.0f
-                };
-                map.ScreenLinks.Add(link);
+                });
+            }
+        }
+
+        private void ButtonUnlink_Click(object sender, EventArgs e)
+        {
+            if (map?.ScreenLinks != null)
+            {
+                map.ScreenLinks.RemoveAll(l => l.SourceScreen.X == sourceScreen.X && l.SourceScreen.Y == sourceScreen.Y);
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
         }
     }

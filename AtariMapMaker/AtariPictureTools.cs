@@ -272,6 +272,26 @@ namespace AtariMapMaker
                 AtariFontRenderer.RenderMapData(myMap, windows[window].fontType, mapImage);
                 Rectangle destRect = new Rectangle(0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
                 Rectangle srcRect = new Rectangle(0, 0, mapImage.Width, mapImage.Height);
+                int screenCharWidth = myMap.ScreenSize.Width;
+                int screenCharHeight = myMap.ScreenSize.Height;
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                    screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                }
+                Point effectiveCurrentScreen = currentScreen;
+                if (window == Globals.WindowType.Editor && effectiveCurrentScreen == Point.Empty && screenCharWidth > 0 && screenCharHeight > 0)
+                {
+                    effectiveCurrentScreen = new Point(myMap.OffsetX / screenCharWidth, myMap.OffsetY / screenCharHeight);
+                    if (effectiveCurrentScreen.X < 0) effectiveCurrentScreen.X = 0;
+                    if (effectiveCurrentScreen.Y < 0) effectiveCurrentScreen.Y = 0;
+                    if (effectiveCurrentScreen.X >= myMap.MapSize.Width) effectiveCurrentScreen.X = myMap.MapSize.Width - 1;
+                    if (effectiveCurrentScreen.Y >= myMap.MapSize.Height) effectiveCurrentScreen.Y = myMap.MapSize.Height - 1;
+                }
+                bool drawLinkOverlay = (window == Globals.WindowType.Editor && myMap.ScreenLinks != null &&
+                    effectiveCurrentScreen.X >= 0 && effectiveCurrentScreen.Y >= 0 &&
+                    effectiveCurrentScreen.X < myMap.MapSize.Width && effectiveCurrentScreen.Y < myMap.MapSize.Height &&
+                    myMap.ScreenLinks.Any(l => l.SourceScreen.X == effectiveCurrentScreen.X && l.SourceScreen.Y == effectiveCurrentScreen.Y));
                 if (window == Globals.WindowType.Editor && Globals.MetadataLayerVisible)
                 {
                     // Draw map at 50% opacity so metadata text is visible on top
@@ -288,6 +308,25 @@ namespace AtariMapMaker
                 else
                 {
                     gr.DrawImage(mapImage, destRect, srcRect, GraphicsUnit.Pixel);
+                }
+                // Screen link overlay: draw linked screen with transparency ON TOP of the current screen area (so it is visible)
+                if (drawLinkOverlay)
+                {
+                    var link = myMap.ScreenLinks.First(l => l.SourceScreen.X == effectiveCurrentScreen.X && l.SourceScreen.Y == effectiveCurrentScreen.Y);
+                    int csSrcX = (effectiveCurrentScreen.X * screenCharWidth - myMap.OffsetX) * 8;
+                    int csSrcY = (effectiveCurrentScreen.Y * screenCharHeight - myMap.OffsetY) * 8;
+                    int csW = screenCharWidth * 8;
+                    int csH = screenCharHeight * 8;
+                    int csDstX = (effectiveCurrentScreen.X * screenCharWidth - myMap.OffsetX) * Globals.CharSize;
+                    int csDstY = (effectiveCurrentScreen.Y * screenCharHeight - myMap.OffsetY) * Globals.CharSize;
+                    int csDstW = screenCharWidth * Globals.CharSize;
+                    int csDstH = screenCharHeight * Globals.CharSize;
+                    if (csSrcX >= 0 && csSrcY >= 0 && csSrcX + csW <= mapImage.Width && csSrcY + csH <= mapImage.Height &&
+                        csDstX + csDstW > 0 && csDstY + csDstH > 0 && csDstX < destRect.Width && csDstY < destRect.Height)
+                    {
+                        Rectangle currentScreenDestRect = new Rectangle(csDstX, csDstY, csDstW, csDstH);
+                        ScreenLinkRenderer.DrawLinkedScreenIntoRect(myMap, mapImage, gr, link, currentScreenDestRect);
+                    }
                 }
             }
             //separatory screenov
