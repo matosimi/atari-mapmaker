@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -83,6 +83,7 @@ namespace AtariMapMaker
 
             AtariFontRenderer.SetFontData(dliFormFontData, Globals.FontType.Dli);
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             // Initial width will be set in Show() method based on MultiFont state
             bool showFontColumn = screenMap.MultiFontEnabled;
             int numColumns = showFontColumn ? 6 : 5;

@@ -250,6 +250,9 @@
       <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <EmbeddedResource Include="TilemapConfigDialog.resx">
+      <DependentUpon>TilemapConfigDialog.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="TilePicker.resx">
       <DependentUpon>TilePicker.cs</DependentUpon>
     </EmbeddedResource>

@@ -31,6 +31,7 @@ namespace AtariMapMaker
             this.Text = title;
             RemoveRequested = false;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             textBoxValueHex.MaxLength = isTilemap ? 4 : 2;
             numericX.Value = Math.Max(0, Math.Min(this.item.X, 255));
             numericY.Value = Math.Max(0, Math.Min(this.item.Y, 255));

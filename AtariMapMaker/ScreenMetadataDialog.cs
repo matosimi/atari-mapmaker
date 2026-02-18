@@ -15,6 +15,7 @@ namespace AtariMapMaker
             this.map = map;
             this.screen = screen;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             this.Text = $"Screen Metadata - ({screen.X},{screen.Y})";
             LoadItems();
         }

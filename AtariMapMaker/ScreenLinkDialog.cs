@@ -14,6 +14,7 @@ namespace AtariMapMaker
             this.map = map;
             this.sourceScreen = sourceScreen;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             if (map != null)
             {
                 numericUpDownLinkedX.Maximum = map.MapSize.Width - 1;

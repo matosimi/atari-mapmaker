@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -20,6 +21,7 @@ namespace AtariMapMaker
         {
             this.map = map;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             PopulateFontSlots();
             UpdateUI();
         }

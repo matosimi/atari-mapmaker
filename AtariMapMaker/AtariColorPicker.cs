@@ -20,6 +20,7 @@ namespace AtariMapMaker
         public AtariColorPicker()
         {
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
         }
 
         public byte PickedColorIndex { get { return selectedColorIndex; } }

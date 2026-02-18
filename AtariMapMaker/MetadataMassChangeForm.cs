@@ -20,6 +20,7 @@ namespace AtariMapMaker
             this.getScreenForLocal = getScreenForLocal ?? (() => new Point(0, 0));
             this.onApply = onApplyCallback;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             UpdateCount(null, EventArgs.Empty);
         }
 

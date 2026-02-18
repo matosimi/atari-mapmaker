@@ -328,6 +328,11 @@ namespace AtariMapMaker
                         ScreenLinkRenderer.DrawLinkedScreenIntoRect(myMap, mapImage, gr, link, currentScreenDestRect);
                     }
                 }
+                // Tile byte overlay: show hex (X2) tile indexes on top of the map
+                if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.ShowByteOverlay && myMap.Data != null)
+                {
+                    DrawTileByteOverlay(gr, myMap, mapImage);
+                }
             }
             //separatory screenov
             if (drawScreenBorders)
@@ -409,6 +414,62 @@ namespace AtariMapMaker
                 MetadataLayerRenderer.RenderMetadataLayer(myMap, gr, viewport, Globals.Zoom);
             }
         }
+
+        /// <summary>
+        /// Draws hexadecimal (X2) tile indexes on top of each visible tile. Uses lime/bright green with transparency from TilemapInfo.ByteOverlayTransparency.
+        /// </summary>
+        private static void DrawTileByteOverlay(Graphics gr, AtariMap myMap, Bitmap mapImage)
+        {
+            if (myMap.TilemapInfo == null || myMap.Data == null) return;
+            int tw = myMap.TilemapInfo.TileWidth;
+            int th = myMap.TilemapInfo.TileHeight;
+            if (tw <= 0 || th <= 0) return;
+            int stride = myMap.Stride;
+            int widthChars = mapImage.Width / 8;
+            int heightChars = mapImage.Height / 8;
+            int tileXStart = myMap.OffsetX / tw;
+            int tileYStart = myMap.OffsetY / th;
+            int tileXEnd = (myMap.OffsetX + widthChars + tw - 1) / tw;
+            int tileYEnd = (myMap.OffsetY + heightChars + th - 1) / th;
+            int totalTilesX = myMap.MapSize.Width * myMap.ScreenSize.Width;
+            int totalTilesY = myMap.MapSize.Height * myMap.ScreenSize.Height;
+            if (tileXEnd > totalTilesX) tileXEnd = totalTilesX;
+            if (tileYEnd > totalTilesY) tileYEnd = totalTilesY;
+            float alpha = myMap.TilemapInfo.ByteOverlayTransparency;
+            if (alpha <= 0f) return;
+            if (alpha > 1f) alpha = 1f;
+            Color lime = Color.Lime;
+            int fontSize = Globals.Zoom == 1 ? 6 : Math.Max(10, 5 + Globals.Zoom * 2);
+            using (Font font = new Font("Segoe UI", fontSize, FontStyle.Bold))
+            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            using (Brush backBrush = new SolidBrush(Color.FromArgb((int)(alpha * 255),48, 48, 12)))
+            using (Brush brush = new SolidBrush(Color.FromArgb((int)(1 * 255), lime.R, lime.G, lime.B)))
+            {
+                SizeF textSize = gr.MeasureString("00", font);
+                const int padding = 0;
+                float backW = textSize.Width + padding * 2;
+                float backH = textSize.Height + padding * 2;
+                for (int ty = tileYStart; ty < tileYEnd; ty++)
+                {
+                    for (int tx = tileXStart; tx < tileXEnd; tx++)
+                    {
+                        int dataIndex = ty * stride + tx;
+                        if (dataIndex < 0 || dataIndex >= myMap.Data.Length) continue;
+                        byte tileIdx = myMap.Data[dataIndex];
+                        string text = tileIdx.ToString("X2");
+                        int px = (tx * tw - myMap.OffsetX) * Globals.CharSize;
+                        int py = (ty * th - myMap.OffsetY) * Globals.CharSize;
+                        int tileWpx = tw * Globals.CharSize;
+                        int tileHpx = th * Globals.CharSize;
+                        float backX = px + (tileWpx - backW) / 2f;
+                        float backY = py + (tileHpx - backH) / 2f;
+                        RectangleF backRect = new RectangleF(backX, backY, backW, backH);
+                        gr.FillRectangle(backBrush, backRect);
+                        gr.DrawString(text, font, brush, backRect, sf);
+                    }
+                }
+            }
+        }
         
         private static void DrawCurrentScreenCorners(Graphics gr, AtariMap myMap, Point currentScreen)
         {
@@ -458,7 +519,7 @@ namespace AtariMapMaker
         
         private static void DrawLockedText(Graphics gr, AtariMap myMap, Point lockedScreen)
         {
-            Font textFont = new Font("Arial", 12, FontStyle.Bold);
+            Font textFont = new Font("Segoe UI", 12, FontStyle.Bold);
             Brush yellowBrush = new SolidBrush(Color.Yellow);
             
             // For tilemaps, ScreenSize is in tiles, so convert to character units

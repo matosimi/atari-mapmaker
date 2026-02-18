@@ -28,6 +28,7 @@ namespace AtariMapMaker
                 screenCharHeight = map.ScreenSize.Height;
             }
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             RegenerateOutput(null, EventArgs.Empty);
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -26,6 +27,7 @@ namespace AtariMapMaker
             this.screenY = screenY;
             this.templateMode = templateMode;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             if (templateMode)
             {
                 PopulateTemplates();

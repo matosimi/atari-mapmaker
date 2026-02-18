@@ -15,6 +15,7 @@ namespace AtariMapMaker
         {
             this.map = map;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             if (map != null && !string.IsNullOrEmpty(map.MapDescription))
                 textBoxDescription.Text = map.MapDescription;
         }

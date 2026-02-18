@@ -1089,10 +1089,10 @@ namespace AtariMapMaker
             this.linkLabel2.Location = new System.Drawing.Point(90, 257);
             this.linkLabel2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.linkLabel2.Name = "linkLabel2";
-            this.linkLabel2.Size = new System.Drawing.Size(120, 21);
+            this.linkLabel2.Size = new System.Drawing.Size(59, 21);
             this.linkLabel2.TabIndex = 3;
             this.linkLabel2.TabStop = true;
-            this.linkLabel2.Text = "Sourceforge.net";
+            this.linkLabel2.Text = "GitHub";
             this.linkLabel2.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabel2_LinkClicked);
             // 
             // label1
@@ -1111,10 +1111,10 @@ namespace AtariMapMaker
             this.linkLabel1.Location = new System.Drawing.Point(9, 121);
             this.linkLabel1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.linkLabel1.Name = "linkLabel1";
-            this.linkLabel1.Size = new System.Drawing.Size(179, 21);
+            this.linkLabel1.Size = new System.Drawing.Size(186, 21);
             this.linkLabel1.TabIndex = 1;
             this.linkLabel1.TabStop = true;
-            this.linkLabel1.Text = "http://matosimi.atari.org";
+            this.linkLabel1.Text = "https://matosimi.atari.org";
             this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabel1_LinkClicked);
             // 
             // labelAbout

@@ -32,6 +32,7 @@ namespace AtariMapMaker
             tileHeight = submap.ScreenSize.Height;
             
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             comboBoxTilePickerLayout.SelectedIndex = savedTilePickerLayoutIndex;
             tilesPerRow = GetTilesPerRowFromLayout();
             CreatePickerMap();

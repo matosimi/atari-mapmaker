@@ -18,6 +18,7 @@ namespace AtariMapMaker
             this.map = map;
             this.screen = screen;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             LoadDescription();
         }
 

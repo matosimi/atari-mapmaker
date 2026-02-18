@@ -23,6 +23,7 @@ namespace AtariMapMaker
             this.clipboardPictureBox = clipboardPictureBox;
             this.mainMap = mainMap;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             fontPickerMap = CreatePickerMap(16, 16);
             pictureBoxFontPicker.Image = new Bitmap(16 * Globals.CharSize, 16 * Globals.CharSize);
             AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);

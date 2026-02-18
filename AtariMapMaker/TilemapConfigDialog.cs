@@ -16,135 +16,164 @@ namespace AtariMapMaker
         private Label labelTransparency;
         private Button buttonOK;
         private Button buttonCancel;
+        private Label labelSubmap;
+        private Label labelTileInfoLabel;
+        private Label labelPattern;
         private Button buttonRenumberTiles;
 
         public TilemapConfigDialog(AtariMap map)
         {
             this.map = map;
             InitializeComponent();
+            this.Font = new System.Drawing.Font("Segoe UI", 8F);
             LoadSettings();
         }
 
         private void InitializeComponent()
         {
-            this.textBoxSubmapPath = new TextBox();
-            this.buttonBrowseSubmap = new Button();
-            this.labelTileInfo = new Label();
-            this.comboBoxNumberingPattern = new ComboBox();
-            this.checkBoxShowByteOverlay = new CheckBox();
-            this.trackBarOverlayTransparency = new TrackBar();
-            this.labelTransparency = new Label();
-            this.buttonOK = new Button();
-            this.buttonCancel = new Button();
-            this.buttonRenumberTiles = new Button();
+            this.textBoxSubmapPath = new System.Windows.Forms.TextBox();
+            this.buttonBrowseSubmap = new System.Windows.Forms.Button();
+            this.labelTileInfo = new System.Windows.Forms.Label();
+            this.comboBoxNumberingPattern = new System.Windows.Forms.ComboBox();
+            this.checkBoxShowByteOverlay = new System.Windows.Forms.CheckBox();
+            this.trackBarOverlayTransparency = new System.Windows.Forms.TrackBar();
+            this.labelTransparency = new System.Windows.Forms.Label();
+            this.buttonOK = new System.Windows.Forms.Button();
+            this.buttonCancel = new System.Windows.Forms.Button();
+            this.buttonRenumberTiles = new System.Windows.Forms.Button();
+            this.labelSubmap = new System.Windows.Forms.Label();
+            this.labelTileInfoLabel = new System.Windows.Forms.Label();
+            this.labelPattern = new System.Windows.Forms.Label();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarOverlayTransparency)).BeginInit();
             this.SuspendLayout();
-
-            // Label for Submap Path
-            Label labelSubmap = new Label();
-            labelSubmap.AutoSize = true;
-            labelSubmap.Location = new System.Drawing.Point(12, 12);
-            labelSubmap.Text = "Submap File:";
-            labelSubmap.Size = new System.Drawing.Size(70, 13);
-
+            // 
             // textBoxSubmapPath
+            // 
             this.textBoxSubmapPath.Location = new System.Drawing.Point(88, 9);
             this.textBoxSubmapPath.Name = "textBoxSubmapPath";
-            this.textBoxSubmapPath.Size = new System.Drawing.Size(300, 20);
-            this.textBoxSubmapPath.TabIndex = 1;
             this.textBoxSubmapPath.ReadOnly = true;
-
+            this.textBoxSubmapPath.Size = new System.Drawing.Size(300, 26);
+            this.textBoxSubmapPath.TabIndex = 1;
+            // 
             // buttonBrowseSubmap
+            // 
             this.buttonBrowseSubmap.Location = new System.Drawing.Point(394, 7);
             this.buttonBrowseSubmap.Name = "buttonBrowseSubmap";
             this.buttonBrowseSubmap.Size = new System.Drawing.Size(75, 23);
-            this.buttonBrowseSubmap.Text = "Browse...";
             this.buttonBrowseSubmap.TabIndex = 2;
+            this.buttonBrowseSubmap.Text = "Browse...";
             this.buttonBrowseSubmap.UseVisualStyleBackColor = true;
-            this.buttonBrowseSubmap.Click += ButtonBrowseSubmap_Click;
-
-            // Label for Tile Info (read-only, from submap)
-            Label labelTileInfoLabel = new Label();
-            labelTileInfoLabel.AutoSize = true;
-            labelTileInfoLabel.Location = new System.Drawing.Point(12, 42);
-            labelTileInfoLabel.Text = "Tile Info:";
-            labelTileInfoLabel.Size = new System.Drawing.Size(60, 13);
-
-            // labelTileInfo (displays tile info from submap)
+            // 
+            // labelTileInfo
+            // 
             this.labelTileInfo.AutoSize = true;
             this.labelTileInfo.Location = new System.Drawing.Point(78, 42);
             this.labelTileInfo.Name = "labelTileInfo";
-            this.labelTileInfo.Size = new System.Drawing.Size(200, 13);
+            this.labelTileInfo.Size = new System.Drawing.Size(152, 20);
+            this.labelTileInfo.TabIndex = 12;
             this.labelTileInfo.Text = "(No submap loaded)";
-
-            // Label for Numbering Pattern
-            Label labelPattern = new Label();
-            labelPattern.AutoSize = true;
-            labelPattern.Location = new System.Drawing.Point(12, 72);
-            labelPattern.Text = "Numbering Pattern:";
-            labelPattern.Size = new System.Drawing.Size(100, 13);
-
+            // 
             // comboBoxNumberingPattern
-            this.comboBoxNumberingPattern.DropDownStyle = ComboBoxStyle.DropDownList;
+            // 
+            this.comboBoxNumberingPattern.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxNumberingPattern.Items.AddRange(new object[] {
+            "row-major",
+            "column-major"});
             this.comboBoxNumberingPattern.Location = new System.Drawing.Point(118, 69);
             this.comboBoxNumberingPattern.Name = "comboBoxNumberingPattern";
-            this.comboBoxNumberingPattern.Size = new System.Drawing.Size(150, 21);
+            this.comboBoxNumberingPattern.Size = new System.Drawing.Size(150, 28);
             this.comboBoxNumberingPattern.TabIndex = 5;
-            this.comboBoxNumberingPattern.Items.AddRange(new string[] { "row-major", "column-major" });
-
-            // buttonRenumberTiles
-            this.buttonRenumberTiles.Location = new System.Drawing.Point(274, 67);
-            this.buttonRenumberTiles.Name = "buttonRenumberTiles";
-            this.buttonRenumberTiles.Size = new System.Drawing.Size(100, 23);
-            this.buttonRenumberTiles.Text = "Renumber Tiles";
-            this.buttonRenumberTiles.TabIndex = 6;
-            this.buttonRenumberTiles.UseVisualStyleBackColor = true;
-            this.buttonRenumberTiles.Click += ButtonRenumberTiles_Click;
-
+            this.comboBoxNumberingPattern.Visible = false;
+            // 
             // checkBoxShowByteOverlay
+            // 
             this.checkBoxShowByteOverlay.AutoSize = true;
             this.checkBoxShowByteOverlay.Location = new System.Drawing.Point(12, 102);
             this.checkBoxShowByteOverlay.Name = "checkBoxShowByteOverlay";
-            this.checkBoxShowByteOverlay.Size = new System.Drawing.Size(120, 17);
-            this.checkBoxShowByteOverlay.Text = "Show Byte Overlay";
+            this.checkBoxShowByteOverlay.Size = new System.Drawing.Size(167, 24);
             this.checkBoxShowByteOverlay.TabIndex = 7;
-
-            // Label for Transparency
+            this.checkBoxShowByteOverlay.Text = "Show Byte Overlay";
+            this.checkBoxShowByteOverlay.CheckedChanged += new System.EventHandler(this.CheckBoxShowByteOverlay_CheckedChanged);
+            // 
+            // trackBarOverlayTransparency
+            // 
+            this.trackBarOverlayTransparency.Location = new System.Drawing.Point(168, 122);
+            this.trackBarOverlayTransparency.Maximum = 100;
+            this.trackBarOverlayTransparency.Name = "trackBarOverlayTransparency";
+            this.trackBarOverlayTransparency.Size = new System.Drawing.Size(200, 69);
+            this.trackBarOverlayTransparency.TabIndex = 8;
+            this.trackBarOverlayTransparency.TickFrequency = 10;
+            this.trackBarOverlayTransparency.Value = 50;
+            // 
+            // labelTransparency
+            // 
             this.labelTransparency.AutoSize = true;
             this.labelTransparency.Location = new System.Drawing.Point(12, 127);
+            this.labelTransparency.Name = "labelTransparency";
+            this.labelTransparency.Size = new System.Drawing.Size(201, 20);
+            this.labelTransparency.TabIndex = 11;
             this.labelTransparency.Text = "Overlay Transparency: 50%";
-            this.labelTransparency.Size = new System.Drawing.Size(150, 13);
-
-            // trackBarOverlayTransparency
-            this.trackBarOverlayTransparency.Location = new System.Drawing.Point(168, 122);
-            this.trackBarOverlayTransparency.Name = "trackBarOverlayTransparency";
-            this.trackBarOverlayTransparency.Size = new System.Drawing.Size(200, 45);
-            this.trackBarOverlayTransparency.Minimum = 0;
-            this.trackBarOverlayTransparency.Maximum = 100;
-            this.trackBarOverlayTransparency.Value = 50;
-            this.trackBarOverlayTransparency.TickFrequency = 10;
-            this.trackBarOverlayTransparency.TabIndex = 8;
-            this.trackBarOverlayTransparency.ValueChanged += TrackBarOverlayTransparency_ValueChanged;
-
+            // 
             // buttonOK
-            this.buttonOK.DialogResult = DialogResult.OK;
+            // 
             this.buttonOK.Location = new System.Drawing.Point(313, 172);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(75, 23);
             this.buttonOK.TabIndex = 9;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
-            this.buttonOK.Click += ButtonOK_Click;
-
+            this.buttonOK.Click += new System.EventHandler(this.ButtonOK_Click);
+            // 
             // buttonCancel
-            this.buttonCancel.DialogResult = DialogResult.Cancel;
+            // 
+            this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.buttonCancel.Location = new System.Drawing.Point(394, 172);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
             this.buttonCancel.TabIndex = 10;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
-
+            // 
+            // buttonRenumberTiles
+            // 
+            this.buttonRenumberTiles.Location = new System.Drawing.Point(274, 67);
+            this.buttonRenumberTiles.Name = "buttonRenumberTiles";
+            this.buttonRenumberTiles.Size = new System.Drawing.Size(100, 23);
+            this.buttonRenumberTiles.TabIndex = 6;
+            this.buttonRenumberTiles.Text = "Renumber Tiles";
+            this.buttonRenumberTiles.UseVisualStyleBackColor = true;
+            this.buttonRenumberTiles.Visible = false;
+            // 
+            // labelSubmap
+            // 
+            this.labelSubmap.AutoSize = true;
+            this.labelSubmap.Location = new System.Drawing.Point(12, 12);
+            this.labelSubmap.Name = "labelSubmap";
+            this.labelSubmap.Size = new System.Drawing.Size(102, 20);
+            this.labelSubmap.TabIndex = 13;
+            this.labelSubmap.Text = "Submap File:";
+            // 
+            // labelTileInfoLabel
+            // 
+            this.labelTileInfoLabel.AutoSize = true;
+            this.labelTileInfoLabel.Location = new System.Drawing.Point(12, 42);
+            this.labelTileInfoLabel.Name = "labelTileInfoLabel";
+            this.labelTileInfoLabel.Size = new System.Drawing.Size(69, 20);
+            this.labelTileInfoLabel.TabIndex = 14;
+            this.labelTileInfoLabel.Text = "Tile Info:";
+            // 
+            // labelPattern
+            // 
+            this.labelPattern.AutoSize = true;
+            this.labelPattern.Location = new System.Drawing.Point(12, 72);
+            this.labelPattern.Name = "labelPattern";
+            this.labelPattern.Size = new System.Drawing.Size(146, 20);
+            this.labelPattern.TabIndex = 15;
+            this.labelPattern.Text = "Numbering Pattern:";
+            this.labelPattern.Visible = false;
+            // 
             // TilemapConfigDialog
+            // 
             this.AcceptButton = this.buttonOK;
             this.CancelButton = this.buttonCancel;
             this.ClientSize = new System.Drawing.Size(481, 207);
@@ -158,17 +187,19 @@ namespace AtariMapMaker
             this.Controls.Add(this.labelTileInfo);
             this.Controls.Add(this.buttonBrowseSubmap);
             this.Controls.Add(this.textBoxSubmapPath);
-            this.Controls.Add(labelSubmap);
-            this.Controls.Add(labelTileInfoLabel);
-            this.Controls.Add(labelPattern);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.Controls.Add(this.labelSubmap);
+            this.Controls.Add(this.labelTileInfoLabel);
+            this.Controls.Add(this.labelPattern);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "TilemapConfigDialog";
-            this.StartPosition = FormStartPosition.CenterParent;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Tilemap Configuration";
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarOverlayTransparency)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
+
         }
 
         private void LoadSettings()
@@ -243,6 +274,11 @@ namespace AtariMapMaker
             // All controls are always enabled for tilemap (since this dialog only opens for tilemaps)
             bool overlayEnabled = checkBoxShowByteOverlay.Checked;
             trackBarOverlayTransparency.Enabled = overlayEnabled;
+        }
+
+        private void CheckBoxShowByteOverlay_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateUI();
         }
 
         private void ButtonBrowseSubmap_Click(object sender, EventArgs e)
@@ -366,6 +402,9 @@ namespace AtariMapMaker
                     return;
                 }
             }
+
+            this.DialogResult = DialogResult.OK;
+            this.Close();
         }
     }
 }

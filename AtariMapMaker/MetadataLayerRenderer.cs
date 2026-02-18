@@ -133,7 +133,7 @@ namespace AtariMapMaker
             int fontSz = Math.Max(4, Math.Min(cellH / 2, 4 * zoom));
             int lineHeightPx = 8 * zoom;
 
-            using (Font font = new Font("Arial", fontSz))
+            using (Font font = new Font("Segoe UI", fontSz))
             using (Brush valueBrush = new SolidBrush(valueTextColor))
             using (Brush textBrush = new SolidBrush(Color.White))
             {

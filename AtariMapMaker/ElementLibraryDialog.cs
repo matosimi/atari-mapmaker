@@ -17,6 +17,7 @@ namespace AtariMapMaker
             this.onClipboardSet = onClipboardSet;
             this.onInvertRequested = onInvertRequested;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
             this.KeyPreview = true;
             this.KeyDown += ElementLibraryDialog_KeyDown;
             this.FormClosing += ElementLibraryDialog_FormClosing;

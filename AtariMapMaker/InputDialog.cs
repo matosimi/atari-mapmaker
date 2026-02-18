@@ -16,6 +16,7 @@ namespace AtariMapMaker
         public InputDialog(string prompt, string title, string defaultValue = "")
         {
             InitializeComponent(prompt, title, defaultValue);
+            this.Font = new Font("Segoe UI", 8F);
         }
 
         private void InitializeComponent(string prompt, string title, string defaultValue)

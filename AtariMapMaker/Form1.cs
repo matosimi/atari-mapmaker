@@ -2600,12 +2600,12 @@ namespace AtariMapMaker
 
         private void LinkLabel2_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            System.Diagnostics.Process.Start("https://sourceforge.net/projects/atari-mapmaker/");
+            System.Diagnostics.Process.Start("https://github.com/matosimi/atari-mapmaker");
         }
 
         private void LinkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            System.Diagnostics.Process.Start("http://matosimi.atari.org");
+            System.Diagnostics.Process.Start("https://matosimi.atari.org");
         }
 
         private void ButtonRefreshFont_Click(object sender, EventArgs e)
