@@ -440,7 +440,7 @@ namespace AtariMapMaker
             if (alpha > 1f) alpha = 1f;
             Color lime = Color.Lime;
             int fontSize = Globals.Zoom == 1 ? 6 : Math.Max(10, 5 + Globals.Zoom * 2);
-            using (Font font = new Font("Segoe UI", fontSize, FontStyle.Bold))
+            using (Font font = new Font("Consolas", fontSize, FontStyle.Regular))
             using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
             using (Brush backBrush = new SolidBrush(Color.FromArgb((int)(alpha * 255),48, 48, 12)))
             using (Brush brush = new SolidBrush(Color.FromArgb((int)(1 * 255), lime.R, lime.G, lime.B)))
