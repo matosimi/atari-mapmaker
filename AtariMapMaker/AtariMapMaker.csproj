@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -136,18 +136,34 @@
     <Compile Include="AtariMap.cs" />
     <Compile Include="AtariPalette.cs" />
     <Compile Include="AtariPictureTools.cs" />
+    <Compile Include="BitmapTilesetRenderer.cs" />
     <Compile Include="DliForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="DliForm.Designer.cs">
       <DependentUpon>DliForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DefaultFontResource.cs" />
+    <Compile Include="ElementLibraryDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ElementLibraryDialog.Designer.cs">
+      <DependentUpon>ElementLibraryDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ElementLibraryManager.cs" />
     <Compile Include="FontCharPicker.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FontCharPicker.Designer.cs">
       <DependentUpon>FontCharPicker.cs</DependentUpon>
     </Compile>
+    <Compile Include="FontSelectorDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FontTemplateDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FontTemplateManager.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -156,8 +172,62 @@
     </Compile>
     <Compile Include="Globals.cs" />
     <Compile Include="Graphics8bit.cs" />
+    <Compile Include="InputDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="IUndoableOperation.cs" />
+    <Compile Include="MapDataStructures.cs" />
+    <Compile Include="MapDescriptionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MetadataLayerRenderer.cs" />
+    <Compile Include="MetadataParser.cs" />
+    <Compile Include="MetadataItemEditDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MetadataExportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MetadataExportForm.Designer.cs">
+      <DependentUpon>MetadataExportForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MetadataMassChangeForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MetadataMassChangeForm.Designer.cs">
+      <DependentUpon>MetadataMassChangeForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ScreenDescriptionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScreenLinkDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScreenLinkDialog.Designer.cs">
+      <DependentUpon>ScreenLinkDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ScreenLinkRenderer.cs" />
+    <Compile Include="ScreenMetadataDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScreenMetadataDialog.Designer.cs">
+      <DependentUpon>ScreenMetadataDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SubmapManager.cs" />
+    <Compile Include="TilemapConfigDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TilemapEditor.cs" />
+    <Compile Include="TilemapRenderer.cs" />
+    <Compile Include="TilePicker.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TilePicker.Designer.cs">
+      <DependentUpon>TilePicker.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UndoManager.cs" />
     <EmbeddedResource Include="AtariColorPicker.resx">
       <SubType>Designer</SubType>
       <DependentUpon>AtariColorPicker.cs</DependentUpon>
@@ -179,6 +249,12 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TilemapConfigDialog.resx">
+      <DependentUpon>TilemapConfigDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TilePicker.resx">
+      <DependentUpon>TilePicker.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="app.config" />
     <None Include="packages.config" />

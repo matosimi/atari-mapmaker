@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -11,20 +11,57 @@ namespace AtariMapMaker
 {
     public partial class FontCharPicker : Form
     {
-        private readonly AtariMap fontPickerMap;
+        private AtariMap fontPickerMap;
         private readonly PictureBox clipboardPictureBox;
+        private AtariMap mainMap;
         public const Globals.WindowType window = Globals.WindowType.CharPicker;
 
-        public FontCharPicker(PictureBox clipboardPictureBox)
-        {
-            fontPickerMap = new AtariMap(new Size(1, 1), new Size(16, 16));
-            for (int a = 0; a < 256; a++)
-                fontPickerMap.Data[a] = (byte)a;
+        private static int savedLayoutIndex = 0;
 
+        public FontCharPicker(PictureBox clipboardPictureBox, AtariMap mainMap = null)
+        {
+            this.clipboardPictureBox = clipboardPictureBox;
+            this.mainMap = mainMap;
             InitializeComponent();
+            this.Font = new Font("Segoe UI", 8F);
+            fontPickerMap = CreatePickerMap(16, 16);
             pictureBoxFontPicker.Image = new Bitmap(16 * Globals.CharSize, 16 * Globals.CharSize);
             AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
-            this.clipboardPictureBox = clipboardPictureBox;
+        }
+
+        public void SetMainMap(AtariMap map)
+        {
+            mainMap = map;
+            RefreshFontCombo();
+        }
+
+        private static AtariMap CreatePickerMap(int cols, int rows)
+        {
+            var map = new AtariMap(new Size(1, 1), new Size(cols, rows));
+            for (int a = 0; a < 256; a++)
+                map.Data[a] = (byte)a;
+            return map;
+        }
+
+        private (int cols, int rows) GetLayoutDimensions()
+        {
+            int idx = comboBoxFontPickerLayout.SelectedIndex;
+            if (idx == 1) return (32, 8);
+            if (idx == 2) return (8, 32);
+            return (16, 16);
+        }
+
+        private void ApplyLayout()
+        {
+            var (cols, rows) = GetLayoutDimensions();
+            fontPickerMap = CreatePickerMap(cols, rows);
+            int w = cols * Globals.CharSize;
+            int h = rows * Globals.CharSize;
+            pictureBoxFontPicker.Width = w;
+            pictureBoxFontPicker.Height = h;
+            pictureBoxFontPicker.Image = new Bitmap(w, h);
+            AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
+            AtariPictureTools.Redraw(Globals.WindowType.CharPicker, true, false, true);
         }
 
         public PictureBox GetPictureBox()
@@ -34,14 +71,57 @@ namespace AtariMapMaker
 
         public void SetZoom()
         {
-            pictureBoxFontPicker.Width = 16 * Globals.CharSize;
-            pictureBoxFontPicker.Height = 16 * Globals.CharSize;
+            var (cols, rows) = GetLayoutDimensions();
+            pictureBoxFontPicker.Width = cols * Globals.CharSize;
+            pictureBoxFontPicker.Height = rows * Globals.CharSize;
             FontCharPicker_VisibleChanged(null, null);
         }
 
         private void FontCharPicker_Load(object sender, EventArgs e)
         {
- 
+            if (comboBoxFontPickerLayout.SelectedIndex != savedLayoutIndex)
+                comboBoxFontPickerLayout.SelectedIndex = savedLayoutIndex;
+            else
+                ApplyLayout();
+            RefreshFontCombo();
+        }
+
+        private void RefreshFontCombo()
+        {
+            comboBoxFontToPick.Items.Clear();
+            if (mainMap != null && mainMap.MultiFontEnabled && mainMap.FontDataArray != null && mainMap.FontDataArray.Length > 0)
+            {
+                for (int i = 0; i < mainMap.FontDataArray.Length; i++)
+                    comboBoxFontToPick.Items.Add("Font " + i);
+                comboBoxFontToPick.Enabled = true;
+                if (comboBoxFontToPick.SelectedIndex < 0)
+                    comboBoxFontToPick.SelectedIndex = 0;
+                ComboBoxFontToPick_SelectedIndexChanged(null, null);
+            }
+            else
+            {
+                comboBoxFontToPick.Items.Add("Font 0");
+                comboBoxFontToPick.SelectedIndex = 0;
+                comboBoxFontToPick.Enabled = false;
+                AtariFontRenderer.CharPickerFontIndex = null;
+                AtariFontRenderer.CharPickerFontSourceMap = null;
+            }
+        }
+
+        private void ComboBoxFontPickerLayout_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxFontPickerLayout.SelectedIndex < 0) return;
+            savedLayoutIndex = comboBoxFontPickerLayout.SelectedIndex;
+            ApplyLayout();
+        }
+
+        private void ComboBoxFontToPick_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxFontToPick.SelectedIndex < 0 || mainMap == null) return;
+            int idx = comboBoxFontToPick.SelectedIndex;
+            AtariFontRenderer.CharPickerFontIndex = idx;
+            AtariFontRenderer.CharPickerFontSourceMap = mainMap;
+            RedrawFontWindow();
         }
 
         private void PictureBoxFontPicker_MouseDown(object sender, MouseEventArgs e)
@@ -77,7 +157,8 @@ namespace AtariMapMaker
 
         private void FontCharPicker_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            // Hide instead of close so the form is never disposed (only when app exits)
+            if (e.CloseReason == CloseReason.UserClosing || e.CloseReason == CloseReason.None)
             {
                 this.Hide();
                 e.Cancel = true;

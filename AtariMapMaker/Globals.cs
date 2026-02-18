@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -14,7 +14,7 @@ namespace AtariMapMaker
         public static Size editorWindowSizeInChars;
         private static readonly int[] zoomMultiplier = new int[] { 1, 2, 3, 4 };    //100%,200%,400%
         private static int zoomIndex = 1;
-        public enum ClipBoardEnum { none, color, color5, colorAll };
+        public enum ClipBoardEnum { none, color, color5, colorAll, fontAll };
         public const byte DEFAULT_COLOR = 255;
         public static int Zoom
         {
@@ -48,5 +48,11 @@ namespace AtariMapMaker
         {
             return new Rectangle(0, 0, sourceRect.Width, sourceRect.Height); 
         }
+
+        /// <summary>When true, metadata layer overlay is drawn and map clicks add/edit metadata.</summary>
+        public static bool MetadataLayerVisible { get; set; }
+
+        /// <summary>When true, metadata text (white labels) is drawn on the overlay; when false, only value/color indicator is shown.</summary>
+        public static bool MetadataLayerShowText { get; set; }
     }
 }
