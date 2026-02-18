@@ -33,12 +33,44 @@ namespace AtariMapMaker
             dataSource = myMap;
         }
 
+        /// <summary>
+        /// Sets clipboard to tile data (width, height, tile indexes). Does not create an image;
+        /// caller must call RegenerateClipboardImage() to build the clipboard image (same as map selection).
+        /// </summary>
+        public static void SetTileData(int width, int height, byte[,] tileData)
+        {
+            if (tileData == null || width <= 0 || height <= 0)
+                return;
+            IsTileIndexes = true;
+            ClipboardWidth = width;
+            ClipboardHeight = height;
+            data = new byte[width, height];
+            for (int y = 0; y < height && y < tileData.GetLength(1); y++)
+                for (int x = 0; x < width && x < tileData.GetLength(0); x++)
+                    data[x, y] = tileData[x, y];
+            if (ClipboardImage != null)
+            {
+                ClipboardImage.Dispose();
+                ClipboardImage = null;
+            }
+            if (UnderClipBoardImage != null)
+            {
+                UnderClipBoardImage.Dispose();
+                UnderClipBoardImage = null;
+            }
+            if (UnderImageGraphics != null)
+            {
+                UnderImageGraphics.Dispose();
+                UnderImageGraphics = null;
+            }
+        }
+
         public static void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset)
         {
             if (dataSource == null)
                 return;
             
-            //graphical part
+            // Graphical part: crop selection from map (same for tilemap and character mode – correct colors/fonts)
             if (ClipboardImage != null)
             {
                 ClipboardImage.Dispose();
@@ -147,67 +179,46 @@ namespace AtariMapMaker
                 temp32Bit.Dispose();
             }
 
-            // For tilemaps, copy tile indexes instead of characters
+            // Data part: tile indexes for tilemaps, character data otherwise
             if (dataSource.IsTilemap && dataSource.TilemapInfo != null)
             {
                 int tileWidth = dataSource.TilemapInfo.TileWidth;
                 int tileHeight = dataSource.TilemapInfo.TileHeight;
-                
-                // Selection is in pixels, convert to character coordinates
                 int charX = mouseSelection.X / Globals.CharSize;
                 int charY = mouseSelection.Y / Globals.CharSize;
                 int charWidth = mouseSelection.Width / Globals.CharSize;
                 int charHeight = mouseSelection.Height / Globals.CharSize;
-                
-                // Convert to tile coordinates (relative to visible area)
-                int tileXStart = charX / tileWidth;
-                int tileYStart = charY / tileHeight;
                 int tileWidthInTiles = charWidth / tileWidth;
                 int tileHeightInTiles = charHeight / tileHeight;
-                
-                // Convert to absolute tile coordinates
                 int absoluteCharX = dataSource.OffsetX + charX;
                 int absoluteCharY = dataSource.OffsetY + charY;
                 int absoluteTileX = absoluteCharX / tileWidth;
                 int absoluteTileY = absoluteCharY / tileHeight;
-                
-                // Copy tile indexes
                 IsTileIndexes = true;
                 ClipboardWidth = tileWidthInTiles;
                 ClipboardHeight = tileHeightInTiles;
                 data = new byte[ClipboardWidth, ClipboardHeight];
-                
-                int tilesPerRow = dataSource.Stride; // Stride is in tile units for tilemaps
-                
+                int tilesPerRow = dataSource.Stride;
                 for (int y = 0; y < ClipboardHeight; y++)
                 {
                     for (int x = 0; x < ClipboardWidth; x++)
                     {
-                        int destTileX = absoluteTileX + x;
-                        int destTileY = absoluteTileY + y;
-                        int tileIndex = destTileY * tilesPerRow + destTileX;
-                        
+                        int tileIndex = (absoluteTileY + y) * tilesPerRow + (absoluteTileX + x);
                         if (tileIndex >= 0 && tileIndex < dataSource.Data.Length)
-                        {
                             data[x, y] = dataSource.Data[tileIndex];
-                        }
                     }
                 }
             }
             else
             {
-                // Normal character mode
                 IsTileIndexes = false;
                 ClipboardWidth = mouseSelection.Width / Globals.CharSize;
                 ClipboardHeight = mouseSelection.Height / Globals.CharSize;
                 data = new byte[ClipboardWidth, ClipboardHeight];
                 int xo = mouseSelection.X / Globals.CharSize;
                 int yo = mouseSelection.Y / Globals.CharSize;
-                
-                // For normal maps, use Data array
                 byte[] sourceData = dataSource.Data;
                 int sourceStride = dataSource.Stride;
-                
                 for (int y = 0; y < ClipboardHeight; y++)
                     for (int x = 0; x < ClipboardWidth; x++)
                     {
@@ -255,6 +266,60 @@ namespace AtariMapMaker
                     if (index < tileIndexes.Length)
                         data[x, y] = tileIndexes[index];
                 }
+        }
+
+        /// <summary>
+        /// Copy a library element to the clipboard. For character data: preview from font. For tile data: mapForTilemap required for correct preview size.
+        /// </summary>
+        public static void CopyFromLibraryElement(LibraryElement element, AtariMap mapForTilemap = null)
+        {
+            if (element == null || element.Data == null || element.Size.Width <= 0 || element.Size.Height <= 0)
+                return;
+
+            int w = element.Size.Width;
+            int h = element.Size.Height;
+
+            IsTileIndexes = element.IsTileData;
+            ClipboardWidth = w;
+            ClipboardHeight = h;
+
+            // Build 2D data from element.Data (row-major)
+            byte[,] tileData = new byte[w, h];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int index = y * w + x;
+                    if (index < element.Data.Length)
+                        tileData[x, y] = element.Data[index];
+                }
+
+            if (element.IsTileData)
+            {
+                // Same path as map selection: set tile data only; caller calls RegenerateClipboardImage() to render
+                SetTileData(w, h, tileData);
+            }
+            else
+            {
+                // Character mode: set data and render preview from font
+                IsTileIndexes = false;
+                ClipboardWidth = w;
+                ClipboardHeight = h;
+                data = tileData;
+                Bitmap preview = new Bitmap(w * 8, h * 8, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
+                preview.Palette = AtariPalette.GetIndexedColor5Palette();
+                AtariFontRenderer.RenderClipboardData(data, w, h, preview);
+                if (ClipboardImage != null)
+                    ClipboardImage.Dispose();
+                ClipboardImage = preview;
+                if (UnderClipBoardImage != null)
+                    UnderClipBoardImage.Dispose();
+                UnderClipBoardImage = new Bitmap(ClipboardImage);
+                if (UnderImageGraphics != null)
+                    UnderImageGraphics.Dispose();
+                UnderImageGraphics = Graphics.FromImage(UnderClipBoardImage);
+            }
+
+            IsValid = true;
         }
 
         public static void Paste(int offset)
@@ -315,14 +380,18 @@ namespace AtariMapMaker
             else
             {
                 // Paste characters (normal mode)
-                // offset is already absolute (myMap.Offset + charOffset), so use it directly
+                // offset is already absolute (myMap.Offset + charOffset); use CharStride so tilemaps work too
+                int charStride = dataSource.CharStride;
                 int charOffset = offset - dataSource.Offset;
-                int charX = charOffset % dataSource.Stride;
-                int charY = charOffset / dataSource.Stride;
-                
+                int charX = charOffset % charStride;
+                int charY = charOffset / charStride;
+                int maxCharHeight = dataSource.MapSize.Height * dataSource.ScreenSize.Height;
+                if (dataSource.IsTilemap && dataSource.TilemapInfo != null)
+                    maxCharHeight *= dataSource.TilemapInfo.TileHeight;
+
                 // Check bounds
-                if (charX + ClipboardWidth <= dataSource.Stride && 
-                    charY + ClipboardHeight <= dataSource.MapSize.Height * dataSource.ScreenSize.Height)
+                if (charX + ClipboardWidth <= charStride &&
+                    charY + ClipboardHeight <= maxCharHeight)
                 {
                     for (int y = 0; y < ClipboardHeight; y++)
                     {
@@ -330,7 +399,7 @@ namespace AtariMapMaker
                         {
                             int destCharX = charX + x;
                             int destCharY = charY + y;
-                            int destIndex = destCharX + destCharY * dataSource.Stride;
+                            int destIndex = destCharX + destCharY * charStride;
                             
                             if (destIndex >= 0 && destIndex < dataSource.Data.Length)
                             {

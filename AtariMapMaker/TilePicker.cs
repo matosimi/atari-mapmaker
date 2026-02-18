@@ -11,13 +11,13 @@ namespace AtariMapMaker
         private readonly AtariMap tilemap;
         private AtariMap pickerMap; // Map containing all tiles laid out
         private readonly PictureBox clipboardPictureBox;
-        private PictureBox pictureBoxTilePicker;
         private int tileWidth;
         private int tileHeight;
         private int tilesPerRow;
         private int tilesPerColumn;
         private AtariMap submap; // Cached submap
         public const Globals.WindowType window = Globals.WindowType.CharPicker;
+        private static int savedTilePickerLayoutIndex = 3; // default 16 per row
 
         public TilePicker(AtariMap tilemap, PictureBox clipboardPictureBox)
         {
@@ -27,75 +27,98 @@ namespace AtariMapMaker
             if (tilemap == null || !tilemap.IsTilemap || string.IsNullOrEmpty(tilemap.SubmapPath) || !File.Exists(tilemap.SubmapPath))
                 throw new Exception("Invalid tilemap configuration");
 
-            // Load submap
             submap = SubmapManager.LoadSubmap(tilemap.SubmapPath);
             tileWidth = submap.ScreenSize.Width;
             tileHeight = submap.ScreenSize.Height;
             
-            // Calculate how many tiles fit in the picker window
-            int windowWidth = 400; // pixels
-            int windowHeight = 400; // pixels
-            tilesPerRow = Math.Max(1, windowWidth / (tileWidth * Globals.CharSize));
-            tilesPerColumn = Math.Max(1, windowHeight / (tileHeight * Globals.CharSize));
-            
             InitializeComponent();
+            comboBoxTilePickerLayout.SelectedIndex = savedTilePickerLayoutIndex;
+            tilesPerRow = GetTilesPerRowFromLayout();
+            CreatePickerMap();
+            RenderTiles();
         }
 
-        private void InitializeComponent()
+        private int GetTilesPerRowFromLayout()
         {
-            this.pictureBoxTilePicker = new PictureBox();
-            this.SuspendLayout();
+            int idx = comboBoxTilePickerLayout.SelectedIndex;
+            if (idx < 0) return 16;
+            // Combo items: 4, 8, 12, 16, 20, 24, 32 (index 6 is 32, not 28)
+            return idx == 6 ? 32 : (4 + idx * 4);
+        }
 
-            // pictureBoxTilePicker
-            this.pictureBoxTilePicker.Location = new System.Drawing.Point(0, 0);
-            this.pictureBoxTilePicker.Name = "pictureBoxTilePicker";
-            this.pictureBoxTilePicker.Size = new System.Drawing.Size(400, 400);
-            this.pictureBoxTilePicker.TabIndex = 0;
-            this.pictureBoxTilePicker.TabStop = false;
-            this.pictureBoxTilePicker.MouseDown += PictureBoxTilePicker_MouseDown;
-            this.pictureBoxTilePicker.MouseMove += PictureBoxTilePicker_MouseMove;
-            this.pictureBoxTilePicker.MouseUp += PictureBoxTilePicker_MouseUp;
-            this.pictureBoxTilePicker.Paint += PictureBoxTilePicker_Paint;
+        private void CheckBoxSkipEmptyRows_CheckedChanged(object sender, EventArgs e)
+        {
+            CreatePickerMap();
+            RenderTiles();
+        }
 
-            // TilePicker
-            this.ClientSize = new System.Drawing.Size(400, 400);
-            this.Controls.Add(this.pictureBoxTilePicker);
-            this.FormBorderStyle = FormBorderStyle.Sizable;
-            this.Name = "TilePicker";
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.Text = "Tile Picker";
-            this.FormClosing += TilePicker_FormClosing;
-            this.ResumeLayout(false);
-            
-            // Create picker map and render tiles
+        /// <summary>When Skip empty rows is checked, returns the number of rows to show (from bottom up: skip rows that are entirely empty).</summary>
+        private int GetVisibleRowCount(int totalTiles, int cols)
+        {
+            if (checkBoxSkipEmptyRows == null || !checkBoxSkipEmptyRows.Checked || totalTiles <= 0 || cols <= 0)
+                return (int)Math.Ceiling((double)totalTiles / cols);
+            int fullRows = (int)Math.Ceiling((double)totalTiles / cols);
+            if (fullRows <= 0) return 1;
+            // From bottom row to top: find first row that has at least one non-empty tile
+            for (int row = fullRows - 1; row >= 0; row--)
+            {
+                int tileStart = row * cols;
+                int tileEnd = Math.Min(tileStart + cols, totalTiles);
+                for (int t = tileStart; t < tileEnd; t++)
+                {
+                    if (!IsTileEmpty(t)) return row + 1;
+                }
+            }
+            return 1;
+        }
+
+        private bool IsTileEmpty(int tileIndex)
+        {
+            int screenX = tileIndex % submap.MapSize.Width;
+            int screenY = tileIndex / submap.MapSize.Width;
+            int screenStartX = screenX * submap.ScreenSize.Width;
+            int screenStartY = screenY * submap.ScreenSize.Height;
+            for (int y = 0; y < tileHeight; y++)
+            {
+                for (int x = 0; x < tileWidth; x++)
+                {
+                    int idx = (screenStartX + x) + (screenStartY + y) * submap.Stride;
+                    if (idx < submap.Data.Length && submap.Data[idx] != 0) return false;
+                }
+            }
+            return true;
+        }
+
+        private void ComboBoxTilePickerLayout_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxTilePickerLayout.SelectedIndex < 0) return;
+            savedTilePickerLayoutIndex = comboBoxTilePickerLayout.SelectedIndex;
+            tilesPerRow = GetTilesPerRowFromLayout();
             CreatePickerMap();
             RenderTiles();
         }
 
         private void CreatePickerMap()
         {
-            // Create a map that contains all tiles laid out
             int totalTiles = submap.MapSize.Width * submap.MapSize.Height;
-            int mapWidth = Math.Min(tilesPerRow, totalTiles);
-            int mapHeight = (int)Math.Ceiling((double)totalTiles / tilesPerRow);
+            int mapWidth = tilesPerRow;
+            int mapHeight = GetVisibleRowCount(totalTiles, tilesPerRow);
+            if (mapHeight < 1) mapHeight = 1;
             
             pickerMap = new AtariMap(new Size(mapWidth, mapHeight), new Size(tileWidth, tileHeight));
             
-            // Copy tiles from submap to picker map
-            for (int tileIndex = 0; tileIndex < totalTiles; tileIndex++)
+            // Copy tiles from submap to picker map; fill partial row with empty (tile 0)
+            for (int cellIndex = 0; cellIndex < mapWidth * mapHeight; cellIndex++)
             {
-                int pickerX = tileIndex % tilesPerRow;
-                int pickerY = tileIndex / tilesPerRow;
-                
-                if (pickerX >= mapWidth || pickerY >= mapHeight)
-                    continue;
+                int pickerX = cellIndex % tilesPerRow;
+                int pickerY = cellIndex / tilesPerRow;
+                int tileIndex = cellIndex < totalTiles ? cellIndex : 0;
                 
                 int screenX = tileIndex % submap.MapSize.Width;
                 int screenY = tileIndex / submap.MapSize.Width;
                 int screenStartX = screenX * submap.ScreenSize.Width;
                 int screenStartY = screenY * submap.ScreenSize.Height;
                 
-                // Copy tile data
                 for (int y = 0; y < tileHeight; y++)
                 {
                     for (int x = 0; x < tileWidth; x++)
@@ -134,13 +157,11 @@ namespace AtariMapMaker
                     pickerMap.FontLineMappingPerScreen = new byte[pickerMap.MapSize.Width * pickerMap.MapSize.Height * pickerMap.ScreenSize.Height];
                 }
                 
-                for (int tileIndex = 0; tileIndex < totalTiles; tileIndex++)
+                for (int cellIndex = 0; cellIndex < mapWidth * mapHeight; cellIndex++)
                 {
-                    int pickerX = tileIndex % tilesPerRow;
-                    int pickerY = tileIndex / tilesPerRow;
-                    
-                    if (pickerX >= mapWidth || pickerY >= mapHeight)
-                        continue;
+                    int pickerX = cellIndex % tilesPerRow;
+                    int pickerY = cellIndex / tilesPerRow;
+                    int tileIndex = cellIndex < totalTiles ? cellIndex : 0;
                     
                     // Get the submap screen (tile) coordinates
                     int submapScreenX = tileIndex % submap.MapSize.Width;
@@ -203,7 +224,7 @@ namespace AtariMapMaker
                 pickerMap.FontLineMappingReferences = new Dictionary<string, ScreenReference>();
             }
             
-            // Set each tile to reference itself (no font mapping references)
+            // Set each tile to reference itself
             for (int ty = 0; ty < mapHeight; ty++)
             {
                 for (int tx = 0; tx < mapWidth; tx++)
@@ -216,10 +237,10 @@ namespace AtariMapMaker
 
         private void RenderTiles()
         {
-            // Adjust picture box size based on current zoom
             int totalTiles = submap.MapSize.Width * submap.MapSize.Height;
-            int mapWidth = Math.Min(tilesPerRow, totalTiles);
-            int mapHeight = (int)Math.Ceiling((double)totalTiles / tilesPerRow);
+            int mapWidth = tilesPerRow;
+            int mapHeight = GetVisibleRowCount(totalTiles, tilesPerRow);
+            if (mapHeight < 1) mapHeight = 1;
             
             int newWidth = mapWidth * tileWidth * Globals.CharSize;
             int newHeight = mapHeight * tileHeight * Globals.CharSize;
@@ -240,13 +261,12 @@ namespace AtariMapMaker
         
         private void DrawTileGrid()
         {
-            if (pictureBoxTilePicker.Image == null) return;
+            if (pictureBoxTilePicker.Image == null || pickerMap == null) return;
             
             using (Graphics gr = Graphics.FromImage(pictureBoxTilePicker.Image))
             {
-                int totalTiles = submap.MapSize.Width * submap.MapSize.Height;
-                int mapWidth = Math.Min(tilesPerRow, totalTiles);
-                int mapHeight = (int)Math.Ceiling((double)totalTiles / tilesPerRow);
+                int mapWidth = pickerMap.MapSize.Width;
+                int mapHeight = pickerMap.MapSize.Height;
                 
                 int tilePixelWidth = tileWidth * Globals.CharSize;
                 int tilePixelHeight = tileHeight * Globals.CharSize;
@@ -338,37 +358,26 @@ namespace AtariMapMaker
                     int selectedTileWidth = endTileX - startTileX + 1;
                     int selectedTileHeight = endTileY - startTileY + 1;
                     
-                    // Collect tile indexes from the selected tiles
+                    // Collect tile indexes and build preview by rendering selected tiles (same rendering as picker – correct colors/fonts)
                     List<byte> tileIndexes = new List<byte>();
                     for (int ty = startTileY; ty <= endTileY; ty++)
                     {
                         for (int tx = startTileX; tx <= endTileX; tx++)
                         {
-                            // Calculate which submap tile this picker position represents
                             int pickerTileIndex = ty * tilesPerRow + tx;
                             if (pickerTileIndex < submap.MapSize.Width * submap.MapSize.Height)
-                            {
-                                // This is the tile index in the submap (0-based)
                                 tileIndexes.Add((byte)pickerTileIndex);
-                            }
                         }
                     }
-                    
-                    // Create preview image by rendering selected tiles from submap
                     int previewCharWidth = selectedTileWidth * tileWidth;
                     int previewCharHeight = selectedTileHeight * tileHeight;
                     int previewPixelWidthNoZoom = previewCharWidth * 8;
                     int previewPixelHeightNoZoom = previewCharHeight * 8;
-                    
                     Bitmap previewImage = new Bitmap(previewPixelWidthNoZoom, previewPixelHeightNoZoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
                     previewImage.Palette = AtariPalette.GetPalette();
-                    
-                    // Create a temporary map containing only the selected tiles
                     AtariMap tempMap = new AtariMap(new Size(selectedTileWidth, selectedTileHeight), new Size(tileWidth, tileHeight));
                     tempMap.MultiFontEnabled = true;
                     tempMap.FontLineMappingPerScreen = new byte[tempMap.MapSize.Width * tempMap.MapSize.Height * tempMap.ScreenSize.Height];
-                    
-                    // Copy selected tiles from submap to temp map
                     for (int ty = 0; ty < selectedTileHeight; ty++)
                     {
                         for (int tx = 0; tx < selectedTileWidth; tx++)
@@ -376,67 +385,49 @@ namespace AtariMapMaker
                             int pickerTileIndex = (startTileY + ty) * tilesPerRow + (startTileX + tx);
                             if (pickerTileIndex < submap.MapSize.Width * submap.MapSize.Height)
                             {
-                                // Get submap screen coordinates for this tile
                                 int submapScreenX = pickerTileIndex % submap.MapSize.Width;
                                 int submapScreenY = pickerTileIndex / submap.MapSize.Width;
                                 int submapScreenStartX = submapScreenX * submap.ScreenSize.Width;
                                 int submapScreenStartY = submapScreenY * submap.ScreenSize.Height;
-                                
-                                // Copy tile data
                                 for (int y = 0; y < tileHeight; y++)
                                 {
                                     for (int x = 0; x < tileWidth; x++)
                                     {
-                                        int srcX = submapScreenStartX + x;
-                                        int srcY = submapScreenStartY + y;
-                                        int srcIndex = srcX + srcY * submap.Stride;
-                                        int dstX = tx * tileWidth + x;
-                                        int dstY = ty * tileHeight + y;
-                                        int dstIndex = dstX + dstY * tempMap.Stride;
-                                        
+                                        int srcIndex = (submapScreenStartX + x) + (submapScreenStartY + y) * submap.Stride;
+                                        int dstIndex = (tx * tileWidth + x) + (ty * tileHeight + y) * tempMap.Stride;
                                         if (srcIndex < submap.Data.Length && dstIndex < tempMap.Data.Length)
                                             tempMap.Data[dstIndex] = submap.Data[srcIndex];
                                     }
                                 }
-                                
-                                // Copy font line mappings for this tile
                                 if (submap.FontLineMappingPerScreen != null)
                                 {
-                                    // Check if this tile references another tile
-                                    int actualSubmapScreenX = submapScreenX;
-                                    int actualSubmapScreenY = submapScreenY;
+                                    int actualSx = submapScreenX;
+                                    int actualSy = submapScreenY;
                                     if (submap.FontLineMappingReferences != null)
                                     {
                                         string key = $"{submapScreenX},{submapScreenY}";
                                         if (submap.FontLineMappingReferences.ContainsKey(key))
                                         {
-                                            ScreenReference refScreen = submap.FontLineMappingReferences[key];
-                                            // Only use reference if it's different from the tile itself
+                                            var refScreen = submap.FontLineMappingReferences[key];
                                             if (refScreen.X != submapScreenX || refScreen.Y != submapScreenY)
                                             {
-                                                actualSubmapScreenX = refScreen.X;
-                                                actualSubmapScreenY = refScreen.Y;
+                                                actualSx = refScreen.X;
+                                                actualSy = refScreen.Y;
                                             }
                                         }
                                     }
-                                    
-                                    int submapScreenOffset = (actualSubmapScreenY * submap.MapSize.Width + actualSubmapScreenX) * submap.ScreenSize.Height;
+                                    int submapScreenOffset = (actualSy * submap.MapSize.Width + actualSx) * submap.ScreenSize.Height;
                                     int tempScreenOffset = (ty * tempMap.MapSize.Width + tx) * tempMap.ScreenSize.Height;
-                                    
                                     for (int line = 0; line < tileHeight; line++)
                                     {
                                         int submapIndex = submapScreenOffset + line;
                                         int tempIndex = tempScreenOffset + line;
-                                        if (submapIndex < submap.FontLineMappingPerScreen.Length && 
-                                            tempIndex < tempMap.FontLineMappingPerScreen.Length)
-                                        {
+                                        if (submapIndex < submap.FontLineMappingPerScreen.Length && tempIndex < tempMap.FontLineMappingPerScreen.Length)
                                             tempMap.FontLineMappingPerScreen[tempIndex] = submap.FontLineMappingPerScreen[submapIndex];
-                                        }
                                     }
                                 }
                                 else
                                 {
-                                    // Initialize to font 0 if no mappings
                                     int tempScreenOffset = (ty * tempMap.MapSize.Width + tx) * tempMap.ScreenSize.Height;
                                     for (int line = 0; line < tileHeight; line++)
                                     {
@@ -448,37 +439,44 @@ namespace AtariMapMaker
                             }
                         }
                     }
-                    
-                    // Copy fonts from submap
                     if (submap.FontDataArray != null)
                     {
                         for (int i = 0; i < submap.FontDataArray.Length; i++)
-                        {
                             if (submap.FontDataArray[i] != null)
                                 tempMap.SetFontData(submap.FontDataArray[i], i);
-                        }
                     }
-                    
-                    // Initialize font line mappings if needed
                     if (tempMap.FontLineMappingPerScreen == null)
                     {
                         tempMap.FontLineMappingPerScreen = new byte[tempMap.MapSize.Width * tempMap.MapSize.Height * tempMap.ScreenSize.Height];
-                        // Initialize to font 0
                         for (int i = 0; i < tempMap.FontLineMappingPerScreen.Length; i++)
                             tempMap.FontLineMappingPerScreen[i] = 0;
                     }
-                    
-                    // Render the temp map to preview image
-                    // Use Screen font type as default - RenderMapData will use correct fonts per line via GetFontForLine
                     AtariFontRenderer.RenderMapData(tempMap, Globals.FontType.Screen, previewImage);
                     int previewPixelWidthWithZoom = previewPixelWidthNoZoom * Globals.Zoom;
                     int previewPixelHeightWithZoom = previewPixelHeightNoZoom * Globals.Zoom;
-                    Bitmap previewImageWithZoom = new Bitmap(new Bitmap(previewPixelWidthWithZoom, previewPixelHeightWithZoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed));                    // Copy tile indexes to clipboard
-                    Graphics gr = Graphics.FromImage(previewImageWithZoom);
-                    gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                    gr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
-                    GraphicsUnit unit = GraphicsUnit.Pixel;
-                    gr.DrawImage(previewImage, previewImageWithZoom.GetBounds(ref unit));
+                    Bitmap previewImageWithZoom = new Bitmap(previewPixelWidthWithZoom, previewPixelHeightWithZoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
+                    previewImageWithZoom.Palette = AtariPalette.GetPalette();
+                    var srcBd = previewImage.LockBits(new Rectangle(0, 0, previewPixelWidthNoZoom, previewPixelHeightNoZoom), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
+                    var dstBd = previewImageWithZoom.LockBits(new Rectangle(0, 0, previewPixelWidthWithZoom, previewPixelHeightWithZoom), System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
+                    unsafe
+                    {
+                        byte* srcPtr = (byte*)srcBd.Scan0;
+                        byte* dstPtr = (byte*)dstBd.Scan0;
+                        for (int y = 0; y < previewPixelHeightWithZoom; y++)
+                        {
+                            int sy = y / Globals.Zoom;
+                            if (sy >= previewPixelHeightNoZoom) sy = previewPixelHeightNoZoom - 1;
+                            for (int x = 0; x < previewPixelWidthWithZoom; x++)
+                            {
+                                int sx = x / Globals.Zoom;
+                                if (sx >= previewPixelWidthNoZoom) sx = previewPixelWidthNoZoom - 1;
+                                dstPtr[y * dstBd.Stride + x] = srcPtr[sy * srcBd.Stride + sx];
+                            }
+                        }
+                    }
+                    previewImage.UnlockBits(srcBd);
+                    previewImageWithZoom.UnlockBits(dstBd);
+                    previewImage.Dispose();
                     AtariClipboard.SetDataSource(tilemap);
                     AtariClipboard.CopyTileIndexes(tileIndexes.ToArray(), selectedTileWidth, selectedTileHeight, previewImageWithZoom);
                     AtariClipboard.IsValid = true;

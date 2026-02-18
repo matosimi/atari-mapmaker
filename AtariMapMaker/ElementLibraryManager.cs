@@ -8,7 +8,42 @@ namespace AtariMapMaker
     public static class ElementLibraryManager
     {
         /// <summary>
-        /// Save a selection to the element library
+        /// Save the current clipboard contents to the element library.
+        /// </summary>
+        public static void SaveClipboardToLibrary(AtariMap map, string name)
+        {
+            if (map == null || string.IsNullOrEmpty(name))
+                return;
+            if (!AtariClipboard.IsValid)
+                return;
+
+            int w = AtariClipboard.ClipboardWidth;
+            int h = AtariClipboard.ClipboardHeight;
+            byte[,] clipboardData = AtariClipboard.GetData();
+            if (clipboardData == null || w <= 0 || h <= 0)
+                return;
+
+            if (map.ElementLibrary == null)
+                map.ElementLibrary = new Dictionary<string, LibraryElement>();
+
+            byte[] data = new byte[w * h];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    data[y * w + x] = clipboardData[x, y];
+
+            LibraryElement element = new LibraryElement
+            {
+                Name = name,
+                Size = new Size(w, h),
+                Data = data,
+                IsTileData = AtariClipboard.IsTileIndexes
+            };
+
+            map.ElementLibrary[name] = element;
+        }
+
+        /// <summary>
+        /// Save a rectangular region of the map to the element library (e.g. when selection is in map coordinates).
         /// </summary>
         public static void SaveToLibrary(AtariMap map, Rectangle selection, string name)
         {
@@ -18,7 +53,6 @@ namespace AtariMapMaker
             if (map.ElementLibrary == null)
                 map.ElementLibrary = new Dictionary<string, LibraryElement>();
 
-            // Extract data from selection
             byte[] data = ExtractSelectionData(map, selection);
             Size size = new Size(selection.Width, selection.Height);
 
@@ -91,7 +125,11 @@ namespace AtariMapMaker
                     {
                         int destIndex = destX + destY * map.Stride;
                         if (destIndex < map.Data.Length)
+                        {
                             map.Data[destIndex] = value;
+                            if (map.IsTilemap && map.TilemapInfo != null)
+                                map.ExpandTileToCharData(destX, destY, value);
+                        }
                     }
                 }
             }

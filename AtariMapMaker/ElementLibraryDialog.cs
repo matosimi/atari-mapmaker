@@ -8,95 +8,33 @@ namespace AtariMapMaker
     public partial class ElementLibraryDialog : Form
     {
         private AtariMap map;
-        private ListView listViewElements;
-        private Button buttonSaveSelection;
-        private Button buttonPaste;
-        private Button buttonRename;
-        private Button buttonDelete;
-        private Button buttonClose;
-        private CheckBox checkBoxSkipZeroBytes;
+        private Action onClipboardSet;
+        private Action onInvertRequested;
 
-        public ElementLibraryDialog(AtariMap map)
+        public ElementLibraryDialog(AtariMap map, Action onClipboardSet = null, Action onInvertRequested = null)
         {
             this.map = map;
+            this.onClipboardSet = onClipboardSet;
+            this.onInvertRequested = onInvertRequested;
             InitializeComponent();
+            this.KeyPreview = true;
+            this.KeyDown += ElementLibraryDialog_KeyDown;
             RefreshElementList();
         }
 
-        private void InitializeComponent()
+        private void ElementLibraryDialog_KeyDown(object sender, KeyEventArgs e)
         {
-            this.listViewElements = new ListView();
-            this.buttonSaveSelection = new Button();
-            this.buttonPaste = new Button();
-            this.buttonRename = new Button();
-            this.buttonDelete = new Button();
-            this.buttonClose = new Button();
-            this.checkBoxSkipZeroBytes = new CheckBox();
-            this.SuspendLayout();
+            if (e.KeyCode == Keys.I && AtariClipboard.IsValid && !AtariClipboard.IsTileIndexes)
+            {
+                onInvertRequested?.Invoke();
+                e.Handled = true;
+            }
+        }
 
-            // listViewElements
-            this.listViewElements.FullRowSelect = true;
-            this.listViewElements.GridLines = true;
-            this.listViewElements.Location = new Point(12, 12);
-            this.listViewElements.Name = "listViewElements";
-            this.listViewElements.Size = new Size(400, 300);
-            this.listViewElements.View = View.Details;
-            this.listViewElements.Columns.Add("Name", 200);
-            this.listViewElements.Columns.Add("Size", 100);
-            this.listViewElements.DoubleClick += ListViewElements_DoubleClick;
-
-            // buttonSaveSelection
-            this.buttonSaveSelection.Text = "Save Selection to Library";
-            this.buttonSaveSelection.Location = new Point(12, 320);
-            this.buttonSaveSelection.Size = new Size(180, 30);
-            this.buttonSaveSelection.Click += ButtonSaveSelection_Click;
-
-            // buttonPaste
-            this.buttonPaste.Text = "Paste Selected";
-            this.buttonPaste.Location = new Point(200, 320);
-            this.buttonPaste.Size = new Size(100, 30);
-            this.buttonPaste.Click += ButtonPaste_Click;
-
-            // checkBoxSkipZeroBytes
-            this.checkBoxSkipZeroBytes.Text = "Skip Zero Bytes (Transparency)";
-            this.checkBoxSkipZeroBytes.Location = new Point(310, 325);
-            this.checkBoxSkipZeroBytes.AutoSize = true;
-
-            // buttonRename
-            this.buttonRename.Text = "Rename";
-            this.buttonRename.Location = new Point(12, 360);
-            this.buttonRename.Size = new Size(100, 30);
-            this.buttonRename.Click += ButtonRename_Click;
-
-            // buttonDelete
-            this.buttonDelete.Text = "Delete";
-            this.buttonDelete.Location = new Point(120, 360);
-            this.buttonDelete.Size = new Size(100, 30);
-            this.buttonDelete.Click += ButtonDelete_Click;
-
-            // buttonClose
-            this.buttonClose.Text = "Close";
-            this.buttonClose.DialogResult = DialogResult.OK;
-            this.buttonClose.Location = new Point(330, 360);
-            this.buttonClose.Size = new Size(82, 30);
-
-            // ElementLibraryDialog
-            this.ClientSize = new Size(424, 402);
-            this.Controls.Add(this.buttonClose);
-            this.Controls.Add(this.buttonDelete);
-            this.Controls.Add(this.buttonRename);
-            this.Controls.Add(this.checkBoxSkipZeroBytes);
-            this.Controls.Add(this.buttonPaste);
-            this.Controls.Add(this.buttonSaveSelection);
-            this.Controls.Add(this.listViewElements);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.Name = "ElementLibraryDialog";
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.Text = "Element Library";
-            this.ResumeLayout(false);
-            this.PerformLayout();
+        public void SetMap(AtariMap newMap)
+        {
+            map = newMap;
+            RefreshElementList();
         }
 
         private void RefreshElementList()
@@ -126,9 +64,7 @@ namespace AtariMapMaker
             {
                 if (dialog.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(dialog.InputText))
                 {
-                    // Get selection rectangle from clipboard
-                    Rectangle selection = new Rectangle(0, 0, AtariClipboard.ClipboardWidth, AtariClipboard.ClipboardHeight);
-                    ElementLibraryManager.SaveToLibrary(map, selection, dialog.InputText);
+                    ElementLibraryManager.SaveClipboardToLibrary(map, dialog.InputText);
                     RefreshElementList();
                 }
             }
@@ -143,15 +79,35 @@ namespace AtariMapMaker
             }
 
             string elementName = listViewElements.SelectedItems[0].Tag.ToString();
-            // Paste at current cursor position (simplified - would need to get from map)
-            Point destination = new Point(0, 0); // TODO: Get from current map position
-            ElementLibraryManager.PasteFromLibrary(map, elementName, destination, checkBoxSkipZeroBytes.Checked);
-            this.DialogResult = DialogResult.OK;
+            Point destination = new Point(0, 0);
+            ElementLibraryManager.PasteFromLibrary(map, elementName, destination, AtariClipboard.SkipZero);
+        }
+
+        private void ButtonClose_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void CopySelectedElementToClipboard()
+        {
+            if (listViewElements.SelectedItems.Count == 0)
+                return;
+            string elementName = listViewElements.SelectedItems[0].Tag?.ToString();
+            if (string.IsNullOrEmpty(elementName) || map?.ElementLibrary == null || !map.ElementLibrary.ContainsKey(elementName))
+                return;
+            LibraryElement element = map.ElementLibrary[elementName];
+            AtariClipboard.CopyFromLibraryElement(element, map);
+            onClipboardSet?.Invoke();
+        }
+
+        private void ListViewElements_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            CopySelectedElementToClipboard();
         }
 
         private void ListViewElements_DoubleClick(object sender, EventArgs e)
         {
-            ButtonPaste_Click(sender, e);
+            CopySelectedElementToClipboard();
         }
 
         private void ButtonRename_Click(object sender, EventArgs e)
@@ -169,7 +125,7 @@ namespace AtariMapMaker
                 {
                     string newName = dialog.InputText;
                     if (newName != oldName)
-            {
+                    {
                         if (ElementLibraryManager.RenameElement(map, oldName, newName))
                         {
                             RefreshElementList();

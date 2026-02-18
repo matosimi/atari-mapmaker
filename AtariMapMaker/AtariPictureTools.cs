@@ -185,10 +185,7 @@ namespace AtariMapMaker
             }
 
             AtariClipboard.SetDataSource(windows[window].map);
-            //Redraw(window, true, false, false);
             AtariClipboard.Copy(windows[window].fontRendererMapImage, mouseSelection, windows[window].map.Offset);
-            
-            //Redraw(window, false, true, true);
             AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.ClipboardImage);
             AtariClipboard.UnderImageGraphics = Graphics.FromImage(AtariClipboard.UnderClipBoardImage);
             return true;
@@ -269,7 +266,7 @@ namespace AtariMapMaker
             {
                 // Clear the destination bitmap before rendering to ensure fresh data
                 gr.Clear(Color.FromArgb(AtariPalette.GetPalette().Entries[0].ToArgb()));
-                AtariFontRenderer.RenderMapData(myMap, windows[window].fontType, mapImage);
+                AtariFontRenderer.RenderMapData(myMap, windows[window].fontType, mapImage, window);
                 Rectangle destRect = new Rectangle(0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
                 Rectangle srcRect = new Rectangle(0, 0, mapImage.Width, mapImage.Height);
                 int screenCharWidth = myMap.ScreenSize.Width;

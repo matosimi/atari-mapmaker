@@ -225,6 +225,7 @@ namespace AtariMapMaker
             this.pictureBoxMap.ClientSizeChanged += new System.EventHandler(this.PictureBoxMap_ClientSizeChanged);
             this.pictureBoxMap.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseDoubleClick);
             this.pictureBoxMap.MouseDown += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseDown);
+            this.pictureBoxMap.MouseLeave += new System.EventHandler(this.PictureBoxMap_MouseLeave);
             this.pictureBoxMap.MouseMove += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseMove);
             this.pictureBoxMap.MouseUp += new System.Windows.Forms.MouseEventHandler(this.PictureBoxMap_MouseUp);
             this.pictureBoxMap.Resize += new System.EventHandler(this.PictureBoxMap_Resize);

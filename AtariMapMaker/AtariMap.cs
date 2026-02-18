@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -361,7 +361,7 @@ namespace AtariMapMaker
 
         // Font management methods
         // Check if a screen references another screen's font mapping
-        private Point GetReferencedScreen(int screenx, int screeny)
+        public Point GetReferencedScreen(int screenx, int screeny)
         {
             if (FontLineMappingReferences == null)
                 return new Point(screenx, screeny);  // No reference, use own screen
@@ -647,6 +647,28 @@ namespace AtariMapMaker
         {
             cachedSubmap = null;
             cachedSubmapPath = null;
+        }
+
+        /// <summary>
+        /// Get the cached submap, loading from SubmapPath if needed. Returns null if not a tilemap or SubmapPath is empty.
+        /// </summary>
+        public AtariMap GetOrLoadSubmap()
+        {
+            if (string.IsNullOrEmpty(SubmapPath))
+                return null;
+            if (cachedSubmap == null || cachedSubmapPath != SubmapPath)
+            {
+                try
+                {
+                    cachedSubmap = SubmapManager.LoadSubmap(SubmapPath);
+                    cachedSubmapPath = SubmapPath;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            return cachedSubmap;
         }
         
         /// <summary>

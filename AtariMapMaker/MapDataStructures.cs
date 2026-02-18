@@ -88,6 +88,8 @@ namespace AtariMapMaker
         public string Name { get; set; }
         public Size Size { get; set; }
         public byte[] Data { get; set; }
+        /// <summary>True when element was saved from a tilemap (clipboard had tile indexes).</summary>
+        public bool IsTileData { get; set; }
     }
 
     public class ScreenLink

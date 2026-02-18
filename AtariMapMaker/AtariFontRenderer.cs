@@ -21,6 +21,10 @@ namespace AtariMapMaker
         public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
         private static readonly Dictionary<int, AtariFont> cachedFonts = new Dictionary<int, AtariFont>();  // Cache for font index -> font bitmap
         private static bool useDli;
+
+        /// <summary>When set, CharPicker window uses this font index from CharPickerFontSourceMap instead of default.</summary>
+        public static int? CharPickerFontIndex { get; set; }
+        public static AtariMap CharPickerFontSourceMap { get; set; }
         public static string LastFontFile
         {
             get { return lastFontFile; }
@@ -292,13 +296,29 @@ namespace AtariMapMaker
         /// <param name="adrOffset"></param>
         /// <param name="font"></param>
         /// <param name="outBmp"></param>
-        public static void RenderMapData(AtariMap myMap, Globals.FontType fontType, Bitmap outBmp)
+        public static void RenderMapData(AtariMap myMap, Globals.FontType fontType, Bitmap outBmp, Globals.WindowType? windowType = null)
         {
             byte offMapColor = (color5[4] & 0x0f) < 0x04 ? (byte)(color5[4] + 0x04) : (byte)(color5[4] - 0x04);
             if (outBmp.PixelFormat != PixelFormat.Format8bppIndexed)
                 throw new Exception("Output bitmap of RenderMapData MUST be 8bppIndexed palette!");
 
+            bool useCharPickerFont = (windowType == Globals.WindowType.CharPicker && CharPickerFontIndex != null && CharPickerFontSourceMap != null &&
+                CharPickerFontSourceMap.FontDataArray != null && CharPickerFontIndex.Value >= 0 && CharPickerFontIndex.Value < CharPickerFontSourceMap.FontDataArray.Length &&
+                CharPickerFontSourceMap.FontDataArray[CharPickerFontIndex.Value] != null);
+
             AtariFont defaultFont = fonts[fontType];
+            if (useCharPickerFont)
+            {
+                int idx = CharPickerFontIndex.Value;
+                if (cachedFonts.ContainsKey(idx))
+                    defaultFont = cachedFonts[idx];
+                else
+                {
+                    var cf = new AtariFont { data = CharPickerFontSourceMap.FontDataArray[idx], bitmap = CreateFontImage(true, CharPickerFontSourceMap.FontDataArray[idx]) };
+                    cachedFonts[idx] = cf;
+                    defaultFont = cf;
+                }
+            }
 
             // For tilemaps, use CharData array (expanded character data) instead of Data array (tile indexes)
             byte[] data;
@@ -393,8 +413,8 @@ namespace AtariMapMaker
                             if (screenX < 0) screenX = 0;
                             if (screenX >= myMap.MapSize.Width) screenX = myMap.MapSize.Width - 1;
                             
-                            // If we've crossed into a new screen, switch to that screen's font
-                            if (screenX != lastScreenX)
+                            // If we've crossed into a new screen, switch to that screen's font (skip when CharPicker uses override font)
+                            if (!useCharPickerFont && screenX != lastScreenX)
                             {
                                 AtariFont lineFont = GetFontForLine(myMap, screenX, screenY, lineInScreen, fontType);
                                 

@@ -146,6 +146,9 @@
     <Compile Include="ElementLibraryDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ElementLibraryDialog.Designer.cs">
+      <DependentUpon>ElementLibraryDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="ElementLibraryManager.cs" />
     <Compile Include="FontCharPicker.cs">
       <SubType>Form</SubType>
@@ -220,6 +223,9 @@
     <Compile Include="TilePicker.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="TilePicker.Designer.cs">
+      <DependentUpon>TilePicker.cs</DependentUpon>
+    </Compile>
     <Compile Include="UndoManager.cs" />
     <EmbeddedResource Include="AtariColorPicker.resx">
       <SubType>Designer</SubType>
@@ -242,6 +248,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TilePicker.resx">
+      <DependentUpon>TilePicker.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="app.config" />
     <None Include="packages.config" />

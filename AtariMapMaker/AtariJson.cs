@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 using System.IO;
 using System.Diagnostics;
@@ -11,8 +12,46 @@ using System.Drawing;
 
 namespace AtariMapMaker
 {
+    /// <summary>Ensures System.Drawing.Size serializes/deserializes correctly in ElementLibrary and elsewhere.</summary>
+    internal class SizeJsonConverter : JsonConverter<Size>
+    {
+        public override Size Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            int w = 0, h = 0;
+            if (reader.TokenType != JsonTokenType.StartObject)
+                return new Size(0, 0);
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndObject)
+                    break;
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                    continue;
+                string prop = reader.GetString();
+                reader.Read();
+                if (string.Equals(prop, "Width", StringComparison.OrdinalIgnoreCase))
+                    w = reader.GetInt32();
+                else if (string.Equals(prop, "Height", StringComparison.OrdinalIgnoreCase))
+                    h = reader.GetInt32();
+            }
+            return new Size(w, h);
+        }
+
+        public override void Write(Utf8JsonWriter writer, Size value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("Width", value.Width);
+            writer.WriteNumber("Height", value.Height);
+            writer.WriteEndObject();
+        }
+    }
+
     internal static class AtariJson
     {
+        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+        {
+            Converters = { new SizeJsonConverter() }
+        };
+
         public class Atrmap
         {
             // Existing fields (unchanged for backwards compatibility)
@@ -75,7 +114,7 @@ namespace AtariMapMaker
                 string json = File.ReadAllText(fileName);
                 try
                 {
-                    ParsedData = JsonSerializer.Deserialize<Atrmap>(json);
+                    ParsedData = JsonSerializer.Deserialize<Atrmap>(json, JsonOptions);
                     MigrateToV2IfNeeded();
                     return; // Successfully parsed as JSON
                 }
@@ -111,7 +150,7 @@ namespace AtariMapMaker
                 
                 try
                 {
-                    ParsedData = JsonSerializer.Deserialize<Atrmap>(json);
+                    ParsedData = JsonSerializer.Deserialize<Atrmap>(json, JsonOptions);
                     MigrateToV2IfNeeded();
                 }
                 catch (JsonException ex2)
@@ -224,7 +263,7 @@ namespace AtariMapMaker
                 atrmap.FontData = atrmap.FontDataArray[0];
             }
 
-            string json = JsonSerializer.Serialize(atrmap);
+            string json = JsonSerializer.Serialize(atrmap, JsonOptions);
             File.WriteAllText(fileName, json);
         }
     }
