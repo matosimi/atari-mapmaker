@@ -499,7 +499,8 @@ namespace AtariMapMaker
 
         private void TilePicker_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            // Hide instead of close so the form is never disposed (only when app exits)
+            if (e.CloseReason == CloseReason.UserClosing || e.CloseReason == CloseReason.None)
             {
                 this.Hide();
                 e.Cancel = true;

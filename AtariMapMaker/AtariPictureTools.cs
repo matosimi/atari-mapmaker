@@ -37,24 +37,27 @@ namespace AtariMapMaker
         public static void AssignWindow(Globals.WindowType windowType, Bitmap destinationPictureBoxImage, AtariMap windowMap)
         {
             Globals.FontType myFontType = windowType == Globals.WindowType.Dli ? Globals.FontType.Dli : Globals.FontType.Screen;
-            //int myMapOffset = 0;
-
             if (windows.ContainsKey(windowType))
-            {
-                //myMapOffset = windows[windowType].mapOffset;
                 windows.Remove(windowType);
+
+            // Ensure font bitmap exists and is not disposed (e.g. after new map or font reload)
+            if (!AtariFontRenderer.fonts.ContainsKey(myFontType) || AtariFontRenderer.fonts[myFontType].bitmap == null ||
+                AtariFontRenderer.fonts[myFontType].bitmap.Width <= 0)
+            {
+                byte[] defaultFontData = DefaultFontResource.GetDefaultFontDataFromResources();
+                AtariFontRenderer.SetFontData(defaultFontData, Globals.FontType.Screen);
             }
+            Bitmap fontBmp = AtariFontRenderer.fonts[myFontType].bitmap;
 
             int emptyWidth = destinationPictureBoxImage.Width % (8 * Globals.Zoom);
             int emptyHeight = destinationPictureBoxImage.Height % (8 * Globals.Zoom);
             AtariWindow window = new AtariWindow()
             {
-                
                 fontRendererMapImage = new Bitmap((destinationPictureBoxImage.Width - emptyWidth) / Globals.Zoom, (destinationPictureBoxImage.Height - emptyHeight) / Globals.Zoom, System.Drawing.Imaging.PixelFormat.Format8bppIndexed),
                 pictureBoxGraphics = Graphics.FromImage(destinationPictureBoxImage),
                 map = windowMap,
                 fontType = myFontType,
-                fontRendererFontImage = AtariFontRenderer.fonts[myFontType].bitmap
+                fontRendererFontImage = fontBmp
             };
             window.fontRendererMapImage.Palette = AtariPalette.GetPalette();
             window.pictureBoxGraphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;

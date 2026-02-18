@@ -143,6 +143,7 @@
     <Compile Include="DliForm.Designer.cs">
       <DependentUpon>DliForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="DefaultFontResource.cs" />
     <Compile Include="ElementLibraryDialog.cs">
       <SubType>Form</SubType>
     </Compile>

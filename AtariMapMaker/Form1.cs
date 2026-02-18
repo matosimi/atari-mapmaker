@@ -154,6 +154,7 @@ namespace AtariMapMaker
                     RedrawEditorWindow();
                     pictureBoxMap.Refresh();
                 }
+                UpdateMetadataLayerUI();
             }
         }
 
@@ -187,8 +188,20 @@ namespace AtariMapMaker
             pictureBoxMap.Refresh();
         }
 
+        private int GetMetadataItemCount()
+        {
+            if (myMap?.ScreenMetadata == null) return 0;
+            int count = 0;
+            foreach (var meta in myMap.ScreenMetadata.Values)
+                count += meta?.ParsedItems?.Count ?? 0;
+            return count;
+        }
+
         private void UpdateMetadataLayerUI()
         {
+            int itemCount = GetMetadataItemCount();
+            if (groupBoxMetadata != null)
+                groupBoxMetadata.Text = $"Metadata {itemCount}";
             bool metadataChecked = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
             if (groupBoxDli != null)
                 groupBoxDli.Enabled = !metadataChecked;
@@ -212,6 +225,7 @@ namespace AtariMapMaker
                 myMap,
                 () => isScreenLocked ? lockedScreen : currentScreen,
                 () => { RedrawEditorWindow(); pictureBoxMap.Refresh(); });
+            form.FormClosed += (s, ev) => UpdateMetadataLayerUI();
             form.Show(this);
         }
 
@@ -284,15 +298,16 @@ namespace AtariMapMaker
         private void ButtonShowFont_Click(object sender, EventArgs e)
         {
             if (myMap == null) return;
-            // Ensure default Screen font is loaded (e.g. after new map) so char picker does not use a disposed font
+            // Ensure default Screen font is loaded (e.g. after new map) so char picker has valid font
             if (!AtariFontRenderer.fonts.ContainsKey(Globals.FontType.Screen) || AtariFontRenderer.fonts[Globals.FontType.Screen].bitmap == null)
             {
-                byte[] defaultFontData = GetDefaultFontDataFromResources();
+                byte[] defaultFontData = DefaultFontResource.GetDefaultFontDataFromResources();
                 AtariFontRenderer.SetFontData(defaultFontData, Globals.FontType.Screen);
             }
             myCharPicker.SetMainMap(myMap);
             myCharPicker.SetZoom();
             myCharPicker.Refresh();
+            myCharPicker.RedrawFontWindow();
             myCharPicker.Show();
             myCharPicker.BringToFront();
         }
@@ -420,10 +435,13 @@ namespace AtariMapMaker
                 AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
-                myCharPicker.Refresh();
-                myCharPicker.GetPictureBox().Refresh();
+                if (myCharPicker != null)
+                {
+                    myCharPicker.Refresh();
+                    myCharPicker.GetPictureBox().Refresh();
+                }
                 // Refresh tile picker if it's open
-                if (tilePicker != null && !tilePicker.IsDisposed && tilePicker.Visible)
+                if (tilePicker != null && tilePicker.Visible)
                 {
                     tilePicker.Refresh();
                 }
@@ -700,14 +718,10 @@ namespace AtariMapMaker
                     int posTx = posx / tileWidth;
                     int posTy = posy / tileHeight;
                     toolStripStatusLabel1.Text = $"Scr {currentScreen.X}:{currentScreen.Y} Tile {posTx}:{posTy} (char {posx}:{posy}) Glo {xx}:{yy}";
-                    labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
-                    labelPosition.Text = $"Position: tile {posTx}:{posTy} | char {posx}:{posy} ({xx}:{yy})";
                 }
                 else
                 {
                     toolStripStatusLabel1.Text = $"Scr {currentScreen.X}:{currentScreen.Y} Pos {posx}:{posy} (${(posx + posy * screenCharWidth).ToString("X2")}) Glo {xx}:{yy}";
-                    labelScreen.Text = $"Screen: {currentScreen.X}:{currentScreen.Y}";
-                    labelPosition.Text = "Position: " + posx.ToString() + ":" + posy.ToString() + " (" + xx.ToString() + ":" + yy.ToString() + ")";
                 }
                 // For tilemaps, use CharData; for normal maps, use Data
                 byte charVal;
@@ -734,32 +748,31 @@ namespace AtariMapMaker
                         tileIdx = myMap.Data[tileIndex];
                     }
                     // Compact format: Char $XX (N) | Tile N @ (X,Y)
-                    labelChar.Text = $"Char ${charVal:X2} ({charVal}) | Tile {tileIdx} @ ({tileX},{tileY})";
-                    toolStripStatusLabel2.Text = $"Char ${charVal:X2} ({charVal}) | Tile {tileIdx} @ ({tileX},{tileY})";
-                    // Disable auto-size and set fixed width to allow text wrapping
-                    int maxWidth = panelStatus.Width - labelChar.Left - 5;
-                    if (maxWidth > 0)
-                    {
-                        labelChar.AutoSize = false;
-                        labelChar.Width = maxWidth;
-                        labelChar.Height = 40; // Allow for 2 lines
-                    }
-                    else
-                    {
-                        labelChar.AutoSize = true;
-                    }
+                    toolStripStatusLabel2.Text = $"Tile ${tileIdx:X2} ({tileIdx}) @ ({tileX},{tileY}) | Char ${charVal:X2} ({charVal})";
                 }
                 else
                 {
-                    labelChar.Text = "Char: $" + String.Format("{0:X2}", charVal) + " (" + charVal + ")";
                     toolStripStatusLabel2.Text = $"Char: ${charVal:X2} ({charVal})";
-                    labelChar.AutoSize = true;
-                    labelChar.Height = 20; // Reset to single line height
                 }
                 
                 //calculate the occurence
                 (int idx, int amnt) = myMap.CharOccurence(new Point(currentScreen.X,currentScreen.Y), posx, posy, charVal);
-                labelCharOccurence.Text = $"{idx} of {amnt}";
+                
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    int tileWidth = myMap.TilemapInfo.TileWidth;
+                    int tileHeight = myMap.TilemapInfo.TileHeight;
+                    int posTx = posx / tileWidth;
+                    int posTy = posy / tileHeight;
+                    int tileOffset = myMap.Stride * myMap.ScreenSize.Height * currentScreen.Y + myMap.ScreenSize.Width * currentScreen.X + posTy * myMap.Stride + posTx;
+                    byte tileIdx = (tileOffset >= 0 && tileOffset < myMap.Data.Length) ? myMap.Data[tileOffset] : (byte)0;
+                    (int tidx, int tamnt) = myMap.TileOccurence(new Point(currentScreen.X, currentScreen.Y), posTx, posTy, tileIdx);
+                    toolStripStatusLabel3.Text = $"Tile {tidx} of {tamnt}";
+                }
+                else
+                {
+                    toolStripStatusLabel3.Text = $"Char {idx} of {amnt}";
+                }
             }
         }
 
@@ -978,6 +991,7 @@ namespace AtariMapMaker
                         meta.ParsedItems.RemoveAll(i => i.X == cellX && i.Y == cellY);
                         meta.ParsedItems.Add(new MetadataLayerItem { X = cellX, Y = cellY, Text = copied.Text ?? "", Value = copied.Value, Color = copied.Color });
                         previousMetadataOverlayLocation = null;
+                        UpdateMetadataLayerUI();
                         RedrawEditorWindow();
                         pictureBoxMap.Refresh();
                         return;
@@ -999,6 +1013,7 @@ namespace AtariMapMaker
                                 meta.ParsedItems.Add(item);
                         }
                     }
+                    UpdateMetadataLayerUI();
                     RedrawEditorWindow();
                     pictureBoxMap.Refresh();
                 }
@@ -1357,11 +1372,13 @@ namespace AtariMapMaker
                     isScreenLocked = false;
                     UpdateFontMappingReferenceUI();
                     UpdateMultiFontUI();
+                    UpdateMetadataLayerUI();
                     UpdateClipboardInverseButtonState();  // Update button state when map type changes
                     RedrawEditorWindow();
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
-                    myCharPicker.RedrawFontWindow();
+                    if (myCharPicker != null)
+                        myCharPicker.RedrawFontWindow();
                     dliForm.Dispose();
                     dliForm = new DliForm(myMap, pictureBoxMap);
                     dliForm.RenderData();
@@ -1377,18 +1394,10 @@ namespace AtariMapMaker
 
         private void ClosePopupWindows()
         {
-            if (myCharPicker != null && !myCharPicker.IsDisposed)
-            {
-                myCharPicker.Close();
-            }
-            if (tilePicker != null && !tilePicker.IsDisposed)
-            {
-                tilePicker.Close();
-            }
-            if (elementLibraryDialog != null && !elementLibraryDialog.IsDisposed)
-            {
-                elementLibraryDialog.Close();
-            }
+            // Hide popups only; do not dispose (forms stay alive until app exit)
+            myCharPicker?.Hide();
+            tilePicker?.Hide();
+            elementLibraryDialog?.Hide();
         }
 
         private void ClearClipboard()
@@ -1845,9 +1854,10 @@ namespace AtariMapMaker
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
             AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
             pictureBoxMap.Refresh();
-            myCharPicker.Refresh();
+            if (myCharPicker != null)
+                myCharPicker.Refresh();
             // Refresh tile picker if it's open
-            if (tilePicker != null && !tilePicker.IsDisposed && tilePicker.Visible)
+            if (tilePicker != null && tilePicker.Visible)
             {
                 tilePicker.Refresh();
             }
@@ -2070,7 +2080,7 @@ namespace AtariMapMaker
         private void ButtonElementLibrary_Click(object sender, EventArgs e)
         {
             if (myMap == null) return;
-            if (elementLibraryDialog == null || elementLibraryDialog.IsDisposed)
+            if (elementLibraryDialog == null)
             {
                 elementLibraryDialog = new ElementLibraryDialog(myMap,
                     onClipboardSet: () =>
@@ -2121,7 +2131,7 @@ namespace AtariMapMaker
             
             try
             {
-                if (tilePicker == null || tilePicker.IsDisposed)
+                if (tilePicker == null)
                 {
                     tilePicker = new TilePicker(myMap, pictureBoxClipboard);
                 }
@@ -2421,7 +2431,7 @@ namespace AtariMapMaker
                     // Regular map - use character grid; load default font 0 from resources so Show Font and rendering work
                     myMap = new AtariMap(mapSize, screenSize);
                     myMap.IsTilemap = false;
-                    byte[] defaultFontData = GetDefaultFontDataFromResources();
+                    byte[] defaultFontData = DefaultFontResource.GetDefaultFontDataFromResources();
                     myMap.SetFontData(defaultFontData, 0);
                     myMap.SetFontForAllLines(0);
                     AtariFontRenderer.SetFontData(defaultFontData, Globals.FontType.Screen);
@@ -2431,6 +2441,8 @@ namespace AtariMapMaker
                 ClearClipboard();
                 undoManager = new UndoManager(myMap);
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
+                if (myCharPicker != null)
+                    myCharPicker.RedrawFontWindow();
                 numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                 numericUpDownScreenFromX.Maximum = nudMapW.Value - 1;
                 numericUpDownScreenToX.Maximum = nudMapW.Value - 1;
@@ -2464,11 +2476,12 @@ namespace AtariMapMaker
         {
             Globals.Zoom = trackBarZoom.Value;
             PictureBoxMap_ClientSizeChanged(null, null);
-            myCharPicker.SetZoom();
+            if (myCharPicker != null)
+                myCharPicker.SetZoom();
             dliForm.ZoomResize();
             dliForm.Hide();
             // Refresh tile picker if it's open
-            if (tilePicker != null && !tilePicker.IsDisposed && tilePicker.Visible)
+            if (tilePicker != null && tilePicker.Visible)
             {
                 tilePicker.Refresh();
             }
@@ -2801,30 +2814,6 @@ namespace AtariMapMaker
         }
         
         /// <summary>
-        /// <summary>
-        /// Returns default font data (1024 + 1024 inverted) from resources for new character maps. Never returns null.
-        /// </summary>
-        private static byte[] GetDefaultFontDataFromResources()
-        {
-            byte[] result = new byte[1024 * 2];
-            try
-            {
-                byte[] res = Properties.Resources.Default;
-                if (res != null && res.Length >= 1024)
-                {
-                    Array.Copy(res, result, 1024);
-                    for (int a = 0; a < 1024; a++)
-                        result[a + 1024] = (byte)(result[a] ^ 0x80);
-                }
-            }
-            catch
-            {
-                // Keep zeros so renderer still has valid buffer
-            }
-            return result;
-        }
-
-        /// <summary>
         /// Regenerates the clipboard image when clipboard contains tile indexes (e.g. from element library). Renders actual tile graphics from submap.
         /// </summary>
         private void RegenerateClipboardImageForTiles()
@@ -2841,9 +2830,10 @@ namespace AtariMapMaker
             AtariMap submap = myMap.GetOrLoadSubmap();
             if (submap == null) return;
 
-            AtariMap tempMap = new AtariMap(new Size(1, 1), new Size(tileWidth*w, tileHeight*h));
+            // One "screen" per tile so renderer indexes font per (tx,ty) and line correctly
+            AtariMap tempMap = new AtariMap(new Size(w, h), new Size(tileWidth, tileHeight));
             tempMap.MultiFontEnabled = true;
-            tempMap.FontLineMappingPerScreen = new byte[tempMap.ScreenSize.Height];
+            tempMap.FontLineMappingPerScreen = new byte[tempMap.MapSize.Width * tempMap.MapSize.Height * tempMap.ScreenSize.Height];
             for (int ty = 0; ty < h; ty++)
             {
                 for (int tx = 0; tx < w; tx++)
@@ -2865,10 +2855,9 @@ namespace AtariMapMaker
                     }
                     if (submap.FontLineMappingPerScreen != null)
                     {
-                        // Check if this submap screen references another screen for font mapping
                         Point actualSubmapScreen = submap.GetReferencedScreen(submapScreenX, submapScreenY);
-                        // Index submap like main map's GetFontForLine: (screenIndex) * linesPerTile + line. Use tileHeight so layout matches.
                         int submapScreenOffset = (actualSubmapScreen.Y * submap.MapSize.Width + actualSubmapScreen.X) * tileHeight;
+                        // One screen per tile: (ty*w+tx)*tileHeight + line
                         int tempScreenOffset = (ty * tempMap.MapSize.Width + tx) * tempMap.ScreenSize.Height;
                         for (int line = 0; line < tileHeight; line++)
                         {
@@ -3094,19 +3083,18 @@ namespace AtariMapMaker
 
         private void ButtonAddScreenRowToMap_Click(object sender, EventArgs e)
         {
-            AtariMap newMap = new AtariMap(new Size(myMap.MapSize.Width, myMap.MapSize.Height + 1), myMap.ScreenSize);
-            Array.Copy(myMap.Data, newMap.Data, myMap.Data.Length);
-            newMap.InitDliColorFullMap();
-            Array.Copy(myMap.ColorData, newMap.ColorData, myMap.ColorData.Length);
+            AtariMap newMap = myMap.ExtendWithNewScreenRow();
             myMap = newMap;
+            undoManager = new UndoManager(myMap);
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
-            dliForm.Dispose();
+            dliForm?.Dispose();
             dliForm = new DliForm(myMap, pictureBoxMap);
             dliForm.RenderData();
+            if (myCharPicker != null)
+                myCharPicker.RedrawFontWindow();
             RedrawEditorWindow();
-            //extend export selection option with additional screen row
-            numericUpDownScreenFromY.Maximum++;
-            numericUpDownScreenToY.Maximum++;
+            numericUpDownScreenFromY.Maximum = myMap.MapSize.Height - 1;
+            numericUpDownScreenToY.Maximum = myMap.MapSize.Height - 1;
         }
 
         private void ToolStripMenuItemClear_Click(object sender, EventArgs e)

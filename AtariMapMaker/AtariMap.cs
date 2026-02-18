@@ -333,6 +333,24 @@ namespace AtariMapMaker
             return (index, count);
         }
 
+        /// <summary>
+        /// For tilemaps: returns (1-based index of this tile in the screen, total count of same tile index on the screen).
+        /// Same semantics as CharOccurence but for tile indexes in Data. Only valid when IsTilemap.
+        /// </summary>
+        public (int, int) TileOccurence(Point screenToAnalyze, int tilePosX, int tilePosY, byte tileVal)
+        {
+            int index = 0;
+            int count = 0;
+            int offset = Stride * ScreenSize.Height * screenToAnalyze.Y + ScreenSize.Width * screenToAnalyze.X;
+            for (int y = 0; y < ScreenSize.Height; y++)
+                for (int x = 0; x < ScreenSize.Width; x++)
+                {
+                    if (y == tilePosY && x == tilePosX) index = count;
+                    if (Data[offset + y * Stride + x] == tileVal) count++;
+                }
+            return (index, count);
+        }
+
         public void ClearScreen(Point screenToClear)
         {
             int offset = Stride * ScreenSize.Height * screenToClear.Y + ScreenSize.Width * screenToClear.X;
@@ -647,6 +665,81 @@ namespace AtariMapMaker
         {
             cachedSubmap = null;
             cachedSubmapPath = null;
+        }
+
+        /// <summary>
+        /// Returns a new map with one additional screen row at the bottom. Preserves fonts, metadata, DLI, and tilemap data.
+        /// Works for both character maps and tilemaps.
+        /// </summary>
+        public AtariMap ExtendWithNewScreenRow()
+        {
+            int newHeight = MapSize.Height + 1;
+            AtariMap newMap = new AtariMap(new Size(MapSize.Width, newHeight), ScreenSize);
+            int oldStride = Stride;
+            int oldRows = MapSize.Height * ScreenSize.Height;
+            int newStride = newMap.Stride;
+            int newTotalChars = newStride * (newMap.MapSize.Height * newMap.ScreenSize.Height);
+            Array.Copy(Data, 0, newMap.Data, 0, Math.Min(Data.Length, newMap.Data.Length));
+            newMap.InitDliColorFullMap();
+            if (ColorData != null && newMap.ColorData != null)
+                Array.Copy(ColorData, 0, newMap.ColorData, 0, Math.Min(ColorData.Length, newMap.ColorData.Length));
+            newMap.FontDataArray = FontDataArray;
+            newMap.FontFileNames = FontFileNames;
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            int newScreenCharHeight = newMap.ScreenSize.Height;
+            if (newMap.IsTilemap && newMap.TilemapInfo != null && newMap.TilemapInfo.TileHeight > 0)
+                newScreenCharHeight = newMap.ScreenSize.Height * newMap.TilemapInfo.TileHeight;
+            if (FontLineMappingPerScreen != null && newMap.FontLineMappingPerScreen != null)
+                Array.Copy(FontLineMappingPerScreen, 0, newMap.FontLineMappingPerScreen, 0, Math.Min(FontLineMappingPerScreen.Length, newMap.FontLineMappingPerScreen.Length));
+            if (FontLineMappingReferences != null)
+            {
+                newMap.FontLineMappingReferences = new Dictionary<string, ScreenReference>();
+                foreach (var kv in FontLineMappingReferences)
+                    newMap.FontLineMappingReferences[kv.Key] = new ScreenReference(kv.Value.X, kv.Value.Y);
+                for (int sx = 0; sx < MapSize.Width; sx++)
+                    newMap.FontLineMappingReferences[$"{sx},{MapSize.Height}"] = new ScreenReference(0, 0);
+            }
+            newMap.MultiFontEnabled = MultiFontEnabled;
+            newMap.FontTemplateLocked = FontTemplateLocked;
+            newMap.FontTemplatePattern = FontTemplatePattern;
+            newMap.MapDescription = MapDescription;
+            if (ScreenDescriptions != null)
+            {
+                newMap.ScreenDescriptions = new Dictionary<string, string>();
+                foreach (var kv in ScreenDescriptions)
+                    newMap.ScreenDescriptions[kv.Key] = kv.Value;
+            }
+            if (ScreenMetadata != null)
+            {
+                newMap.ScreenMetadata = new Dictionary<string, ScreenMetadata>();
+                foreach (var kv in ScreenMetadata)
+                    newMap.ScreenMetadata[kv.Key] = kv.Value;
+            }
+            newMap.SubmapPath = SubmapPath;
+            newMap.IsTilemap = IsTilemap;
+            newMap.TilemapInfo = TilemapInfo;
+            newMap.BitmapTileset = BitmapTileset;
+            if (ElementLibrary != null)
+            {
+                newMap.ElementLibrary = new Dictionary<string, LibraryElement>();
+                foreach (var kv in ElementLibrary)
+                    newMap.ElementLibrary[kv.Key] = kv.Value;
+            }
+            if (ScreenLinks != null)
+                newMap.ScreenLinks = new List<ScreenLink>(ScreenLinks);
+            if (IsTilemap && TilemapInfo != null)
+            {
+                int tilemapScreenCharHeight = newMap.ScreenSize.Height * TilemapInfo.TileHeight;
+                newMap.FontLineMappingPerScreen = new byte[newMap.MapSize.Width * newMap.MapSize.Height * tilemapScreenCharHeight];
+                if (FontLineMappingPerScreen != null)
+                    Array.Copy(FontLineMappingPerScreen, 0, newMap.FontLineMappingPerScreen, 0, Math.Min(FontLineMappingPerScreen.Length, newMap.FontLineMappingPerScreen.Length));
+                newMap.InitializeCharData();
+                if (CharData != null && newMap.CharData != null)
+                    Array.Copy(CharData, 0, newMap.CharData, 0, Math.Min(CharData.Length, newMap.CharData.Length));
+            }
+            return newMap;
         }
 
         /// <summary>
