@@ -70,6 +70,9 @@ namespace AtariMapMaker
 
                         int tileHeightChars = (map.IsTilemap && map.TilemapInfo != null) ? map.TilemapInfo.TileHeight : 1;
                         DrawMetadataItem(graphics, item, pixelX, pixelY, zoom, showText: true, cellWidthPx: cellPxW, cellHeightPx: cellPxH, tileHeightChars: tileHeightChars);
+                        // Laser direction indicator: diagonal line (1 char) adjacent to laser, only for LASER metadata
+                        if (string.Equals((item.Text ?? "").Trim(), "LASER", StringComparison.OrdinalIgnoreCase))
+                            DrawLaserDirectionLine(graphics, item, pixelX, pixelY, zoom, cellPxW, cellPxH);
                     }
                 }
             }
@@ -151,6 +154,46 @@ namespace AtariMapMaker
                     if (showText && Globals.MetadataLayerShowText && !string.IsNullOrEmpty(item.Text))
                         graphics.DrawString(item.Text, font, textBrush, x, y - lineHeightPx);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Draws a 1-char diagonal line adjacent to a LASER metadata item to show emission direction (value 0-7).
+        /// Clockwise from top-left: 0=\ from top, 1=/ from top, 2=/ from right, 3=\ from right, 4=\ from bottom, 5=/ from bottom, 6=/ from left, 7=\ from left.
+        /// Line is drawn outward from the edge (adjacent to the laser element), 1 char size, in the laser's color.
+        /// </summary>
+        private static void DrawLaserDirectionLine(Graphics graphics, MetadataLayerItem item, int x, int y, int zoom, int cellPxW, int cellPxH)
+        {
+            int dir = item.Value & 7;
+            int L = 8 * zoom; // 1 char length
+            float cx = x + cellPxW / 2f;
+            float cy = y + cellPxH / 2f;
+            float x1, y1, x2, y2;
+            switch (dir)
+            {
+                case 1: // \ from center of top edge (outward = up, backslash = up-right)
+                    x1 = cx; y1 = y; x2 = cx + L; y2 = y - L; break;
+                case 0: // / from center of top edge (outward = up, slash = up-left)
+                    x1 = cx; y1 = y; x2 = cx - L; y2 = y - L; break;
+                case 2: // / from center of right edge (outward = right, slash = up-right)
+                    x1 = x + cellPxW; y1 = cy; x2 = x + cellPxW + L; y2 = cy - L; break;
+                case 3: // \ from center of right edge (outward = right, backslash = down-right)
+                    x1 = x + cellPxW; y1 = cy; x2 = x + cellPxW + L; y2 = cy + L; break;
+                case 4: // \ from center of bottom edge (outward = down, backslash = down-right)
+                    x1 = cx; y1 = y + cellPxH; x2 = cx + L; y2 = y + cellPxH + L; break;
+                case 5: // / from center of bottom edge (outward = down, slash = down-left)
+                    x1 = cx; y1 = y + cellPxH; x2 = cx - L; y2 = y + cellPxH + L; break;
+                case 7: // / from center of left edge (outward = left, slash = up-left)
+                    x1 = x; y1 = cy; x2 = x - L; y2 = cy - L; break;
+                case 6: // \ from center of left edge (outward = left, backslash = down-left)
+                    x1 = x; y1 = cy; x2 = x - L; y2 = cy + L; break;
+                default:
+                    return;
+            }
+            Color lineColor = AtariPalette.GetColor(item.Color);
+            using (var pen = new Pen(lineColor, Math.Max(1, zoom)))
+            {
+                graphics.DrawLine(pen, x1, y1, x2, y2);
             }
         }
     }

@@ -368,12 +368,34 @@ namespace AtariMapMaker
                     for (int x = 0; x < ScreenSize.Width / 2; x++)
                         (Data[offset + y * Stride + x], Data[offset + y * Stride + ScreenSize.Width - 1 - x]) = (Data[offset + y * Stride + ScreenSize.Width - 1 - x], Data[offset + y * Stride + x]);
             }
-            else //vertical
+            else // vertical
             {
-                for (int y = 0; y < ScreenSize.Height / 2 ; y++)
+                for (int y = 0; y < ScreenSize.Height / 2; y++)
                     for (int x = 0; x < ScreenSize.Width; x++)
                         (Data[offset + y * Stride + x], Data[offset + (ScreenSize.Height - 1 - y) * Stride + x]) = (Data[offset + (ScreenSize.Height - 1 - y) * Stride + x], Data[offset + y * Stride + x]);
+            }
+            // For tilemaps, CharData is used for display; refresh only this screen (metadata is not touched)
+            if (IsTilemap && CharData != null && TilemapInfo != null)
+                RefreshCharDataForScreen(screenToFlip);
+        }
 
+        /// <summary>
+        /// Refreshes CharData for a single screen by re-expanding its tiles from Data. Used after FlipScreen for tilemaps.
+        /// </summary>
+        private void RefreshCharDataForScreen(Point screen)
+        {
+            if (!IsTilemap || TilemapInfo == null || CharData == null || Data == null)
+                return;
+            int offset = Stride * ScreenSize.Height * screen.Y + ScreenSize.Width * screen.X;
+            for (int y = 0; y < ScreenSize.Height; y++)
+            {
+                for (int x = 0; x < ScreenSize.Width; x++)
+                {
+                    int tileX = screen.X * ScreenSize.Width + x;
+                    int tileY = screen.Y * ScreenSize.Height + y;
+                    byte tileIdx = Data[offset + y * Stride + x];
+                    ExpandTileToCharData(tileX, tileY, tileIdx);
+                }
             }
         }
 

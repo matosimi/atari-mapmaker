@@ -144,6 +144,10 @@ namespace AtariMapMaker
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusSpring2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.groupBoxLasermania = new System.Windows.Forms.GroupBox();
+            this.buttonLMSetup = new System.Windows.Forms.Button();
+            this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
+            this.toolStripMenuItemLMRun = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -184,6 +188,7 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownReplace1)).BeginInit();
             this.contextMenuStripScreen.SuspendLayout();
             this.statusStrip1.SuspendLayout();
+            this.groupBoxLasermania.SuspendLayout();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -266,6 +271,7 @@ namespace AtariMapMaker
             this.flowLayoutPanel1.Controls.Add(this.buttonElementLibrary);
             this.flowLayoutPanel1.Controls.Add(this.buttonMapDescription);
             this.flowLayoutPanel1.Controls.Add(this.buttonTilemapConfig);
+            this.flowLayoutPanel1.Controls.Add(this.groupBoxLasermania);
             this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(4, 5);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
@@ -1322,6 +1328,8 @@ namespace AtariMapMaker
             // 
             this.contextMenuStripScreen.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.contextMenuStripScreen.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripMenuItemLMRun,
+            this.toolStripSeparator3,
             this.toolStripMenuItemClear,
             this.toolStripMenuItemHFlip,
             this.toolStripMenuItemVFlip,
@@ -1335,7 +1343,7 @@ namespace AtariMapMaker
             this.menuItemUndo,
             this.menuItemRedo});
             this.contextMenuStripScreen.Name = "contextMenuStripScreen";
-            this.contextMenuStripScreen.Size = new System.Drawing.Size(261, 336);
+            this.contextMenuStripScreen.Size = new System.Drawing.Size(261, 374);
             this.contextMenuStripScreen.Opening += new System.ComponentModel.CancelEventHandler(this.ContextMenuStripScreen_Opening);
             // 
             // toolStripMenuItemClear
@@ -1470,6 +1478,38 @@ namespace AtariMapMaker
             this.toolStripStatusLabel3.Text = "char/tile occurence";
             this.toolStripStatusLabel3.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
+            // groupBoxLasermania
+            // 
+            this.groupBoxLasermania.Controls.Add(this.buttonLMSetup);
+            this.groupBoxLasermania.Location = new System.Drawing.Point(3, 1035);
+            this.groupBoxLasermania.Name = "groupBoxLasermania";
+            this.groupBoxLasermania.Size = new System.Drawing.Size(353, 100);
+            this.groupBoxLasermania.TabIndex = 22;
+            this.groupBoxLasermania.TabStop = false;
+            this.groupBoxLasermania.Text = "Lasermania";
+            // 
+            // buttonLMSetup
+            // 
+            this.buttonLMSetup.Location = new System.Drawing.Point(9, 28);
+            this.buttonLMSetup.Name = "buttonLMSetup";
+            this.buttonLMSetup.Size = new System.Drawing.Size(102, 52);
+            this.buttonLMSetup.TabIndex = 0;
+            this.buttonLMSetup.Text = "Setup";
+            this.buttonLMSetup.UseVisualStyleBackColor = true;
+            this.buttonLMSetup.Click += new System.EventHandler(this.buttonLMSetup_Click);
+            // 
+            // toolStripSeparator3
+            // 
+            this.toolStripSeparator3.Name = "toolStripSeparator3";
+            this.toolStripSeparator3.Size = new System.Drawing.Size(257, 6);
+            // 
+            // toolStripMenuItemLMRun
+            // 
+            this.toolStripMenuItemLMRun.Name = "toolStripMenuItemLMRun";
+            this.toolStripMenuItemLMRun.Size = new System.Drawing.Size(260, 32);
+            this.toolStripMenuItemLMRun.Text = "Run Lasermania level";
+            this.toolStripMenuItemLMRun.Click += new System.EventHandler(this.toolStripMenuItemLMRun_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
@@ -1533,6 +1573,7 @@ namespace AtariMapMaker
             this.contextMenuStripScreen.ResumeLayout(false);
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
+            this.groupBoxLasermania.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1654,6 +1695,10 @@ namespace AtariMapMaker
         private System.Windows.Forms.GroupBox groupBoxMetadata;
         private System.Windows.Forms.ColumnHeader columnHeader1;
         private System.Windows.Forms.ColumnHeader columnHeader2;
+        private System.Windows.Forms.GroupBox groupBoxLasermania;
+        private System.Windows.Forms.Button buttonLMSetup;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemLMRun;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator3;
     }
 }
 

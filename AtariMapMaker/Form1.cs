@@ -13,6 +13,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.Runtime.InteropServices;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Diagnostics;
 
 namespace AtariMapMaker
 {
@@ -46,7 +47,7 @@ namespace AtariMapMaker
         private void MainForm_Load(object sender, EventArgs e)
         {
             string version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            this.Text = "AtariMapMaker v" + version + " by Martin Simecek";
+            this.Text = "AtariMapMaker LASERMANIA branch v" + version + " by Martin Simecek";
             labelAbout2.Text = "Version " + version + "\n" + Properties.Resources.BuildDate;
             toolTip1.SetToolTip(buttonRefreshFont, "Reload font");
 
@@ -65,7 +66,7 @@ namespace AtariMapMaker
             };
             UpdateEditorWindowSizeInChars();
             //dataImage = new Bitmap(Globals.editorWindowSizeInChars.Width * 8, Globals.editorWindowSizeInChars.Height * 8, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-        
+
             /*
             AtariFontRenderer.RenderMapData(myMap, 0, dataImage);
             gr = Graphics.FromImage(pictureBoxMap.Image);
@@ -103,7 +104,7 @@ namespace AtariMapMaker
             }
             this.KeyDown += MainForm_KeyDown;
             this.KeyPreview = true;  // Enable key preview so form receives key events
-            
+
             // Update button state based on map type
             UpdateClipboardInverseButtonState();
         }
@@ -266,10 +267,10 @@ namespace AtariMapMaker
         private void MenuItemApplyFontTemplate_Click(object sender, EventArgs e)
         {
             if (myMap == null || !myMap.MultiFontEnabled) return;
-            
+
             // Use locked screen if locked, otherwise use current screen
             Point targetScreen = isScreenLocked ? lockedScreen : currentScreen;
-            
+
             // Check if target screen references another screen
             int refScreenX, refScreenY;
             bool isReferencing = myMap.GetFontMappingReference(targetScreen.X, targetScreen.Y, out refScreenX, out refScreenY);
@@ -279,7 +280,7 @@ namespace AtariMapMaker
                 MessageBox.Show("Cannot apply font template to a screen that references another screen's font mapping.", "Template Application", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
+
             using (FontSelectorDialog dialog = new FontSelectorDialog(myMap, 0, targetScreen.X, targetScreen.Y, true))
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
@@ -459,7 +460,7 @@ namespace AtariMapMaker
         {
             int xx = myMap.OffsetX + e.X / Globals.CharSize;
             int yy = myMap.OffsetY + e.Y / Globals.CharSize;
-            
+
             // For tilemaps, ScreenSize is in tiles, so convert to character units
             int screenCharWidth = myMap.ScreenSize.Width;
             int screenCharHeight = myMap.ScreenSize.Height;
@@ -468,18 +469,18 @@ namespace AtariMapMaker
                 screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
                 screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
             }
-            
+
             int scrx = xx / screenCharWidth;
             int scry = yy / screenCharHeight;
             int posx = xx % screenCharWidth;
             int posy = yy % screenCharHeight;
-            
+
             // Clamp screen coordinates to valid range
             if (scrx < 0) scrx = 0;
             if (scry < 0) scry = 0;
             if (scrx >= myMap.MapSize.Width) scrx = myMap.MapSize.Width - 1;
             if (scry >= myMap.MapSize.Height) scry = myMap.MapSize.Height - 1;
-            
+
             // If screen is locked, only update if mouse is within the locked screen
             if (isScreenLocked)
             {
@@ -488,8 +489,8 @@ namespace AtariMapMaker
                 int lockedScreenEndX = (lockedScreen.X + 1) * screenCharWidth;
                 int lockedScreenStartY = lockedScreen.Y * screenCharHeight;
                 int lockedScreenEndY = (lockedScreen.Y + 1) * screenCharHeight;
-                
-                if (xx >= lockedScreenStartX && xx < lockedScreenEndX && 
+
+                if (xx >= lockedScreenStartX && xx < lockedScreenEndX &&
                     yy >= lockedScreenStartY && yy < lockedScreenEndY)
                 {
                     // Mouse is within locked screen, update normally
@@ -515,13 +516,13 @@ namespace AtariMapMaker
                     int dliScreenNumber = dliForm.screenNumber;
                     int dliScreenX = dliScreenNumber % myMap.MapSize.Width;
                     int dliScreenY = dliScreenNumber / myMap.MapSize.Width;
-                    
+
                     // Check if mouse is in the DLI form area (to the right of the screen)
                     int dliFormStartX = (dliScreenX + 1) * screenCharWidth - 1;
                     int dliFormEndX = dliFormStartX + 6; // DLI form is 6 characters wide (5 colors + 1 font)
                     int dliFormStartY = dliScreenY * screenCharHeight;
                     int dliFormEndY = (dliScreenY + 1) * screenCharHeight;
-                    
+
                     // If mouse is in DLI form area, keep current screen as the DLI form's screen
                     if (xx >= dliFormStartX && xx < dliFormEndX && yy >= dliFormStartY && yy < dliFormEndY)
                     {
@@ -543,7 +544,7 @@ namespace AtariMapMaker
                 }
                 UpdateFontMappingReferenceUI();
             }
-            
+
             // Only redraw editor window if currentScreen actually changed
             if (currentScreen.X != previousScreen.X || currentScreen.Y != previousScreen.Y)
             {
@@ -562,7 +563,7 @@ namespace AtariMapMaker
                     {
                         ShowScreenSelection(false);
                     }
-                    else 
+                    else
                         pictureBoxMap.Refresh();
                 }
 
@@ -611,8 +612,8 @@ namespace AtariMapMaker
                     lastContinuousPasteCell = null;
                 }
 
-              
-              
+
+
                 if (AtariClipboard.IsValid)  //copy mode (shows alpha blended clipBoard)
                 {
                     // Calculate current grid cell based on map type
@@ -623,13 +624,13 @@ namespace AtariMapMaker
                         alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
                         alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
                     }
-                    
+
                     int currentGridX = e.Location.X / alignSizeX;
                     int currentGridY = e.Location.Y / alignSizeY;
                     Point currentGridCell = new Point(currentGridX, currentGridY);
-                    
+
                     // Only redraw if mouse moved to a different grid cell
-                    if (!AtariPictureTools.PreviousClipboardGridCell.HasValue || 
+                    if (!AtariPictureTools.PreviousClipboardGridCell.HasValue ||
                         AtariPictureTools.PreviousClipboardGridCell.Value != currentGridCell)
                     {
                         // Restore previous clipboard position first (if it exists)
@@ -637,16 +638,16 @@ namespace AtariMapMaker
                         {
                             AtariPictureTools.DrawUnderClipBoard(AtariPictureTools.PreviousClipboardLocation.Value);
                         }
-                        
+
                         // Draw clipboard at new position
                         AtariPictureTools.DrawClipBoard(e.Location, (Bitmap)pictureBoxMap.Image);
                         pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
                         pictureBoxUnderClipBoard.Refresh();
-                        
+
                         // Update previous location and grid cell
                         AtariPictureTools.PreviousClipboardLocation = e.Location;
                         AtariPictureTools.PreviousClipboardGridCell = currentGridCell;
-                        
+
                         // Refresh to show changes
                         pictureBoxMap.Refresh();
                     }
@@ -698,7 +699,7 @@ namespace AtariMapMaker
                     }
                 }
             }
-            
+
 
             // For tilemaps, use CharStride and calculate max height in characters
             int maxCharStride = myMap.Stride;
@@ -708,7 +709,7 @@ namespace AtariMapMaker
                 maxCharStride = myMap.CharStride;
                 maxCharHeight = myMap.MapSize.Height * myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
             }
-            
+
             if (xx < maxCharStride && yy < maxCharHeight)
             {
                 if (myMap.IsTilemap && myMap.TilemapInfo != null)
@@ -733,7 +734,7 @@ namespace AtariMapMaker
                 {
                     charVal = myMap.Data[xx + yy * myMap.Stride];
                 }
-                
+
                 // For tilemaps, also show tile index
                 if (myMap.IsTilemap && myMap.TilemapInfo != null)
                 {
@@ -754,10 +755,10 @@ namespace AtariMapMaker
                 {
                     toolStripStatusLabel2.Text = $"Char: ${charVal:X2} ({charVal})";
                 }
-                
+
                 //calculate the occurence
-                (int idx, int amnt) = myMap.CharOccurence(new Point(currentScreen.X,currentScreen.Y), posx, posy, charVal);
-                
+                (int idx, int amnt) = myMap.CharOccurence(new Point(currentScreen.X, currentScreen.Y), posx, posy, charVal);
+
                 if (myMap.IsTilemap && myMap.TilemapInfo != null)
                 {
                     int tileWidth = myMap.TilemapInfo.TileWidth;
@@ -776,7 +777,7 @@ namespace AtariMapMaker
             }
         }
 
-        private void UpdateAndShowDliForm(int scrx,int scry, bool justUpdatePosition = false)
+        private void UpdateAndShowDliForm(int scrx, int scry, bool justUpdatePosition = false)
         {
             // If screen is locked, only update DLI form if the requested screen is the locked screen
             if (isScreenLocked)
@@ -787,14 +788,14 @@ namespace AtariMapMaker
                     return;
                 }
             }
-            
+
             //check for out of bounds screens
             if (scrx >= myMap.MapSize.Width || scry >= myMap.MapSize.Height)
             {
                 dliForm.Hide();
                 return;
             }
-            
+
             Point dliPoint = DliFormOrigin(scrx, scry);
             if (dliPoint.X != -1)
             {
@@ -828,7 +829,7 @@ namespace AtariMapMaker
                 screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
                 screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
             }
-            
+
             int xmin = (scrx + 1) * screenCharWidth - 1;
             int xmax = (scrx + 1) * screenCharWidth + 4;
             int ymin = scry * screenCharHeight;
@@ -852,7 +853,7 @@ namespace AtariMapMaker
                     AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
                     int charX = e.X / Globals.CharSize;
                     int charY = e.Y / Globals.CharSize;
-                    
+
                     // If tilemap is enabled, snap to tile grid
                     if (myMap.IsTilemap && myMap.TilemapInfo != null)
                     {
@@ -860,7 +861,7 @@ namespace AtariMapMaker
                         int tileHeight = myMap.TilemapInfo.TileHeight;
                         charX = (charX / tileWidth) * tileWidth;
                         charY = (charY / tileHeight) * tileHeight;
-                        
+
                         // For tilemaps, check if clipboard contains tile indexes
                         if (AtariClipboard.IsTileIndexes)
                         {
@@ -870,7 +871,7 @@ namespace AtariMapMaker
                             int absoluteCharY = myMap.OffsetY + charY;
                             int tileX = absoluteCharX / tileWidth;
                             int tileY = absoluteCharY / tileHeight;
-                            
+
                             // Calculate character offset for Paste
                             // For tilemaps, use CharStride (character stride)
                             int charStride = myMap.CharStride;
@@ -903,7 +904,7 @@ namespace AtariMapMaker
                             AtariClipboard.Paste(myMap.Offset + addoffset);
                         }
                     }
-                    
+
                     // For tilemaps, ensure CharData is up to date after pasting
                     if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
                     {
@@ -911,12 +912,12 @@ namespace AtariMapMaker
                         // But we may need to clear font cache if fonts changed
                         AtariFontRenderer.ClearFontCache();
                     }
-                    
+
                     // Redraw the editor window to show the pasted data immediately
                     // Force a complete redraw by calling Redraw with all parameters
                     // This ensures RenderMapData reads the freshly pasted data
                     AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen);
-                    
+
                     // After redrawing, update the UnderClipBoardImage with the NEW content under the clipboard position
                     // This is critical - otherwise the old UnderClipBoardImage will overwrite the pasted data on mouse move
                     if (AtariPictureTools.PreviousClipboardLocation.HasValue)
@@ -926,7 +927,7 @@ namespace AtariMapMaker
                         pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
                         pictureBoxUnderClipBoard.Refresh();
                     }
-                    
+
                     pictureBoxMap.Refresh();
                 }
                 else if (Globals.MetadataLayerVisible)
@@ -1041,7 +1042,7 @@ namespace AtariMapMaker
                     // Toggle lock mode
                     int xx = myMap.OffsetX + e.X / Globals.CharSize;
                     int yy = myMap.OffsetY + e.Y / Globals.CharSize;
-                    
+
                     // For tilemaps, ScreenSize is in tiles, so convert to character units
                     int screenCharWidth = myMap.ScreenSize.Width;
                     int screenCharHeight = myMap.ScreenSize.Height;
@@ -1050,16 +1051,16 @@ namespace AtariMapMaker
                         screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
                         screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
                     }
-                    
+
                     int scrx = xx / screenCharWidth;
                     int scry = yy / screenCharHeight;
-                    
+
                     // Clamp screen coordinates to valid range (fixes screen 0,0 issue)
                     if (scrx < 0) scrx = 0;
                     if (scry < 0) scry = 0;
                     if (scrx >= myMap.MapSize.Width) scrx = myMap.MapSize.Width - 1;
                     if (scry >= myMap.MapSize.Height) scry = myMap.MapSize.Height - 1;
-                    
+
                     if (isScreenLocked && lockedScreen.X == scrx && lockedScreen.Y == scry)
                     {
                         // Unlock if clicking on the same locked screen
@@ -1086,12 +1087,12 @@ namespace AtariMapMaker
                         isScreenLocked = false;
                         RedrawEditorWindow();
                     }
-                    
+
                     if (checkBoxEditDli.Checked)
                     {
                         int xx = myMap.OffsetX + e.X / Globals.CharSize;
                         int yy = myMap.OffsetY + e.Y / Globals.CharSize;
-                        
+
                         // For tilemaps, ScreenSize is in tiles, so convert to character units
                         int screenCharWidth = myMap.ScreenSize.Width;
                         int screenCharHeight = myMap.ScreenSize.Height;
@@ -1100,7 +1101,7 @@ namespace AtariMapMaker
                             screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
                             screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
                         }
-                        
+
                         int scrx = xx / screenCharWidth;
                         int scry = yy / screenCharHeight;
                         UpdateAndShowDliForm(scrx, scry);
@@ -1166,7 +1167,7 @@ namespace AtariMapMaker
                 pictureBoxMap.Refresh();
             }
         }
-        
+
         /// <summary>
         /// Helper method to perform paste at a given location (used for continuous paste mode)
         /// </summary>
@@ -1174,7 +1175,7 @@ namespace AtariMapMaker
         {
             if (!AtariClipboard.IsValid)
                 return;
-                
+
             // Calculate current grid cell based on map type
             int alignSizeX = Globals.CharSize;
             int alignSizeY = Globals.CharSize;
@@ -1183,22 +1184,22 @@ namespace AtariMapMaker
                 alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
                 alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
             }
-            
+
             int currentGridX = location.X / alignSizeX;
             int currentGridY = location.Y / alignSizeY;
             Point currentGridCell = new Point(currentGridX, currentGridY);
-            
+
             // Only paste if we moved to a different grid cell
             if (lastContinuousPasteCell.HasValue && lastContinuousPasteCell.Value == currentGridCell)
                 return;
-                
+
             lastContinuousPasteCell = currentGridCell;
-            
+
             // Perform the paste (reuse the logic from MouseDown)
             AtariClipboard.SetDataSource(myMap);
             int charX = location.X / Globals.CharSize;
             int charY = location.Y / Globals.CharSize;
-            
+
             // If tilemap is enabled, snap to tile grid
             if (myMap.IsTilemap && myMap.TilemapInfo != null)
             {
@@ -1206,7 +1207,7 @@ namespace AtariMapMaker
                 int tileHeight = myMap.TilemapInfo.TileHeight;
                 charX = (charX / tileWidth) * tileWidth;
                 charY = (charY / tileHeight) * tileHeight;
-                
+
                 if (AtariClipboard.IsTileIndexes)
                 {
                     int absoluteCharX = myMap.OffsetX + charX;
@@ -1237,7 +1238,7 @@ namespace AtariMapMaker
                     AtariClipboard.Paste(myMap.Offset + addoffset);
                 }
             }
-            
+
             // Redraw after paste
             if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
             {
@@ -1346,27 +1347,27 @@ namespace AtariMapMaker
             {
                 case DialogResult.OK:
                     LoadMap(openFileDialog1.FileName);
-                    
+
                     AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                     AtariPictureTools.SetGridVisibility(comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked);
-                  
+
                     checkBoxShowDli.Checked = true;
                     this.FillFontColorList();
-                    
+
                     // Update numeric up/down controls for new map size
                     numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
                     numericUpDownScreenFromX.Maximum = myMap.MapSize.Width - 1;
                     numericUpDownScreenToX.Maximum = myMap.MapSize.Width - 1;
                     numericUpDownScreenFromY.Maximum = myMap.MapSize.Height - 1;
                     numericUpDownScreenToY.Maximum = myMap.MapSize.Height - 1;
-                    
+
                     // Update multifont checkbox
                     if (checkBoxMultiFont != null)
                     {
                         checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
                         checkBoxMultiFont.Enabled = true;
                     }
-                    
+
                     currentScreen = new Point(0, 0);
                     previousScreen = new Point(-1, -1);  // Reset to force redraw
                     isScreenLocked = false;
@@ -1422,10 +1423,10 @@ namespace AtariMapMaker
             {
                 Data = AtariJson.ParsedData.MapData.Select(i => (byte)i).ToArray()
             };
-            
+
             undoManager = new UndoManager(myMap);
             AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
-            
+
             // Load fonts - handle v1.2 and v2.0 formats
             if (AtariJson.ParsedData.FontDataArray != null && AtariJson.ParsedData.FontDataArray.Length > 0)
             {
@@ -1434,7 +1435,7 @@ namespace AtariMapMaker
                 {
                     if (AtariJson.ParsedData.FontDataArray[i] != null)
                     {
-                        string fileNameFont = (AtariJson.ParsedData.FontFileNames != null && i < AtariJson.ParsedData.FontFileNames.Length) 
+                        string fileNameFont = (AtariJson.ParsedData.FontFileNames != null && i < AtariJson.ParsedData.FontFileNames.Length)
                             ? AtariJson.ParsedData.FontFileNames[i] : null;
                         myMap.SetFontData(AtariJson.ParsedData.FontDataArray[i].Select(j => (byte)j).ToArray(), i, fileNameFont);
                     }
@@ -1451,7 +1452,7 @@ namespace AtariMapMaker
                 myMap.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), 0);
                 AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
             }
-            
+
             // Load font line mapping (always per-screen now)
             if (AtariJson.ParsedData.FontLineMappingPerScreen != null)
             {
@@ -1462,7 +1463,7 @@ namespace AtariMapMaker
                 // Initialize to all font 0 for all screens
                 myMap.SetFontForAllLines(0);
             }
-            
+
             // Load font mapping references
             if (AtariJson.ParsedData.FontLineMappingReferences != null && AtariJson.ParsedData.FontLineMappingReferences.Count > 0)
             {
@@ -1487,10 +1488,10 @@ namespace AtariMapMaker
                     }
                 }
             }
-            
+
             // Note: Old files with FontLineMapping (shared mode) are no longer supported
             // They would need to be migrated manually or through a converter
-            
+
             // Load font template settings
             if (AtariJson.ParsedData.FontTemplateLocked.HasValue)
                 myMap.FontTemplateLocked = AtariJson.ParsedData.FontTemplateLocked.Value;
@@ -1498,7 +1499,7 @@ namespace AtariMapMaker
                 myMap.FontTemplatePattern = AtariJson.ParsedData.FontTemplatePattern;
             if (AtariJson.ParsedData.MultiFontEnabled.HasValue)
                 myMap.MultiFontEnabled = AtariJson.ParsedData.MultiFontEnabled.Value;
-            
+
             // Load DLI data
             if (AtariJson.ParsedData.DliData == null)
                 myMap.InitDliColorFullMap();
@@ -1527,7 +1528,7 @@ namespace AtariMapMaker
                 myMap.ElementLibrary = AtariJson.ParsedData.ElementLibrary;
             if (AtariJson.ParsedData.ScreenLinks != null)
                 myMap.ScreenLinks = AtariJson.ParsedData.ScreenLinks;
-            
+
             // For tilemaps, initialize and regenerate CharData from tile indexes
             if (myMap.IsTilemap && myMap.TilemapInfo != null)
             {
@@ -1536,7 +1537,7 @@ namespace AtariMapMaker
                 // Regenerate CharData from loaded tile indexes
                 myMap.RegenerateCharDataFromTiles();
             }
-            
+
             // Update clipboard inverse button state based on map type
             UpdateClipboardInverseButtonState();
         }
@@ -1696,7 +1697,7 @@ namespace AtariMapMaker
             }
             fs.Close();
             fs.Dispose();
-            
+
             // For tilemaps, regenerate CharData from imported tile indexes
             if (myMap.IsTilemap)
             {
@@ -1758,7 +1759,7 @@ namespace AtariMapMaker
             MessageBox.Show($"Imported screens: {importedScreens}\n");
             fs.Close();
             fs.Dispose();
-            
+
             // For tilemaps, regenerate CharData from imported tile indexes
             if (myMap.IsTilemap)
             {
@@ -1794,10 +1795,10 @@ namespace AtariMapMaker
                     break;
                 }
             }
-    
+
             fs.Close();
             fs.Dispose();
-            
+
             // For tilemaps, regenerate CharData from imported tile indexes
             if (myMap.IsTilemap)
             {
@@ -1811,11 +1812,11 @@ namespace AtariMapMaker
             // Don't allow loading fonts for tilemaps (fonts come from submap)
             if (myMap != null && myMap.IsTilemap)
             {
-                MessageBox.Show("Fonts for tilemaps are inherited from the submap. Use Tilemap Config to update the submap.", 
+                MessageBox.Show("Fonts for tilemaps are inherited from the submap. Use Tilemap Config to update the submap.",
                     "Tilemap Fonts", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
+
             openFileDialog1.Filter = "Atari Font (*.fnt)|*.fnt";
             switch (openFileDialog1.ShowDialog())
             {
@@ -1874,7 +1875,7 @@ namespace AtariMapMaker
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
                 UpdateMultiFontUI();
-                
+
                 // Update DLI form to show/hide font column
                 if (dliForm != null && dliForm.Visible)
                 {
@@ -1891,18 +1892,18 @@ namespace AtariMapMaker
                 bool useReference = checkBoxFontMappingReference.Checked;
                 int refX = (int)numericUpDownRefScreenX.Value;
                 int refY = (int)numericUpDownRefScreenY.Value;
-                
+
                 myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, useReference, refX, refY);
-                
+
                 // Enable/disable numeric updowns
                 numericUpDownRefScreenX.Enabled = useReference && myMap.MultiFontEnabled;
                 numericUpDownRefScreenY.Enabled = useReference && myMap.MultiFontEnabled;
                 labelRefScreen.Enabled = useReference && myMap.MultiFontEnabled;
-                
+
                 AtariFontRenderer.ClearFontCache();
                 // Use RedrawEditorWindow to preserve locked marker visibility
                 RedrawEditorWindow();
-                
+
                 // Update DLI form
                 if (dliForm != null && dliForm.Visible)
                 {
@@ -1918,13 +1919,13 @@ namespace AtariMapMaker
             {
                 int refX = (int)numericUpDownRefScreenX.Value;
                 int refY = (int)numericUpDownRefScreenY.Value;
-                
+
                 myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, true, refX, refY);
-                
+
                 AtariFontRenderer.ClearFontCache();
                 // Use RedrawEditorWindow to preserve locked marker visibility
                 RedrawEditorWindow();
-                
+
                 // Update DLI form
                 if (dliForm != null && dliForm.Visible)
                 {
@@ -1938,24 +1939,24 @@ namespace AtariMapMaker
         {
             if (myMap == null || checkBoxFontMappingReference == null)
                 return;
-            
+
             // Update max values FIRST before trying to set Value
             numericUpDownRefScreenX.Maximum = Math.Max(0, myMap.MapSize.Width - 1);
             numericUpDownRefScreenY.Maximum = Math.Max(0, myMap.MapSize.Height - 1);
-            
+
             // Get current screen reference settings
             bool useReference;
             int refX, refY;
             useReference = myMap.GetFontMappingReference(currentScreen.X, currentScreen.Y, out refX, out refY);
-            
+
             // Clamp reference values to valid range
             refX = Math.Max(0, Math.Min(myMap.MapSize.Width - 1, refX));
             refY = Math.Max(0, Math.Min(myMap.MapSize.Height - 1, refY));
-            
+
             checkBoxFontMappingReference.Checked = useReference;
             numericUpDownRefScreenX.Value = refX;
             numericUpDownRefScreenY.Value = refY;
-            
+
             bool enabled = myMap.MultiFontEnabled;
             checkBoxFontMappingReference.Enabled = enabled;
             numericUpDownRefScreenX.Enabled = enabled && useReference;
@@ -1968,7 +1969,7 @@ namespace AtariMapMaker
         {
             bool enabled = checkBoxMultiFont != null && checkBoxMultiFont.Checked;
             bool tilemapEnabled = myMap != null && myMap.IsTilemap;
-            
+
             // For tilemaps, hide/disable multi-font related controls (they don't make sense for tilemaps)
             if (tilemapEnabled)
             {
@@ -2033,16 +2034,16 @@ namespace AtariMapMaker
                     labelRefScreenComma.Visible = true;
                 }
             }
-            
+
             // Font Templates: enabled only when multifont is checked (and not tilemap)
             if (buttonFontTemplate != null)
                 buttonFontTemplate.Enabled = !tilemapEnabled && enabled;
-            
+
             // Handle groupBoxFont: groupbox stays enabled; when multifont checked only disable Load/Export/Refresh buttons
             if (groupBoxFont != null)
             {
                 groupBoxFont.Enabled = true; // may be overridden by UpdateMetadataLayerUI
-                
+
                 foreach (Control ctrl in groupBoxFont.Controls)
                 {
                     if (ctrl.Name == "buttonShowTiles")
@@ -2059,7 +2060,7 @@ namespace AtariMapMaker
                     }
                 }
             }
-            
+
             UpdateMetadataLayerUI();
         }
 
@@ -2106,13 +2107,13 @@ namespace AtariMapMaker
 
         private void ButtonTilemapConfig_Click(object sender, EventArgs e)
         {
-            if (myMap == null || !myMap.IsTilemap) 
+            if (myMap == null || !myMap.IsTilemap)
             {
-                MessageBox.Show("This dialog is only available for tilemap maps.", "Tilemap Only", 
+                MessageBox.Show("This dialog is only available for tilemap maps.", "Tilemap Only",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
+
             using (TilemapConfigDialog dialog = new TilemapConfigDialog(myMap))
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
@@ -2128,7 +2129,7 @@ namespace AtariMapMaker
         private void ButtonShowTiles_Click(object sender, EventArgs e)
         {
             if (myMap == null || !myMap.IsTilemap || string.IsNullOrEmpty(myMap.SubmapPath)) return;
-            
+
             try
             {
                 if (tilePicker == null)
@@ -2189,7 +2190,7 @@ namespace AtariMapMaker
                 MessageBox.Show("Font exported successfully.", "Export Font", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
-   
+
 
         private void ButtonShiftChars_Click(object sender, EventArgs e)
         {
@@ -2257,7 +2258,7 @@ namespace AtariMapMaker
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
                 System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open);
-                
+
                 for (int x = 0; x < 5; x++)
                 {
                     if (maskedTextBoxDli.Text[x] == '0') continue;    //skip 0 masks
@@ -2301,37 +2302,37 @@ namespace AtariMapMaker
             {
                 bool isTilemap = checkBoxTilemap.Checked;
                 string submapPath = null;
-                
+
                 // If tilemap mode, require submap selection
                 if (isTilemap)
                 {
                     OpenFileDialog openDialog = new OpenFileDialog();
                     openDialog.Filter = "Atari Map Files (*.atrmap)|*.atrmap|All Files (*.*)|*.*";
                     openDialog.Title = "Select Submap File (Required for Tilemap)";
-                    
+
                     if (openDialog.ShowDialog() != DialogResult.OK)
                     {
-                        MessageBox.Show("Submap file is required for tilemap mode. Map creation cancelled.", 
+                        MessageBox.Show("Submap file is required for tilemap mode. Map creation cancelled.",
                             "Submap Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
-                    
+
                     submapPath = openDialog.FileName;
-                    
+
                     // Validate submap file exists
                     if (!System.IO.File.Exists(submapPath))
                     {
-                        MessageBox.Show("Submap file does not exist. Map creation cancelled.", 
+                        MessageBox.Show("Submap file does not exist. Map creation cancelled.",
                             "Invalid File", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                 }
-                
+
                 AtariFontRenderer.SetAlpa(checkBoxAlpa.Checked);
-                
+
                 Size mapSize = new Size((int)nudMapW.Value, (int)nudMapH.Value);
                 Size screenSize = new Size((int)nudScreenW.Value, (int)nudScreenH.Value);
-                
+
                 if (isTilemap)
                 {
                     // Load submap first to get tile dimensions
@@ -2340,21 +2341,21 @@ namespace AtariMapMaker
                         AtariMap tempSubmap = SubmapManager.LoadSubmap(submapPath);
                         int tileWidth = tempSubmap.ScreenSize.Width;
                         int tileHeight = tempSubmap.ScreenSize.Height;
-                        
+
                         // Copy Color5 from submap (AtariJson.ParsedData contains the parsed submap data)
                         // Note: SubmapManager.LoadSubmap calls AtariJson.ParseAtrmap, so ParsedData is available
                         if (AtariJson.ParsedData.Color5 != null && AtariJson.ParsedData.Color5.Length > 0)
                         {
                             AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
                         }
-                        
+
                         // For tilemaps:
                         // - MapSize: number of screens (e.g., 2x2 screens)
                         // - ScreenSize: size of each screen in TILES (e.g., 5x5 tiles per screen)
                         // - Tile dimensions come from submap (e.g., 2x2 chars per tile)
                         // - Data array stores tile indexes: (MapSize.Width * ScreenSize.Width) x (MapSize.Height * ScreenSize.Height) tiles
                         // - Total map size: 2x2 screens * 5x5 tiles = 10x10 tiles = 20x20 chars (for 2x2 tiles)
-                        
+
                         // Create map with screen size in TILES (not chars)
                         // MapSize: 2x2 screens, ScreenSize: 5x5 tiles per screen
                         // So Data array will be: (2 * 5) x (2 * 5) = 10x10 tiles
@@ -2363,42 +2364,42 @@ namespace AtariMapMaker
                         myMap.SubmapPath = submapPath;
                         // Clear submap cache when path changes
                         myMap.ClearSubmapCache();
-                        
+
                         // Initialize tilemap info
                         myMap.TilemapInfo = new TilemapData();
                         myMap.TilemapInfo.TileWidth = tileWidth;
                         myMap.TilemapInfo.TileHeight = tileHeight;
                         myMap.TilemapInfo.NumberingPattern = "row-major";
                         myMap.TilemapInfo.Use16BitIndexes = false; // Default to 8-bit, can be changed later
-                        
+
                         // Initialize CharData array for fast rendering
                         // CharData size: (MapSize.Width * ScreenSize.Width * TileWidth) x (MapSize.Height * ScreenSize.Height * TileHeight)
                         // Example: (2 * 5 * 2) x (2 * 5 * 2) = 20x20 chars
                         myMap.InitializeCharData();
-                        
+
                         // Reinitialize ColorData with correct size for tilemaps (character lines, not tile lines)
                         myMap.InitDliColorFullMap();
-                        
+
                         // Reinitialize FontLineMappingPerScreen with correct size for tilemaps (character lines, not tile lines)
                         int screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
                         myMap.FontLineMappingPerScreen = new byte[myMap.MapSize.Width * myMap.MapSize.Height * screenCharHeight];
-                        
+
                         // For tilemaps, automatically enable multi-font (fonts come from tiles)
                         myMap.MultiFontEnabled = true;
-                        
+
                         // Update clipboard inverse button state (disable in tile mode)
                         UpdateClipboardInverseButtonState();
-                        
+
                         if (checkBoxMultiFont != null)
                         {
                             checkBoxMultiFont.Checked = true;
                         }
-                        
+
                         // For tilemaps, Data array stores tile indexes, not characters
                         // Size is already correct: (MapSize.Width * ScreenSize.Width) x (MapSize.Height * ScreenSize.Height) tiles
                         // This is set by AtariMap constructor, and represents the tile grid
                         // All values are initialized to 0 (tile index 0)
-                        
+
                         // Inherit all fonts from submap
                         if (tempSubmap.FontDataArray != null)
                         {
@@ -2406,13 +2407,13 @@ namespace AtariMapMaker
                             {
                                 if (tempSubmap.FontDataArray[i] != null)
                                 {
-                                    string fontFileName = (tempSubmap.FontFileNames != null && i < tempSubmap.FontFileNames.Length) 
+                                    string fontFileName = (tempSubmap.FontFileNames != null && i < tempSubmap.FontFileNames.Length)
                                         ? tempSubmap.FontFileNames[i] : null;
                                     myMap.SetFontData(tempSubmap.FontDataArray[i], i, fontFileName);
                                 }
                             }
                         }
-                        
+
                         // Set first font as active screen font if available
                         if (tempSubmap.FontDataArray != null && tempSubmap.FontDataArray[0] != null)
                         {
@@ -2421,7 +2422,7 @@ namespace AtariMapMaker
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Error loading submap: {ex.Message}\nMap creation cancelled.", 
+                        MessageBox.Show($"Error loading submap: {ex.Message}\nMap creation cancelled.",
                             "Submap Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
@@ -2437,7 +2438,7 @@ namespace AtariMapMaker
                     AtariFontRenderer.SetFontData(defaultFontData, Globals.FontType.Screen);
                     AtariFontRenderer.ClearFontCache();
                 }
-                
+
                 ClearClipboard();
                 undoManager = new UndoManager(myMap);
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
@@ -2660,7 +2661,7 @@ namespace AtariMapMaker
                 pictureBoxMap.Refresh();
             }
         }
-        
+
         /// <summary>
         /// Click handler for buttonClipboardInverse - inverts clipboard chars (XOR 0x80)
         /// </summary>
@@ -2668,7 +2669,7 @@ namespace AtariMapMaker
         {
             InvertClipboard();
         }
-        
+
         /// <summary>
         /// CheckedChanged handler for checkBoxClipboardSkip0 - updates SkipZero and regenerates clipboard image so pixel format stays correct (avoids grey when toggling with library content).
         /// </summary>
@@ -2681,7 +2682,7 @@ namespace AtariMapMaker
                     RegenerateClipboardImage();
             }
         }
-        
+
         /// <summary>
         /// Keyboard handler - 'i' key toggles clipboard inverse; ESC exits metadata paste mode
         /// </summary>
@@ -2768,7 +2769,7 @@ namespace AtariMapMaker
             }
             pictureBoxClipboard.Refresh();
         }
-        
+
         /// <summary>
         /// Inverts all chars in clipboard (XOR 0x80) - only for font mode, not tile mode
         /// </summary>
@@ -2776,20 +2777,20 @@ namespace AtariMapMaker
         {
             if (!AtariClipboard.IsValid || AtariClipboard.IsTileIndexes)
                 return;  // Only works in font mode, not tile mode
-                
+
             byte[,] data = AtariClipboard.GetData();
             if (data == null)
                 return;
-            
+
             // 1) Hide clipboard from map first: restore under at current position so we don't leave a trail
             if (AtariPictureTools.PreviousClipboardLocation.HasValue)
             {
                 AtariPictureTools.DrawUnderClipBoard(AtariPictureTools.PreviousClipboardLocation.Value);
                 pictureBoxMap.Refresh();
             }
-                
+
             bool skipZero = checkBoxClipboardSkip0 != null && checkBoxClipboardSkip0.Checked;
-            
+
             // 2) Invert each char (XOR 0x80), skipping 0x00 if skipZero is enabled
             for (int y = 0; y < AtariClipboard.ClipboardHeight; y++)
             {
@@ -2801,10 +2802,10 @@ namespace AtariMapMaker
                     data[x, y] = (byte)(charVal ^ 0x80);
                 }
             }
-            
+
             // 3) Regenerate clipboard image with inverted chars (no map overlay change inside)
             RegenerateClipboardImage();
-            
+
             // 4) Update underclipboard from current map and draw new inverted clipboard on top
             if (AtariPictureTools.PreviousClipboardLocation.HasValue)
             {
@@ -2812,7 +2813,7 @@ namespace AtariMapMaker
                 pictureBoxMap.Refresh();
             }
         }
-        
+
         /// <summary>
         /// Regenerates the clipboard image when clipboard contains tile indexes (e.g. from element library). Renders actual tile graphics from submap.
         /// </summary>
@@ -2882,7 +2883,7 @@ namespace AtariMapMaker
             Bitmap baseImage = new Bitmap(pw, ph, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
             baseImage.Palette = AtariPalette.GetPalette();// GetIndexedColor5Palette();
             AtariFontRenderer.RenderMapData(tempMap, Globals.FontType.Screen, baseImage);
-            
+
             int zoomedWidth = pw * Globals.Zoom;
             int zoomedHeight = ph * Globals.Zoom;
             Bitmap zoomedImage = new Bitmap(zoomedWidth, zoomedHeight, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
@@ -2949,7 +2950,7 @@ namespace AtariMapMaker
             pictureBoxClipboard.Refresh();
         }
 
-        
+
 
         /// <summary>
         /// Regenerates the clipboard image from current clipboard data
@@ -2966,17 +2967,17 @@ namespace AtariMapMaker
             byte[,] data = AtariClipboard.GetData();
             if (data == null)
                 return;
-            
+
             // Render clipboard data directly (all lines) using Screen font, no map/DLI.
             // Font bitmap uses GetIndexedColor5Palette() (indices 0-4); we must use the same palette
             // or copied pixels will show wrong colors (e.g. grey).
             Bitmap baseClipboardImage = new Bitmap(AtariClipboard.ClipboardWidth * 8, AtariClipboard.ClipboardHeight * 8, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
             baseClipboardImage.Palette = AtariPalette.GetIndexedColor5Palette();
             AtariFontRenderer.RenderClipboardData(data, AtariClipboard.ClipboardWidth, AtariClipboard.ClipboardHeight, baseClipboardImage);
-            
+
             int zoomedWidth = baseClipboardImage.Width * Globals.Zoom;
             int zoomedHeight = baseClipboardImage.Height * Globals.Zoom;
-            
+
             // Scale in 8-bit only (nearest-neighbor) to avoid 8→32→8 round-trip color shifts
             Bitmap newClipboardImage = new Bitmap(zoomedWidth, zoomedHeight, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
             newClipboardImage.Palette = AtariPalette.GetIndexedColor5Palette();
@@ -3007,7 +3008,7 @@ namespace AtariMapMaker
             baseClipboardImage.UnlockBits(srcData);
             newClipboardImage.UnlockBits(dstData);
             baseClipboardImage.Dispose();
-            
+
             // If SkipZero: convert 8bpp→32bpp with exact palette (index → Color), no matching
             if (AtariClipboard.SkipZero)
             {
@@ -3040,7 +3041,7 @@ namespace AtariMapMaker
                 newClipboardImage.Dispose();
                 newClipboardImage = temp32Bit;
             }
-            
+
             // Replace old clipboard image
             if (AtariClipboard.ClipboardImage != null)
                 AtariClipboard.ClipboardImage.Dispose();
@@ -3058,7 +3059,7 @@ namespace AtariMapMaker
             pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
             pictureBoxClipboard.Refresh();
         }
-        
+
         /// <summary>
         /// Updates the enabled state of the inverse button based on map type
         /// </summary>
@@ -3075,7 +3076,7 @@ namespace AtariMapMaker
         {
             if (numericUpDownReplace1.Value != numericUpDownReplace2.Value)
             {
-                myMap.SwapChar((byte)numericUpDownReplace1.Value, (byte)numericUpDownReplace2.Value, radioButtonWholeMap.Checked, new Point(currentScreen.X,currentScreen.Y));
+                myMap.SwapChar((byte)numericUpDownReplace1.Value, (byte)numericUpDownReplace2.Value, radioButtonWholeMap.Checked, new Point(currentScreen.X, currentScreen.Y));
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
             }
@@ -3159,7 +3160,7 @@ namespace AtariMapMaker
             if (tabControl1.SelectedTab == tabPage2 && checkBoxShowScreenSelection.Checked && !ScreenSelectionShown)
             {
                 ShowScreenSelection();
-            } 
+            }
             if (tabControl1.SelectedTab != tabPage2 && ScreenSelectionShown)
             {
                 ScreenSelectionShown = false;
@@ -3184,6 +3185,319 @@ namespace AtariMapMaker
         {
             flowLayoutPanel1.Refresh();
             flowLayoutPanel1.Invalidate();
+        }
+
+        private void toolStripMenuItemLMRun_Click(object sender, EventArgs e)
+        {
+            if (ValidateLMLevel())
+                RunLMLevel();
+        }
+
+        private const byte LM_TILE_SENSOR = 0x35;
+        private const byte LM_TILE_MEMORY_CAPSULE = 0x21;
+        private const byte LM_TILE_LASER = 0x10;
+        private const byte LM_TILE_END = 0x30;
+        private const byte LM_TILE_KEY = 0x23;
+        private const byte LM_TILE_GATE = 0x11;
+        private const byte LM_TILE_BEAM = 0x26;
+
+        private bool ValidateLMLevel()
+        {
+            Point screen = isScreenLocked ? lockedScreen : currentScreen;
+            int w = myMap.ScreenSize.Width;
+            int h = myMap.ScreenSize.Height;
+            int stride = myMap.Stride;
+            int offset = stride * h * screen.Y + w * screen.X;
+
+            // Count tile indexes inside the screen
+            int tileSensor = 0, tileMemoryCapsule = 0, tileLaser = 0, tileEnd = 0, tileKey = 0, tileGate = 0, tileBeam = 0;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    byte t = myMap.Data[offset + y * stride + x];
+                    if (t == LM_TILE_SENSOR) tileSensor++;
+                    else if (t == LM_TILE_MEMORY_CAPSULE) tileMemoryCapsule++;
+                    else if (t == LM_TILE_LASER) tileLaser++;
+                    else if (t == LM_TILE_END) tileEnd++;
+                    else if (t == LM_TILE_KEY) tileKey++;
+                    else if (t == LM_TILE_GATE) tileGate++;
+                    else if (t == LM_TILE_BEAM) tileBeam++;
+                }
+
+            string metaKey = $"{screen.X},{screen.Y}";
+            if (myMap?.ScreenMetadata == null || !myMap.ScreenMetadata.ContainsKey(metaKey))
+            {
+                MessageBox.Show("No metadata for this screen. Add screen metadata with Lasermania items (END, LASER, start, etc.).", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            var items = myMap.ScreenMetadata[metaKey].ParsedItems ?? new List<MetadataLayerItem>();
+            int count(string t) => items.Count(i => string.Equals((i.Text ?? "").Trim(), t, StringComparison.OrdinalIgnoreCase));
+            int endMeta = count("END");
+            int laserMeta = count("LASER");
+            int startMeta = count("start");
+            int keysMeta = count("key");
+            int gatesMeta = count("gate");
+            int beamInMeta = count("beam_in");
+            int beamOutMeta = count("beam_out");
+
+            // Crosscheck tile counts with metadata counts (sensors and memory capsules have no metadata)
+            if (tileEnd != 1 || endMeta != 1)
+            {
+                MessageBox.Show("Level must contain exactly one END tile (0x30) and one END metadata item.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (tileLaser != 1 || laserMeta != 1)
+            {
+                MessageBox.Show("Level must contain exactly one LASER tile (0x10) and one LASER metadata item (with direction 0..7 in Value).", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (tileKey != keysMeta || tileGate != gatesMeta)
+            {
+                MessageBox.Show("Tile counts for key (0x23) and gate (0x11) must match their metadata counts.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (tileBeam != beamInMeta + beamOutMeta)
+            {
+                MessageBox.Show("Tile count for beam (0x26) must equal number of beam_in plus beam_out metadata items.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (tileSensor < 1 && tileMemoryCapsule < 1)
+            {
+                MessageBox.Show("Level must contain at least one sensor tile (0x35) or memory capsule tile (0x21).", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            if (startMeta != 1)
+            {
+                MessageBox.Show("Level must contain exactly one start metadata item.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (keysMeta < 0 || keysMeta > 3 || keysMeta != gatesMeta)
+            {
+                MessageBox.Show("Level can contain 0..3 keys and the same number of gates.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (beamInMeta < 0 || beamInMeta > 3 || beamInMeta != beamOutMeta)
+            {
+                MessageBox.Show("Level can contain 0..3 beam_in and the same number of beam_out.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            // For each value 0..3: at most one beam_in and one beam_out per value; they must match
+            for (int v = 0; v <= 3; v++)
+            {
+                int bi = items.Count(i => string.Equals((i.Text ?? "").Trim(), "beam_in", StringComparison.OrdinalIgnoreCase) && (i.Value & 0xff) == v);
+                int bo = items.Count(i => string.Equals((i.Text ?? "").Trim(), "beam_out", StringComparison.OrdinalIgnoreCase) && (i.Value & 0xff) == v);
+                if (bi > 1 || bo > 1)
+                {
+                    MessageBox.Show($"At most one beam_in and one beam_out per value. Value {v} has beam_in={bi}, beam_out={bo}.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+                if (bi != bo)
+                {
+                    MessageBox.Show($"For value {v}, beam_in count ({bi}) must equal beam_out count ({bo}).", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+            // For each value 0..3: at most one key and one gate per value; they must match
+            for (int v = 0; v <= 3; v++)
+            {
+                int k = items.Count(i => string.Equals((i.Text ?? "").Trim(), "key", StringComparison.OrdinalIgnoreCase) && (i.Value & 0xff) == v);
+                int g = items.Count(i => string.Equals((i.Text ?? "").Trim(), "gate", StringComparison.OrdinalIgnoreCase) && (i.Value & 0xff) == v);
+                if (k > 1 || g > 1)
+                {
+                    MessageBox.Show($"At most one key and one gate per value. Value {v} has key={k}, gate={g}.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+                if (k != g)
+                {
+                    MessageBox.Show($"For value {v}, key count ({k}) must equal gate count ({g}).", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+
+            // Metadata positions must match the corresponding tile positions
+            bool tileAt(int x, int y, byte tileId) => x >= 0 && x < w && y >= 0 && y < h && myMap.Data[offset + y * stride + x] == tileId;
+            var laserItem = items.FirstOrDefault(i => string.Equals((i.Text ?? "").Trim(), "LASER", StringComparison.OrdinalIgnoreCase));
+            if (laserItem != null && !tileAt(laserItem.X, laserItem.Y, LM_TILE_LASER))
+            {
+                MessageBox.Show("LASER metadata position must match the tile 0x10 (laser) position.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            var endItem = items.FirstOrDefault(i => string.Equals((i.Text ?? "").Trim(), "END", StringComparison.OrdinalIgnoreCase));
+            if (endItem != null && !tileAt(endItem.X, endItem.Y, LM_TILE_END))
+            {
+                MessageBox.Show("END metadata position must match the tile 0x30 (end) position.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            foreach (var i in items.Where(i => string.Equals((i.Text ?? "").Trim(), "beam_in", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!tileAt(i.X, i.Y, LM_TILE_BEAM))
+                {
+                    MessageBox.Show("Each beam_in metadata position must match a tile 0x26 (beam) position.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+            foreach (var i in items.Where(i => string.Equals((i.Text ?? "").Trim(), "beam_out", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!tileAt(i.X, i.Y, LM_TILE_BEAM))
+                {
+                    MessageBox.Show("Each beam_out metadata position must match a tile 0x26 (beam) position.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+            foreach (var i in items.Where(i => string.Equals((i.Text ?? "").Trim(), "key", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!tileAt(i.X, i.Y, LM_TILE_KEY))
+                {
+                    MessageBox.Show("Each key metadata position must match a tile 0x23 (key) position.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+            foreach (var i in items.Where(i => string.Equals((i.Text ?? "").Trim(), "gate", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!tileAt(i.X, i.Y, LM_TILE_GATE))
+                {
+                    MessageBox.Show("Each gate metadata position must match a tile 0x11 (gate) position.", "Lasermania level invalid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void RunLMLevel()
+        {
+            Point screen = isScreenLocked ? lockedScreen : currentScreen;
+            int w = myMap.ScreenSize.Width;
+            int h = myMap.ScreenSize.Height;
+            int cellCount = w * h;
+            int stride = myMap.Stride;
+            int offset = stride * h * screen.Y + w * screen.X;
+
+            // Tile data for the screen (row-major)
+            byte[] tiles = new byte[cellCount];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    tiles[y * w + x] = myMap.Data[offset + y * stride + x];
+
+            byte Linear(int tx, int ty) => (byte)(ty * w + tx < cellCount ? ty * w + tx : 0xff);
+            string key = $"{screen.X},{screen.Y}";
+            var items = myMap.ScreenMetadata[key].ParsedItems;
+            MetadataLayerItem first(string t) => items?.FirstOrDefault(i => string.Equals((i.Text ?? "").Trim(), t, StringComparison.OrdinalIgnoreCase));
+
+            byte[] keyPos = new byte[4];
+            byte[] gatePos = new byte[4];
+            byte[] beamInPos = new byte[4];
+            byte[] beamOutPos = new byte[4];
+            for (int i = 0; i < 4; i++) keyPos[i] = gatePos[i] = beamInPos[i] = beamOutPos[i] = 0xff;
+            // Export by value index 0..3: slot v = position of item with Value == v (or 0xff)
+            MetadataLayerItem byValue(string t, int v) => items?.FirstOrDefault(i => string.Equals((i.Text ?? "").Trim(), t, StringComparison.OrdinalIgnoreCase) && (i.Value & 0xff) == v);
+            for (int v = 0; v <= 3; v++)
+            {
+                var keyItem = byValue("key", v);
+                if (keyItem != null) keyPos[v] = Linear(keyItem.X, keyItem.Y);
+                var gateItem = byValue("gate", v);
+                if (gateItem != null) gatePos[v] = Linear(gateItem.X, gateItem.Y);
+                var beamInItem = byValue("beam_in", v);
+                if (beamInItem != null) beamInPos[v] = Linear(beamInItem.X, beamInItem.Y);
+                var beamOutItem = byValue("beam_out", v);
+                if (beamOutItem != null) beamOutPos[v] = Linear(beamOutItem.X, beamOutItem.Y);
+            }
+
+            var laserItem = first("LASER");
+            byte laserPosition = laserItem != null ? Linear(laserItem.X, laserItem.Y) : (byte)0xff;
+            byte laserDirection = laserItem != null ? (byte)(laserItem.Value & 7) : (byte)0;
+
+            var startItem = first("start");
+            byte startPosition = startItem != null ? Linear(startItem.X, startItem.Y) : (byte)0xff;
+
+            var endItem = first("END");
+            byte exitPosition = endItem != null ? Linear(endItem.X, endItem.Y) : (byte)0xff;
+
+            var accentItem = first("color accent");
+            byte colorAccent = (byte)0x70;
+            if (accentItem != null)
+                colorAccent = (byte)(accentItem.Value & 0xff);
+
+            string appDir = Application.StartupPath ?? Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".";
+            string kitPath = Path.Combine(appDir, "Lasermania_for_kit.xex");
+            if (!File.Exists(kitPath))
+            {
+                MessageBox.Show("Lasermania_for_kit.xex not found in application directory.", "Run Lasermania level", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            byte[] kitBytes = File.ReadAllBytes(kitPath);
+            byte[] suffix = { 0xff, 0xff, 0x00, 0x3f, 0xd4, 0x3f };
+            string cfgPath = Path.Combine(appDir, "lasermania.cfg");
+            string emulatorPath = "";
+            string extraOptions = "";
+            if (File.Exists(cfgPath))
+            {
+                var lines = File.ReadAllLines(cfgPath);
+                if (lines.Length > 0) emulatorPath = (lines[0] ?? "").Trim();
+                if (lines.Length > 1) extraOptions = (lines[1] ?? "").Trim();
+            }
+            if (string.IsNullOrEmpty(emulatorPath))
+            {
+                MessageBox.Show("Emulator path is not set. Use Lasermania Setup to set the path (saved in lasermania.cfg).", "Run Lasermania level", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            byte[] outBytes;
+            using (var ms = new MemoryStream())
+            {
+                ms.Write(kitBytes, 0, kitBytes.Length);
+                ms.Write(suffix, 0, suffix.Length);
+                ms.Write(tiles, 0, tiles.Length);
+                ms.Write(keyPos, 0, 4);
+                ms.Write(gatePos, 0, 4);
+                ms.Write(beamInPos, 0, 4);
+                ms.Write(beamOutPos, 0, 4);
+                ms.WriteByte(laserPosition);
+                ms.WriteByte(laserDirection);
+                ms.WriteByte(startPosition);
+                ms.WriteByte(exitPosition);
+                ms.WriteByte(colorAccent);
+                outBytes = ms.ToArray();
+            }
+            string outPath = Path.Combine(appDir, "lm_test.xex");
+            File.WriteAllBytes(outPath, outBytes);
+
+            string args = string.IsNullOrEmpty(extraOptions) ? $"\"{outPath}\"" : $"{extraOptions} \"{outPath}\"";
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = emulatorPath,
+                    Arguments = args,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to start emulator: {ex.Message}", "Run Lasermania level", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void buttonLMSetup_Click(object sender, EventArgs e)
+        {
+            string appDir = Application.StartupPath ?? Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".";
+            string cfgPath = Path.Combine(appDir, "lasermania.cfg");
+            using (var setup = new LasermaniaSetup())
+            {
+                if (File.Exists(cfgPath))
+                {
+                    var lines = File.ReadAllLines(cfgPath);
+                    if (lines.Length > 0) setup.EmulatorPath = (lines[0] ?? "").Trim();
+                    if (lines.Length > 1) setup.AdditionalOptions = (lines[1] ?? "").Trim();
+                }
+                if (setup.ShowDialog(this) == DialogResult.OK)
+                {
+                    var lines = new List<string> { setup.EmulatorPath ?? "", setup.AdditionalOptions ?? "" };
+                    File.WriteAllLines(cfgPath, lines);
+                }
+            }
         }
     }
 }
