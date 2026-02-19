@@ -7,6 +7,37 @@ A Windows desktop tool for creating and editing character and tile-based maps fo
 
 ---
 
+## Lasermania (branch `lasermania`)
+
+This branch adds support for designing and testing **Lasermania** levels (tilemap-based) directly from the editor.
+
+Lasermania is an Atari XL/XE game published by Avalon in 1990, revamped by me and PG in 2020.
+
+### Lasermania panel
+
+- **Run Lasermania level** (menu or panel) – Validates the current screen and, if valid, builds a level payload, merges it with `Lasermania_for_kit.xex`, saves `lm_test.xex`, and runs the emulator from **Lasermania Setup**.
+- **Lasermania Setup** – Dialog to set **emulator path** (e.g. Altirra) and **additional options**. Values are stored in `lasermania.cfg` in the application directory (two lines: path, then options). The emulator is launched with `lm_test.xex` when you run a level.
+
+### Level validation (before run)
+
+The current screen is validated; run is allowed only if all of the following hold:
+
+- **Tiles:** Exactly one tile **0x10** (laser), one **0x30** (end); 0..3 tiles **0x23** (key) and the same number of **0x11** (gate); 0..3 **beam_in** + **beam_out** metadata and matching count of tile **0x26**; at least one **0x35** (sensor) or **0x21** (memory capsule).
+- **Metadata:** Exactly one **END**, one **LASER** (direction 0..7 in Value), one **start**; 0..3 **key** and **gate** (same count); 0..3 **beam_in** and **beam_out** (same count). For each value 0..3 there is at most one key, one gate, one beam_in, one beam_out, and key count must equal gate count (and beam_in = beam_out) per value.
+- **Position match:** LASER metadata at 0x10 tile position; END at 0x30; each key at 0x23; each gate at 0x11; each beam_in/beam_out at 0x26.
+
+### Metadata for Lasermania (tilemaps)
+
+- When editing metadata on a **tilemap**, the **Type** field is a **dropdown** with only valid Lasermania types: END, LASER, start, key, gate, beam_in, beam_out, color accent, memory capsule, sensor. **Color** is fixed per type (no color picker).
+- **Laser direction indicator:** When the metadata layer is visible, each **LASER** metadata item shows a short **diagonal line** (1 char) in the laser’s color, indicating emission direction (Value 0..7: clockwise from top-left, `\` or `/` from the center of the top/right/bottom/left edge).
+
+### Other Lasermania-related behaviour
+
+- **Flip Screen Horizontal/Vertical** (context menu) now works correctly for **tilemaps**: tile data is flipped and the display buffer (CharData) for that screen is refreshed; metadata is unchanged.
+- **Run** builds the level as: screen tiles (row-major) + 4 key positions (by value 0..3) + 4 gate + 4 beam_in + 4 beam_out + laser position + laser direction (0..7) + start position + exit position + color accent. This is appended after `Lasermania_for_kit.xex` and the fixed suffix; the result is saved as `lm_test.xex` and the emulator is started. Place `Lasermania_for_kit.xex` in the application directory; use **Lasermania Setup** to set the emulator path in `lasermania.cfg`.
+
+---
+
 ## Overview
 
 - **Character maps:** Grid of character codes (0–255) with optional multi-font and per-line DLI colors.
