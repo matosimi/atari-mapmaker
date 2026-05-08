@@ -54,5 +54,11 @@ namespace AtariMapMaker
 
         /// <summary>When true, metadata text (white labels) is drawn on the overlay; when false, only value/color indicator is shown.</summary>
         public static bool MetadataLayerShowText { get; set; }
+
+        /// <summary>When true with metadata layer on, draw lines between metadata items sharing the same palette color.</summary>
+        public static bool MetadataLayerShowColorLinks { get; set; }
+
+        /// <summary>When true with metadata layer on, draw lines between metadata items sharing the same value (color 0x0E).</summary>
+        public static bool MetadataLayerShowValueLinks { get; set; }
     }
 }

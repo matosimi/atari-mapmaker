@@ -53,6 +53,7 @@ namespace AtariMapMaker
             int groupBy = comboGroupBy.SelectedIndex;
             int coordOrder = comboCoordOrder.SelectedIndex;
             bool header = checkHeader.Checked;
+            bool includeColors = checkBoxIncludeColors.Checked;
 
             var groups = new List<List<MetadataLayerItem>>();
             if (groupBy == 0)
@@ -76,7 +77,12 @@ namespace AtariMapMaker
 
             var sb = new StringBuilder();
             if (header)
-                sb.AppendLine(coordOrder == 2 ? "; dta a(index)[,value] ;text" : "; dta x,y[,value] ;text");
+            {
+                if (coordOrder == 2)
+                    sb.AppendLine(includeColors ? "; dta a(index)[,value][,color] ;text" : "; dta a(index)[,value] ;text");
+                else
+                    sb.AppendLine(includeColors ? "; dta x,y[,value][,color] ;text" : "; dta x,y[,value] ;text");
+            }
 
             for (int g = 0; g < groups.Count; g++)
             {
@@ -99,15 +105,17 @@ namespace AtariMapMaker
                 }
                 foreach (var item in groupItems)
                 {
+                    string colorHex = (item.Color & 0xFF).ToString("X2");
+                    string colorTail = includeColors ? $",${colorHex}" : "";
                     if (coordOrder == 2)
                     {
                         int index = item.Y * screenCharWidth + item.X;
                         string indexHex = (index & 0xFFFF).ToString("X4");
                         string valueHex = four ? $"a(${(item.Value & 0xFFFF).ToString("X4")})" : item.Value.ToString("X2");
                         if (groupBy == 3)
-                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}");
+                            sb.AppendLine($"\tdta a(${indexHex}),${valueHex}{colorTail}");
                         else
-                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}\t;{Escape(item.Text)}");
+                            sb.AppendLine($"\tdta a(${indexHex}),${valueHex}{colorTail}\t;{Escape(item.Text)}");
                     }
                     else
                     {
@@ -116,11 +124,11 @@ namespace AtariMapMaker
                         bool omitValue = (groupBy == 2);
                         bool omitText = (groupBy == 3);
                         if (omitValue)
-                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex}" : $"\tdta ${xHex},${yHex}\t;{Escape(item.Text)}");
+                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex}{colorTail}" : $"\tdta ${xHex},${yHex}{colorTail}\t;{Escape(item.Text)}");
                         else
                         {
                             string valueHex = four ? $"a(${(item.Value & 0xFFFF).ToString("X4")})" : item.Value.ToString("X2");
-                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex},${valueHex}" : $"\tdta ${xHex},${yHex},${valueHex}\t;{Escape(item.Text)}");
+                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex},${valueHex}{colorTail}" : $"\tdta ${xHex},${yHex},${valueHex}{colorTail}\t;{Escape(item.Text)}");
                         }
                     }
                 }

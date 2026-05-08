@@ -85,6 +85,8 @@ namespace AtariMapMaker
             // Set initial state for V2 UI (controls are in Designer)
             checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
             Globals.MetadataLayerShowText = checkBoxMetadataShowText.Checked;
+            Globals.MetadataLayerShowColorLinks = checkBoxMetaDataShowColorLinks != null && checkBoxMetaDataShowColorLinks.Checked;
+            Globals.MetadataLayerShowValueLinks = checkBoxMetaDataShowValueLinks != null && checkBoxMetaDataShowValueLinks.Checked;
             UpdateFontMappingReferenceUI();
             UpdateMultiFontUI();
             UpdateMetadataLayerUI();
@@ -209,6 +211,15 @@ namespace AtariMapMaker
                 groupBoxFont.Enabled = !metadataChecked;
             if (buttonMassChangeMetadata != null)
                 buttonMassChangeMetadata.Enabled = metadataChecked;
+            if (checkBoxMetaDataShowColorLinks != null)
+                checkBoxMetaDataShowColorLinks.Enabled = metadataChecked;
+            if (checkBoxMetaDataShowValueLinks != null)
+                checkBoxMetaDataShowValueLinks.Enabled = metadataChecked;
+            if (metadataChecked)
+            {
+                Globals.MetadataLayerShowColorLinks = checkBoxMetaDataShowColorLinks != null && checkBoxMetaDataShowColorLinks.Checked;
+                Globals.MetadataLayerShowValueLinks = checkBoxMetaDataShowValueLinks != null && checkBoxMetaDataShowValueLinks.Checked;
+            }
         }
 
         private void CheckBoxMetadataShowText_CheckedChanged(object sender, EventArgs e)
@@ -216,6 +227,26 @@ namespace AtariMapMaker
             Globals.MetadataLayerShowText = checkBoxMetadataShowText != null && checkBoxMetadataShowText.Checked;
             RedrawEditorWindow();
             pictureBoxMap.Refresh();
+        }
+
+        private void CheckBoxMetaDataShowColorLinks_CheckedChanged(object sender, EventArgs e)
+        {
+            Globals.MetadataLayerShowColorLinks = checkBoxMetaDataShowColorLinks != null && checkBoxMetaDataShowColorLinks.Checked;
+            if (checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked)
+            {
+                RedrawEditorWindow();
+                pictureBoxMap.Refresh();
+            }
+        }
+
+        private void CheckBoxMetaDataShowValueLinks_CheckedChanged(object sender, EventArgs e)
+        {
+            Globals.MetadataLayerShowValueLinks = checkBoxMetaDataShowValueLinks != null && checkBoxMetaDataShowValueLinks.Checked;
+            if (checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked)
+            {
+                RedrawEditorWindow();
+                pictureBoxMap.Refresh();
+            }
         }
 
         private void ButtonMassChangeMetadata_Click(object sender, EventArgs e)

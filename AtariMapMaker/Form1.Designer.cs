@@ -144,6 +144,8 @@ namespace AtariMapMaker
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusSpring2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.checkBoxMetaDataShowValueLinks = new System.Windows.Forms.CheckBox();
+            this.checkBoxMetaDataShowColorLinks = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -553,13 +555,15 @@ namespace AtariMapMaker
             // 
             // groupBoxMetadata
             // 
+            this.groupBoxMetadata.Controls.Add(this.checkBoxMetaDataShowColorLinks);
+            this.groupBoxMetadata.Controls.Add(this.checkBoxMetaDataShowValueLinks);
             this.groupBoxMetadata.Controls.Add(this.checkBoxMetadataLayer);
             this.groupBoxMetadata.Controls.Add(this.checkBoxMetadataShowText);
             this.groupBoxMetadata.Controls.Add(this.buttonMassChangeMetadata);
             this.groupBoxMetadata.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
             this.groupBoxMetadata.Location = new System.Drawing.Point(3, 731);
             this.groupBoxMetadata.Name = "groupBoxMetadata";
-            this.groupBoxMetadata.Size = new System.Drawing.Size(325, 110);
+            this.groupBoxMetadata.Size = new System.Drawing.Size(325, 165);
             this.groupBoxMetadata.TabIndex = 21;
             this.groupBoxMetadata.TabStop = false;
             this.groupBoxMetadata.Text = "Metadata";
@@ -607,7 +611,7 @@ namespace AtariMapMaker
             this.groupBoxFont.Controls.Add(this.buttonShowTiles);
             this.groupBoxFont.Controls.Add(this.buttonFontTemplate);
             this.groupBoxFont.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.groupBoxFont.Location = new System.Drawing.Point(3, 847);
+            this.groupBoxFont.Location = new System.Drawing.Point(3, 902);
             this.groupBoxFont.Name = "groupBoxFont";
             this.groupBoxFont.Size = new System.Drawing.Size(325, 121);
             this.groupBoxFont.TabIndex = 13;
@@ -682,7 +686,7 @@ namespace AtariMapMaker
             // 
             // buttonElementLibrary
             // 
-            this.buttonElementLibrary.Location = new System.Drawing.Point(4, 976);
+            this.buttonElementLibrary.Location = new System.Drawing.Point(4, 1031);
             this.buttonElementLibrary.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonElementLibrary.Name = "buttonElementLibrary";
             this.buttonElementLibrary.Size = new System.Drawing.Size(112, 51);
@@ -693,7 +697,7 @@ namespace AtariMapMaker
             // 
             // buttonMapDescription
             // 
-            this.buttonMapDescription.Location = new System.Drawing.Point(124, 976);
+            this.buttonMapDescription.Location = new System.Drawing.Point(124, 1031);
             this.buttonMapDescription.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonMapDescription.Name = "buttonMapDescription";
             this.buttonMapDescription.Size = new System.Drawing.Size(112, 51);
@@ -704,7 +708,7 @@ namespace AtariMapMaker
             // 
             // buttonTilemapConfig
             // 
-            this.buttonTilemapConfig.Location = new System.Drawing.Point(244, 976);
+            this.buttonTilemapConfig.Location = new System.Drawing.Point(244, 1031);
             this.buttonTilemapConfig.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonTilemapConfig.Name = "buttonTilemapConfig";
             this.buttonTilemapConfig.Size = new System.Drawing.Size(112, 51);
@@ -1046,7 +1050,6 @@ namespace AtariMapMaker
             this.checkBoxAlpa.TabIndex = 8;
             this.checkBoxAlpa.Text = "ALPA";
             this.checkBoxAlpa.UseVisualStyleBackColor = true;
-            this.checkBoxAlpa.Visible = false;
             // 
             // checkBoxTilemap
             // 
@@ -1470,6 +1473,30 @@ namespace AtariMapMaker
             this.toolStripStatusLabel3.Text = "char/tile occurence";
             this.toolStripStatusLabel3.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
+            // checkBoxMetaDataShowValueLinks
+            // 
+            this.checkBoxMetaDataShowValueLinks.AutoSize = true;
+            this.checkBoxMetaDataShowValueLinks.Checked = true;
+            this.checkBoxMetaDataShowValueLinks.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxMetaDataShowValueLinks.Location = new System.Drawing.Point(10, 94);
+            this.checkBoxMetaDataShowValueLinks.Name = "checkBoxMetaDataShowValueLinks";
+            this.checkBoxMetaDataShowValueLinks.Size = new System.Drawing.Size(152, 25);
+            this.checkBoxMetaDataShowValueLinks.TabIndex = 22;
+            this.checkBoxMetaDataShowValueLinks.Text = "Show value links";
+            this.checkBoxMetaDataShowValueLinks.UseVisualStyleBackColor = true;
+            this.checkBoxMetaDataShowValueLinks.CheckedChanged += new System.EventHandler(this.CheckBoxMetaDataShowValueLinks_CheckedChanged);
+            // 
+            // checkBoxMetaDataShowColorLinks
+            // 
+            this.checkBoxMetaDataShowColorLinks.AutoSize = true;
+            this.checkBoxMetaDataShowColorLinks.Location = new System.Drawing.Point(9, 125);
+            this.checkBoxMetaDataShowColorLinks.Name = "checkBoxMetaDataShowColorLinks";
+            this.checkBoxMetaDataShowColorLinks.Size = new System.Drawing.Size(150, 25);
+            this.checkBoxMetaDataShowColorLinks.TabIndex = 23;
+            this.checkBoxMetaDataShowColorLinks.Text = "Show color links";
+            this.checkBoxMetaDataShowColorLinks.UseVisualStyleBackColor = true;
+            this.checkBoxMetaDataShowColorLinks.CheckedChanged += new System.EventHandler(this.CheckBoxMetaDataShowColorLinks_CheckedChanged);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
@@ -1654,6 +1681,8 @@ namespace AtariMapMaker
         private System.Windows.Forms.GroupBox groupBoxMetadata;
         private System.Windows.Forms.ColumnHeader columnHeader1;
         private System.Windows.Forms.ColumnHeader columnHeader2;
+        private System.Windows.Forms.CheckBox checkBoxMetaDataShowColorLinks;
+        private System.Windows.Forms.CheckBox checkBoxMetaDataShowValueLinks;
     }
 }
 

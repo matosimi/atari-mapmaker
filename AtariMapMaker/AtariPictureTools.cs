@@ -407,11 +407,20 @@ namespace AtariMapMaker
                 DrawLockedText(gr, myMap, lockedScreen);
             }
 
-            // Draw metadata layer overlay when enabled
+            // Draw metadata link lines then overlay (cells + text on top)
             if (window == Globals.WindowType.Editor && Globals.MetadataLayerVisible)
             {
                 Rectangle viewport = new Rectangle(0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
+                MetadataLayerRenderer.RenderMetadataLinkLines(myMap, gr, viewport, Globals.Zoom);
                 MetadataLayerRenderer.RenderMetadataLayer(myMap, gr, viewport, Globals.Zoom);
+            }
+
+            // Hover screen flags (metadata / custom DLI), same vertical band as "Locked", left-aligned
+            if (window == Globals.WindowType.Editor &&
+                currentScreen.X >= 0 && currentScreen.Y >= 0 &&
+                currentScreen.X < myMap.MapSize.Width && currentScreen.Y < myMap.MapSize.Height)
+            {
+                DrawScreenHoverInfoLabels(gr, myMap, currentScreen);
             }
         }
 
@@ -550,6 +559,51 @@ namespace AtariMapMaker
             
             gr.DrawString(lockedText, textFont, yellowBrush, textX, textY);
         }
+
+        private static void DrawScreenHoverInfoLabels(Graphics gr, AtariMap myMap, Point screen)
+        {
+            bool hasMeta = myMap.ScreenHasMetadata(screen.X, screen.Y);
+            bool hasDli = myMap.ScreenHasCustomDli(screen.X, screen.Y);
+            if (!hasMeta && !hasDli)
+                return;
+
+            using (Font textFont = new Font("Segoe UI", 12, FontStyle.Bold))
+            using (Brush cyanBrush = new SolidBrush(Color.Cyan))
+            {
+                int screenCharWidth = myMap.ScreenSize.Width;
+                int screenCharHeight = myMap.ScreenSize.Height;
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                    screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                }
+
+                int screenStartX = screen.X * screenCharWidth;
+                int screenStartY = screen.Y * screenCharHeight;
+                int screenPixelX = (screenStartX - myMap.OffsetX) * Globals.CharSize;
+                int screenPixelY = (screenStartY - myMap.OffsetY) * Globals.CharSize;
+                int screenPixelHeight = screenCharHeight * Globals.CharSize;
+
+                float textY;
+                SizeF lockedLineSize = gr.MeasureString("Locked", textFont);
+                if (screen.Y == 0)
+                    textY = screenPixelY + screenPixelHeight + 5;
+                else
+                    textY = screenPixelY - lockedLineSize.Height - 5;
+
+                const float marginLeft = 2f;
+                float lineY = textY;
+                if (hasMeta)
+                {
+                    const string label = "Metadata included";
+                    gr.DrawString(label, textFont, cyanBrush, screenPixelX + marginLeft, lineY);
+                    lineY += gr.MeasureString(label, textFont).Height + 2f;
+                }
+                if (hasDli)
+                    gr.DrawString("DLI included", textFont, cyanBrush, screenPixelX + marginLeft, lineY);
+            }
+        }
+
         /// <summary>
         /// Performs scroll of a window.
         /// </summary>

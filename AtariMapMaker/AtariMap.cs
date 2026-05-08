@@ -296,6 +296,39 @@ namespace AtariMapMaker
             this.ColorData[screenOffset + line * 5 + colorNumber] = colorIndex;
         }
 
+        /// <summary>True if this screen has at least one metadata item in ScreenMetadata.</summary>
+        public bool ScreenHasMetadata(int screenX, int screenY)
+        {
+            if (ScreenMetadata == null || screenX < 0 || screenY < 0 || screenX >= MapSize.Width || screenY >= MapSize.Height)
+                return false;
+            string key = $"{screenX},{screenY}";
+            if (!ScreenMetadata.TryGetValue(key, out ScreenMetadata meta) || meta?.ParsedItems == null)
+                return false;
+            return meta.ParsedItems.Count > 0;
+        }
+
+        /// <summary>True if DLI color data for this screen differs from the initialized default (no per-line DLI).</summary>
+        public bool ScreenHasCustomDli(int screenX, int screenY)
+        {
+            if (ColorData == null || screenX < 0 || screenY < 0 || screenX >= MapSize.Width || screenY >= MapSize.Height)
+                return false;
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            int screenOffset = (screenY * MapSize.Width + screenX) * screenCharHeight * 5;
+            int byteCount = screenCharHeight * 5;
+            if (screenOffset < 0 || screenOffset + byteCount > ColorData.Length)
+                return false;
+            for (int line = 0; line < screenCharHeight; line++)
+            {
+                int o = screenOffset + line * 5;
+                if (ColorData[o] != Globals.DEFAULT_COLOR ||
+                    ColorData[o + 1] != 0 || ColorData[o + 2] != 0 || ColorData[o + 3] != 0 || ColorData[o + 4] != 0)
+                    return true;
+            }
+            return false;
+        }
+
         public void SwapChar(byte char1, byte char2, bool globalChange, Point screenToUse)
         {
             if (globalChange)
