@@ -30,6 +30,8 @@ namespace AtariMapMaker
         public string MapDescription { get; set; }
         public Dictionary<string, string> ScreenDescriptions { get; set; }
         public Dictionary<string, ScreenMetadata> ScreenMetadata { get; set; }
+        /// <summary>Global 1:1 map: type byte → display label (applies to all screens).</summary>
+        public Dictionary<byte, string> MetadataTypeLabels { get; set; }
         public string SubmapPath { get; set; }
         public bool IsTilemap { get; set; }
         public TilemapData TilemapInfo { get; set; }
@@ -81,6 +83,7 @@ namespace AtariMapMaker
             MapDescription = "";
             ScreenDescriptions = new Dictionary<string, string>();
             ScreenMetadata = new Dictionary<string, ScreenMetadata>();
+            MetadataTypeLabels = new Dictionary<byte, string>();
             SubmapPath = null;
             IsTilemap = false;
             TilemapInfo = null;
@@ -749,6 +752,12 @@ namespace AtariMapMaker
                 newMap.ScreenMetadata = new Dictionary<string, ScreenMetadata>();
                 foreach (var kv in ScreenMetadata)
                     newMap.ScreenMetadata[kv.Key] = kv.Value;
+            }
+            if (MetadataTypeLabels != null)
+            {
+                newMap.MetadataTypeLabels = new Dictionary<byte, string>();
+                foreach (var kv in MetadataTypeLabels)
+                    newMap.MetadataTypeLabels[kv.Key] = kv.Value;
             }
             newMap.SubmapPath = SubmapPath;
             newMap.IsTilemap = IsTilemap;

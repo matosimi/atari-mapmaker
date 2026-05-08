@@ -54,6 +54,7 @@ namespace AtariMapMaker
             int coordOrder = comboCoordOrder.SelectedIndex;
             bool header = checkHeader.Checked;
             bool includeColors = checkBoxIncludeColors.Checked;
+            bool includeTypes = checkBoxIncludeTypes.Checked;
 
             var groups = new List<List<MetadataLayerItem>>();
             if (groupBy == 0)
@@ -79,9 +80,19 @@ namespace AtariMapMaker
             if (header)
             {
                 if (coordOrder == 2)
-                    sb.AppendLine(includeColors ? "; dta a(index)[,value][,color] ;text" : "; dta a(index)[,value] ;text");
+                {
+                    string opt = "[,value]";
+                    if (includeTypes) opt += "[,type]";
+                    if (includeColors) opt += "[,color]";
+                    sb.AppendLine("; dta a(index)" + opt + " ;text");
+                }
                 else
-                    sb.AppendLine(includeColors ? "; dta x,y[,value][,color] ;text" : "; dta x,y[,value] ;text");
+                {
+                    string opt = "[,value]";
+                    if (includeTypes) opt += "[,type]";
+                    if (includeColors) opt += "[,color]";
+                    sb.AppendLine("; dta x,y" + opt + " ;text");
+                }
             }
 
             for (int g = 0; g < groups.Count; g++)
@@ -107,15 +118,17 @@ namespace AtariMapMaker
                 {
                     string colorHex = (item.Color & 0xFF).ToString("X2");
                     string colorTail = includeColors ? $",${colorHex}" : "";
+                    string typeHex = (item.Type & 0xFF).ToString("X2");
+                    string typeTail = includeTypes ? $",${typeHex}" : "";
                     if (coordOrder == 2)
                     {
                         int index = item.Y * screenCharWidth + item.X;
                         string indexHex = (index & 0xFFFF).ToString("X4");
                         string valueHex = four ? $"a(${(item.Value & 0xFFFF).ToString("X4")})" : item.Value.ToString("X2");
                         if (groupBy == 3)
-                            sb.AppendLine($"\tdta a(${indexHex}),${valueHex}{colorTail}");
+                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}{typeTail}{colorTail}");
                         else
-                            sb.AppendLine($"\tdta a(${indexHex}),${valueHex}{colorTail}\t;{Escape(item.Text)}");
+                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}{typeTail}{colorTail}\t;{Escape(item.Text)}");
                     }
                     else
                     {
@@ -124,11 +137,11 @@ namespace AtariMapMaker
                         bool omitValue = (groupBy == 2);
                         bool omitText = (groupBy == 3);
                         if (omitValue)
-                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex}{colorTail}" : $"\tdta ${xHex},${yHex}{colorTail}\t;{Escape(item.Text)}");
+                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex}{typeTail}{colorTail}" : $"\tdta ${xHex},${yHex}{typeTail}{colorTail}\t;{Escape(item.Text)}");
                         else
                         {
                             string valueHex = four ? $"a(${(item.Value & 0xFFFF).ToString("X4")})" : item.Value.ToString("X2");
-                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex},${valueHex}{colorTail}" : $"\tdta ${xHex},${yHex},${valueHex}{colorTail}\t;{Escape(item.Text)}");
+                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex},${valueHex}{typeTail}{colorTail}" : $"\tdta ${xHex},${yHex},${valueHex}{typeTail}{colorTail}\t;{Escape(item.Text)}");
                         }
                     }
                 }
@@ -199,7 +212,17 @@ namespace AtariMapMaker
             }
             sb.AppendLine();
 
-            sb.AppendLine("\t;6. values");
+            sb.AppendLine("\t;6. types");
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (i > 0 && i % AddressListPerLine == 0) sb.AppendLine();
+                if (i > 0 && i % AddressListPerLine != 0) sb.Append(",");
+                if (i % AddressListPerLine == 0) sb.Append("\tdta ");
+                sb.Append("$" + ((int)list[i].Type).ToString("X2"));
+            }
+            sb.AppendLine();
+
+            sb.AppendLine("\t;7. values");
             bool four = false; //check if 16bit value exists -> all 16bit
             for (int i = 0; i < list.Count; i++)
             {
@@ -225,7 +248,7 @@ namespace AtariMapMaker
             }
             sb.AppendLine();
 
-            sb.AppendLine("\t;7. colors");
+            sb.AppendLine("\t;8. colors");
             for (int i = 0; i < list.Count; i++)
             {
                 if (i > 0 && i % AddressListPerLine == 0) sb.AppendLine();
@@ -240,15 +263,22 @@ namespace AtariMapMaker
         {
             if (groupBy == 1) return item.Color;
             if (groupBy == 2) return item.Value;
-            if (groupBy == 3) return item.Text ?? "";
+            if (groupBy == 3) return item.Type;
             return null;
         }
 
-        private static string GroupComment(int groupBy, object key)
+        private string GroupComment(int groupBy, object key)
         {
             if (groupBy == 1) return "; ##### color $" + ((int)(byte)key).ToString("X2") + " ##########";
             if (groupBy == 2) return "; ##### value $" + (key is int v ? (v <= 255 ? v.ToString("X2") : (v & 0xFFFF).ToString("X4")) : key.ToString()) + " ##########";
-            if (groupBy == 3) return "; ##### text: \"" + (key.ToString().Replace("\"", "\\\"")) + "\" ##########";
+            if (groupBy == 3)
+            {
+                byte t = key is byte bt ? bt : (byte)0;
+                string tx = "";
+                if (map?.MetadataTypeLabels != null && map.MetadataTypeLabels.TryGetValue(t, out string lab))
+                    tx = lab ?? "";
+                return "; ##### type $" + t.ToString("X2") + " text: \"" + tx.Replace("\"", "\\\"") + "\" ##########";
+            }
             return "";
         }
 
@@ -276,9 +306,9 @@ namespace AtariMapMaker
             if (groupBy == 2) return coordOrder == 0 ? items.OrderBy(i => i.Value).ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
                 : coordOrder == 1 ? items.OrderBy(i => i.Value).ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
                 : items.OrderBy(i => i.Value).ThenBy(indexOf).ToList();
-            if (groupBy == 3) return coordOrder == 0 ? items.OrderBy(i => i.Text ?? "").ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
-                : coordOrder == 1 ? items.OrderBy(i => i.Text ?? "").ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
-                : items.OrderBy(i => i.Text ?? "").ThenBy(indexOf).ToList();
+            if (groupBy == 3) return coordOrder == 0 ? items.OrderBy(i => i.Type).ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
+                : coordOrder == 1 ? items.OrderBy(i => i.Type).ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
+                : items.OrderBy(i => i.Type).ThenBy(indexOf).ToList();
             return byPosition();
         }
     }

@@ -45,6 +45,7 @@ namespace AtariMapMaker
                     item.X.ToString(),
                     item.Y.ToString(),
                     item.Text ?? "",
+                    "$" + item.Type.ToString("X2"),
                     valueHex,
                     "$" + item.Color.ToString("X2")
                 });
@@ -56,10 +57,10 @@ namespace AtariMapMaker
         private void ButtonAdd_Click(object sender, EventArgs e)
         {
             var meta = GetOrCreateMetadata();
-            var item = new MetadataLayerItem { X = 0, Y = 0, Text = "", Value = 0, Color = 0 };
+            var item = new MetadataLayerItem { X = 0, Y = 0, Text = "", Type = 0, Value = 0, Color = 0 };
             meta.ParsedItems.Add(item);
             bool isTilemap = map != null && map.IsTilemap;
-            using (var edit = new MetadataItemEditDialog(item, "Add metadata item", isTilemap))
+            using (var edit = new MetadataItemEditDialog(map, item, "Add metadata item", isTilemap))
             {
                 if (edit.ShowDialog() == DialogResult.OK)
                     RefreshItem(item);
@@ -74,7 +75,7 @@ namespace AtariMapMaker
             if (item == null) return;
             var meta = GetOrCreateMetadata();
             bool isTilemap = map != null && map.IsTilemap;
-            using (var edit = new MetadataItemEditDialog(item, "Edit metadata item", isTilemap))
+            using (var edit = new MetadataItemEditDialog(map, item, "Edit metadata item", isTilemap))
             {
                 if (edit.ShowDialog() == DialogResult.OK)
                 {
@@ -96,8 +97,9 @@ namespace AtariMapMaker
                     li.SubItems[0].Text = item.X.ToString();
                     li.SubItems[1].Text = item.Y.ToString();
                     li.SubItems[2].Text = item.Text ?? "";
-                    li.SubItems[3].Text = item.Value.ToString();
-                    li.SubItems[4].Text = item.Color.ToString();
+                    li.SubItems[3].Text = "$" + item.Type.ToString("X2");
+                    li.SubItems[4].Text = item.Value >= 0 && item.Value <= 255 ? "$" + item.Value.ToString("X2") : "$" + item.Value.ToString("X4");
+                    li.SubItems[5].Text = "$" + item.Color.ToString("X2");
                     break;
                 }
             }

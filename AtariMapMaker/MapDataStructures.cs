@@ -31,6 +31,8 @@ namespace AtariMapMaker
         public int X { get; set; }
         public int Y { get; set; }
         public string Text { get; set; }
+        /// <summary>Global metadata object type byte; <see cref="AtariMap.MetadataTypeLabels"/> defines the label for this type.</summary>
+        public byte Type { get; set; }
         public int Value { get; set; }
         public byte Color { get; set; }
     }
@@ -50,7 +52,7 @@ namespace AtariMapMaker
         public static void Copy(MetadataLayerItem item)
         {
             if (item == null) { CopiedItem = null; ClearMove(); return; }
-            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Value = item.Value, Color = item.Color };
+            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Type = item.Type, Value = item.Value, Color = item.Color };
             ClearMove();
         }
 
@@ -58,7 +60,7 @@ namespace AtariMapMaker
         public static void BeginMove(MetadataLayerItem item, int screenX, int screenY, int cellX, int cellY)
         {
             if (item == null) return;
-            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Value = item.Value, Color = item.Color };
+            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Type = item.Type, Value = item.Value, Color = item.Color };
             IsMovePending = true;
             MoveSourceScreenX = screenX;
             MoveSourceScreenY = screenY;

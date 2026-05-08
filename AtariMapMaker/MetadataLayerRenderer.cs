@@ -16,7 +16,8 @@ namespace AtariMapMaker
         }
 
         /// <summary>
-        /// Draw link lines between metadata items (same color and/or same value). Call after map characters, before <see cref="RenderMetadataLayer"/>.
+        /// Draw link lines between metadata items (same color and/or same value) <b>within one map screen each</b>.
+        /// Call after map characters, before <see cref="RenderMetadataLayer"/>.
         /// </summary>
         public static void RenderMetadataLinkLines(AtariMap map, Graphics graphics, Rectangle viewport, int zoom)
         {
@@ -26,85 +27,85 @@ namespace AtariMapMaker
             if (!Globals.MetadataLayerShowColorLinks && !Globals.MetadataLayerShowValueLinks)
                 return;
 
-            var byColor = new Dictionary<byte, List<MetaEndpoint>>();
-            var byValue = new Dictionary<int, List<MetaEndpoint>>();
-
-            for (int screenY = 0; screenY < map.MapSize.Height; screenY++)
-            {
-                for (int screenX = 0; screenX < map.MapSize.Width; screenX++)
-                {
-                    List<MetadataLayerItem> items = MetadataParser.GetScreenMetadataItems(map, screenX, screenY);
-                    if (items == null || items.Count == 0)
-                        continue;
-
-                    foreach (var item in items)
-                    {
-                        if (!TryGetMetadataItemCenter(map, screenX, screenY, item, zoom, out float cx, out float cy))
-                            continue;
-
-                        int order = MetadataTravelOrder(screenX, screenY, item);
-
-                        if (Globals.MetadataLayerShowColorLinks)
-                        {
-                            byte c = item.Color;
-                            if (!byColor.TryGetValue(c, out var colorList))
-                            {
-                                colorList = new List<MetaEndpoint>();
-                                byColor[c] = colorList;
-                            }
-                            colorList.Add(new MetaEndpoint { X = cx, Y = cy, Order = order });
-                        }
-
-                        if (Globals.MetadataLayerShowValueLinks)
-                        {
-                            int v = item.Value;
-                            if (!byValue.TryGetValue(v, out var valueList))
-                            {
-                                valueList = new List<MetaEndpoint>();
-                                byValue[v] = valueList;
-                            }
-                            valueList.Add(new MetaEndpoint { X = cx, Y = cy, Order = order });
-                        }
-                    }
-                }
-            }
-
             float penWidthColor = Math.Max(1f, zoom);
             float penWidthValue = Math.Max(0.7f, zoom * 0.45f);
             SmoothingMode prevSmooth = graphics.SmoothingMode;
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
             try
             {
-                if (Globals.MetadataLayerShowColorLinks)
+                for (int screenY = 0; screenY < map.MapSize.Height; screenY++)
                 {
-                    foreach (var kv in byColor)
+                    for (int screenX = 0; screenX < map.MapSize.Width; screenX++)
                     {
-                        List<MetaEndpoint> pts = kv.Value;
-                        if (pts.Count < 2)
-                            continue;
-                        pts.Sort((a, b) => a.Order.CompareTo(b.Order));
-                        Color lineCol = AtariPalette.GetColor(kv.Key);
-                        using (var pen = new Pen(Color.FromArgb(230, lineCol.R, lineCol.G, lineCol.B), penWidthColor))
-                        {
-                            for (int i = 0; i < pts.Count - 1; i++)
-                                graphics.DrawLine(pen, pts[i].X, pts[i].Y, pts[i + 1].X, pts[i + 1].Y);
-                        }
-                    }
-                }
+                        var byColor = new Dictionary<byte, List<MetaEndpoint>>();
+                        var byValue = new Dictionary<int, List<MetaEndpoint>>();
 
-                if (Globals.MetadataLayerShowValueLinks)
-                {
-                    Color vcol = AtariPalette.GetColor(ValueLinkPaletteIndex);
-                    using (var pen = new Pen(Color.FromArgb(230, vcol.R, vcol.G, vcol.B), penWidthValue))
-                    {
-                        foreach (var kv in byValue)
+                        List<MetadataLayerItem> items = MetadataParser.GetScreenMetadataItems(map, screenX, screenY);
+                        if (items == null || items.Count == 0)
+                            continue;
+
+                        foreach (var item in items)
                         {
-                            List<MetaEndpoint> pts = kv.Value;
-                            if (pts.Count < 2)
+                            if (!TryGetMetadataItemCenter(map, screenX, screenY, item, zoom, out float cx, out float cy))
                                 continue;
-                            pts.Sort((a, b) => a.Order.CompareTo(b.Order));
-                            for (int i = 0; i < pts.Count - 1; i++)
-                                graphics.DrawLine(pen, pts[i].X, pts[i].Y, pts[i + 1].X, pts[i + 1].Y);
+
+                            int order = MetadataTravelOrder(screenX, screenY, item);
+
+                            if (Globals.MetadataLayerShowColorLinks)
+                            {
+                                byte c = item.Color;
+                                if (!byColor.TryGetValue(c, out var colorList))
+                                {
+                                    colorList = new List<MetaEndpoint>();
+                                    byColor[c] = colorList;
+                                }
+                                colorList.Add(new MetaEndpoint { X = cx, Y = cy, Order = order });
+                            }
+
+                            if (Globals.MetadataLayerShowValueLinks)
+                            {
+                                int v = item.Value;
+                                if (!byValue.TryGetValue(v, out var valueList))
+                                {
+                                    valueList = new List<MetaEndpoint>();
+                                    byValue[v] = valueList;
+                                }
+                                valueList.Add(new MetaEndpoint { X = cx, Y = cy, Order = order });
+                            }
+                        }
+
+                        if (Globals.MetadataLayerShowColorLinks)
+                        {
+                            foreach (var kv in byColor)
+                            {
+                                List<MetaEndpoint> pts = kv.Value;
+                                if (pts.Count < 2)
+                                    continue;
+                                pts.Sort((a, b) => a.Order.CompareTo(b.Order));
+                                Color lineCol = AtariPalette.GetColor(kv.Key);
+                                using (var pen = new Pen(Color.FromArgb(230, lineCol.R, lineCol.G, lineCol.B), penWidthColor))
+                                {
+                                    for (int i = 0; i < pts.Count - 1; i++)
+                                        graphics.DrawLine(pen, pts[i].X, pts[i].Y, pts[i + 1].X, pts[i + 1].Y);
+                                }
+                            }
+                        }
+
+                        if (Globals.MetadataLayerShowValueLinks)
+                        {
+                            Color vcol = AtariPalette.GetColor(ValueLinkPaletteIndex);
+                            using (var pen = new Pen(Color.FromArgb(230, vcol.R, vcol.G, vcol.B), penWidthValue))
+                            {
+                                foreach (var kv in byValue)
+                                {
+                                    List<MetaEndpoint> pts = kv.Value;
+                                    if (pts.Count < 2)
+                                        continue;
+                                    pts.Sort((a, b) => a.Order.CompareTo(b.Order));
+                                    for (int i = 0; i < pts.Count - 1; i++)
+                                        graphics.DrawLine(pen, pts[i].X, pts[i].Y, pts[i + 1].X, pts[i + 1].Y);
+                                }
+                            }
                         }
                     }
                 }

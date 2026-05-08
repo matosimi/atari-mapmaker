@@ -1050,7 +1050,7 @@ namespace AtariMapMaker
                             }
                         }
                         meta.ParsedItems.RemoveAll(i => i.X == cellX && i.Y == cellY);
-                        meta.ParsedItems.Add(new MetadataLayerItem { X = cellX, Y = cellY, Text = copied.Text ?? "", Value = copied.Value, Color = copied.Color });
+                        meta.ParsedItems.Add(new MetadataLayerItem { X = cellX, Y = cellY, Text = copied.Text ?? "", Type = copied.Type, Value = copied.Value, Color = copied.Color });
                         MetadataItemClipboard.Clear();
                         previousMetadataOverlayLocation = null;
                         UpdateMetadataLayerUI();
@@ -1060,7 +1060,7 @@ namespace AtariMapMaker
                     }
                     if (existing != null)
                     {
-                        using (var edit = new MetadataItemEditDialog(existing, "Edit metadata item", myMap.IsTilemap))
+                        using (var edit = new MetadataItemEditDialog(myMap, existing, "Edit metadata item", myMap.IsTilemap))
                         {
                             if (edit.ShowDialog() == DialogResult.OK && edit.RemoveRequested)
                                 meta.ParsedItems.Remove(existing);
@@ -1068,8 +1068,8 @@ namespace AtariMapMaker
                     }
                     else
                     {
-                        var item = new MetadataLayerItem { X = cellX, Y = cellY, Text = "", Value = 0, Color = 0 };
-                        using (var edit = new MetadataItemEditDialog(item, "Add metadata item", myMap.IsTilemap))
+                        var item = new MetadataLayerItem { X = cellX, Y = cellY, Text = "", Type = 0, Value = 0, Color = 0 };
+                        using (var edit = new MetadataItemEditDialog(myMap, item, "Add metadata item", myMap.IsTilemap))
                         {
                             if (edit.ShowDialog() == DialogResult.OK && !edit.RemoveRequested)
                                 meta.ParsedItems.Add(item);
@@ -1391,6 +1391,7 @@ namespace AtariMapMaker
                 MapDescription = myMap.MapDescription,
                 ScreenDescriptions = myMap.ScreenDescriptions,
                 ScreenMetadataDict = myMap.ScreenMetadata,
+                MetadataTypeLabels = myMap.MetadataTypeLabels,
                 SubmapPath = myMap.SubmapPath,
                 IsTilemap = myMap.IsTilemap,
                 TilemapInfo = myMap.TilemapInfo,
@@ -1574,6 +1575,11 @@ namespace AtariMapMaker
                 myMap.ScreenDescriptions = AtariJson.ParsedData.ScreenDescriptions;
             if (AtariJson.ParsedData.ScreenMetadataDict != null)
                 myMap.ScreenMetadata = AtariJson.ParsedData.ScreenMetadataDict;
+            if (AtariJson.ParsedData.MetadataTypeLabels != null)
+                myMap.MetadataTypeLabels = AtariJson.ParsedData.MetadataTypeLabels;
+            else
+                myMap.MetadataTypeLabels = new Dictionary<byte, string>();
+            MetadataTypeRegistry.SyncAfterLoad(myMap);
             if (!string.IsNullOrEmpty(AtariJson.ParsedData.SubmapPath))
             {
                 myMap.SubmapPath = AtariJson.ParsedData.SubmapPath;

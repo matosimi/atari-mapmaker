@@ -30,11 +30,12 @@ namespace AtariMapMaker
             this.listViewItems.GridLines = true;
             this.listViewItems.Location = new System.Drawing.Point(12, 12);
             this.listViewItems.Name = "listViewItems";
-            this.listViewItems.Size = new System.Drawing.Size(400, 180);
+            this.listViewItems.Size = new System.Drawing.Size(460, 180);
             this.listViewItems.View = System.Windows.Forms.View.Details;
             this.listViewItems.Columns.Add("X", 40);
             this.listViewItems.Columns.Add("Y", 40);
-            this.listViewItems.Columns.Add("Text", 120);
+            this.listViewItems.Columns.Add("Text", 110);
+            this.listViewItems.Columns.Add("Type", 45);
             this.listViewItems.Columns.Add("Value", 50);
             this.listViewItems.Columns.Add("Color", 50);
             this.listViewItems.DoubleClick += new System.EventHandler(this.ButtonEdit_Click);
@@ -97,7 +98,7 @@ namespace AtariMapMaker
             //
             this.AcceptButton = this.buttonOK;
             this.CancelButton = this.buttonCancel;
-            this.ClientSize = new System.Drawing.Size(424, 235);
+            this.ClientSize = new System.Drawing.Size(484, 235);
             this.Controls.Add(this.listViewItems);
             this.Controls.Add(this.buttonAdd);
             this.Controls.Add(this.buttonEdit);

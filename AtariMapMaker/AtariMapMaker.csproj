@@ -182,6 +182,7 @@
     </Compile>
     <Compile Include="MetadataLayerRenderer.cs" />
     <Compile Include="MetadataParser.cs" />
+    <Compile Include="MetadataTypeRegistry.cs" />
     <Compile Include="MetadataItemEditDialog.cs">
       <SubType>Form</SubType>
     </Compile>

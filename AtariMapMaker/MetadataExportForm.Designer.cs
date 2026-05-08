@@ -25,6 +25,7 @@ namespace AtariMapMaker
             this.buttonCopy = new System.Windows.Forms.Button();
             this.buttonClose = new System.Windows.Forms.Button();
             this.checkBoxIncludeColors = new System.Windows.Forms.CheckBox();
+            this.checkBoxIncludeTypes = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // labelGroupBy
@@ -43,11 +44,12 @@ namespace AtariMapMaker
             "None",
             "Color",
             "Value",
-            "Text"});
+            "Text/Type"});
             this.comboGroupBy.Location = new System.Drawing.Point(100, 10);
             this.comboGroupBy.Name = "comboGroupBy";
             this.comboGroupBy.Size = new System.Drawing.Size(180, 28);
             this.comboGroupBy.TabIndex = 1;
+            this.comboGroupBy.SelectedIndexChanged += new System.EventHandler(this.RegenerateOutput);
             // 
             // labelCoordOrder
             // 
@@ -69,6 +71,7 @@ namespace AtariMapMaker
             this.comboCoordOrder.Name = "comboCoordOrder";
             this.comboCoordOrder.Size = new System.Drawing.Size(200, 28);
             this.comboCoordOrder.TabIndex = 3;
+            this.comboCoordOrder.SelectedIndexChanged += new System.EventHandler(this.RegenerateOutput);
             // 
             // checkHeader
             // 
@@ -96,7 +99,7 @@ namespace AtariMapMaker
             this.textBoxOutput.Name = "textBoxOutput";
             this.textBoxOutput.ReadOnly = true;
             this.textBoxOutput.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.textBoxOutput.Size = new System.Drawing.Size(520, 320);
+            this.textBoxOutput.Size = new System.Drawing.Size(573, 320);
             this.textBoxOutput.TabIndex = 6;
             // 
             // buttonCopy
@@ -121,22 +124,28 @@ namespace AtariMapMaker
             // 
             // checkBoxIncludeColors
             // 
-            this.checkBoxIncludeColors.Location = new System.Drawing.Point(246, 68);
+            this.checkBoxIncludeColors.Location = new System.Drawing.Point(396, 68);
             this.checkBoxIncludeColors.Name = "checkBoxIncludeColors";
             this.checkBoxIncludeColors.Size = new System.Drawing.Size(189, 25);
             this.checkBoxIncludeColors.TabIndex = 9;
             this.checkBoxIncludeColors.Text = "Include color values";
             this.checkBoxIncludeColors.CheckedChanged += new System.EventHandler(this.RegenerateOutput);
             // 
+            // checkBoxIncludeTypes
+            // 
+            this.checkBoxIncludeTypes.Location = new System.Drawing.Point(203, 68);
+            this.checkBoxIncludeTypes.Name = "checkBoxIncludeTypes";
+            this.checkBoxIncludeTypes.Size = new System.Drawing.Size(187, 25);
+            this.checkBoxIncludeTypes.TabIndex = 10;
+            this.checkBoxIncludeTypes.Text = "Include type values";
+            this.checkBoxIncludeTypes.CheckedChanged += new System.EventHandler(this.RegenerateOutput);
+            // 
             // MetadataExportForm
             // 
-            this.comboGroupBy.SelectedIndex = 0;
-            this.comboCoordOrder.SelectedIndex = 0;
-            this.comboGroupBy.SelectedIndexChanged += new System.EventHandler(this.RegenerateOutput);
-            this.comboCoordOrder.SelectedIndexChanged += new System.EventHandler(this.RegenerateOutput);
             this.AcceptButton = this.buttonClose;
             this.CancelButton = this.buttonClose;
-            this.ClientSize = new System.Drawing.Size(544, 484);
+            this.ClientSize = new System.Drawing.Size(619, 484);
+            this.Controls.Add(this.checkBoxIncludeTypes);
             this.Controls.Add(this.checkBoxIncludeColors);
             this.Controls.Add(this.labelGroupBy);
             this.Controls.Add(this.comboGroupBy);
@@ -168,5 +177,6 @@ namespace AtariMapMaker
         private System.Windows.Forms.Button buttonCopy;
         private System.Windows.Forms.Button buttonClose;
         private System.Windows.Forms.CheckBox checkBoxIncludeColors;
+        private System.Windows.Forms.CheckBox checkBoxIncludeTypes;
     }
 }
