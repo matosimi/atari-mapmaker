@@ -1008,6 +1008,7 @@ namespace AtariMapMaker
                     var meta = myMap.ScreenMetadata[key];
                     var existing = meta.ParsedItems?.Find(i => i.X == cellX && i.Y == cellY);
                     bool ctrl = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                    bool alt = (Control.ModifierKeys & Keys.Alt) == Keys.Alt;
                     if (ctrl && existing != null)
                     {
                         MetadataItemClipboard.Copy(existing);
@@ -1016,11 +1017,41 @@ namespace AtariMapMaker
                         pictureBoxMap.Refresh();
                         return;
                     }
+                    if (alt && existing != null)
+                    {
+                        MetadataItemClipboard.BeginMove(existing, scrx, scry, cellX, cellY);
+                        UpdateMetadataClipboardPreview();
+                        RedrawEditorWindow();
+                        pictureBoxMap.Refresh();
+                        return;
+                    }
                     if (!ctrl && MetadataItemClipboard.HasItem)
                     {
                         var copied = MetadataItemClipboard.CopiedItem;
+                        if (MetadataItemClipboard.IsMovePending)
+                        {
+                            if (scrx == MetadataItemClipboard.MoveSourceScreenX && scry == MetadataItemClipboard.MoveSourceScreenY
+                                && cellX == MetadataItemClipboard.MoveSourceCellX && cellY == MetadataItemClipboard.MoveSourceCellY)
+                            {
+                                MetadataItemClipboard.Clear();
+                                previousMetadataOverlayLocation = null;
+                                UpdateMetadataClipboardPreview();
+                                UpdateMetadataLayerUI();
+                                RedrawEditorWindow();
+                                pictureBoxMap.Refresh();
+                                return;
+                            }
+                            string srcKey = $"{MetadataItemClipboard.MoveSourceScreenX},{MetadataItemClipboard.MoveSourceScreenY}";
+                            if (myMap.ScreenMetadata.TryGetValue(srcKey, out var srcMeta) && srcMeta?.ParsedItems != null)
+                            {
+                                var srcItem = srcMeta.ParsedItems.Find(i => i.X == MetadataItemClipboard.MoveSourceCellX && i.Y == MetadataItemClipboard.MoveSourceCellY);
+                                if (srcItem != null)
+                                    srcMeta.ParsedItems.Remove(srcItem);
+                            }
+                        }
                         meta.ParsedItems.RemoveAll(i => i.X == cellX && i.Y == cellY);
                         meta.ParsedItems.Add(new MetadataLayerItem { X = cellX, Y = cellY, Text = copied.Text ?? "", Value = copied.Value, Color = copied.Color });
+                        MetadataItemClipboard.Clear();
                         previousMetadataOverlayLocation = null;
                         UpdateMetadataLayerUI();
                         RedrawEditorWindow();
