@@ -69,131 +69,31 @@ namespace AtariMapMaker
         {
             if (dataSource == null)
                 return;
-            
-            // Graphical part: crop selection from map (same for tilemap and character mode – correct colors/fonts)
+
             if (ClipboardImage != null)
             {
                 ClipboardImage.Dispose();
-            }
-            
-            // If SkipZero is enabled, create a 32-bit ARGB bitmap to support transparency
-            // Otherwise use 8-bit indexed for better performance
-            if (SkipZero)
-            {
-                // Create 32-bit ARGB bitmap for transparency support.
-                // tempBitmap is 32bpp (default); we must lock it as Format32bppArgb when reading.
-                Bitmap tempBitmap = new Bitmap(mouseSelection.Width, mouseSelection.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                using (Graphics tempGr = Graphics.FromImage(tempBitmap))
-                {
-                    tempGr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                    tempGr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
-                    tempGr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
-                }
-                
-                ClipboardImage = new Bitmap(tempBitmap.Width, tempBitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                BitmapData srcData = tempBitmap.LockBits(
-                    new Rectangle(0, 0, tempBitmap.Width, tempBitmap.Height),
-                    System.Drawing.Imaging.ImageLockMode.ReadOnly,
-                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                BitmapData dstData = ClipboardImage.LockBits(
-                    new Rectangle(0, 0, ClipboardImage.Width, ClipboardImage.Height),
-                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
-                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                unsafe
-                {
-                    int* srcPtr = (int*)srcData.Scan0;
-                    int* dstPtr = (int*)dstData.Scan0;
-                    int w = tempBitmap.Width;
-                    int h = tempBitmap.Height;
-                    int srcStride = srcData.Stride / 4;
-                    int dstStride = dstData.Stride / 4;
-                    for (int y = 0; y < h; y++)
-                        for (int x = 0; x < w; x++)
-                            dstPtr[y * dstStride + x] = srcPtr[y * srcStride + x];
-                }
-                tempBitmap.UnlockBits(srcData);
-                ClipboardImage.UnlockBits(dstData);
-                tempBitmap.Dispose();
-            }
-            else
-            {
-                // Use 8-bit indexed bitmap for normal operation
-                // First draw to a 32-bit bitmap (Graphics can't be created from 8-bit indexed)
-                Bitmap temp32Bit = new Bitmap(mouseSelection.Width, mouseSelection.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                using (Graphics tempGr = Graphics.FromImage(temp32Bit))
-                {
-                    tempGr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                    tempGr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
-                    tempGr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
-                }
-                
-                // Convert 32-bit ARGB to 8-bit indexed using palette
-                ClipboardImage = new Bitmap(mouseSelection.Width, mouseSelection.Height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-                ClipboardImage.Palette = AtariPalette.GetPalette();
-                Color[] palette = AtariPalette.GetPalette().Entries;
-                
-                BitmapData srcData = temp32Bit.LockBits(
-                    new Rectangle(0, 0, temp32Bit.Width, temp32Bit.Height),
-                    System.Drawing.Imaging.ImageLockMode.ReadOnly,
-                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                BitmapData dstData = ClipboardImage.LockBits(
-                    new Rectangle(0, 0, ClipboardImage.Width, ClipboardImage.Height),
-                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
-                    System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-                
-                unsafe
-                {
-                    int* srcPtr = (int*)srcData.Scan0;
-                    byte* dstPtr = (byte*)dstData.Scan0;
-                    
-                    for (int y = 0; y < temp32Bit.Height; y++)
-                    {
-                        for (int x = 0; x < temp32Bit.Width; x++)
-                        {
-                            int argb = srcPtr[y * srcData.Stride / 4 + x];
-                            Color color = Color.FromArgb(argb);
-                            
-                            // Find closest palette color
-                            int bestIndex = 0;
-                            double minDistance = double.MaxValue;
-                            for (int i = 0; i < palette.Length; i++)
-                            {
-                                double distance = Math.Sqrt(
-                                    Math.Pow(color.R - palette[i].R, 2) +
-                                    Math.Pow(color.G - palette[i].G, 2) +
-                                    Math.Pow(color.B - palette[i].B, 2));
-                                if (distance < minDistance)
-                                {
-                                    minDistance = distance;
-                                    bestIndex = i;
-                                }
-                            }
-                            
-                            dstPtr[y * dstData.Stride + x] = (byte)bestIndex;
-                        }
-                    }
-                }
-                
-                temp32Bit.UnlockBits(srcData);
-                ClipboardImage.UnlockBits(dstData);
-                temp32Bit.Dispose();
+                ClipboardImage = null;
             }
 
-            // Data part: tile indexes for tilemaps, character data otherwise
+            int tileWidthChars = 1;
+            int tileHeightChars = 1;
+
+            // Data first (SkipZero transparency mask uses the same grid as Paste)
             if (dataSource.IsTilemap && dataSource.TilemapInfo != null)
             {
-                int tileWidth = dataSource.TilemapInfo.TileWidth;
-                int tileHeight = dataSource.TilemapInfo.TileHeight;
+                tileWidthChars = dataSource.TilemapInfo.TileWidth;
+                tileHeightChars = dataSource.TilemapInfo.TileHeight;
                 int charX = mouseSelection.X / Globals.CharSize;
                 int charY = mouseSelection.Y / Globals.CharSize;
                 int charWidth = mouseSelection.Width / Globals.CharSize;
                 int charHeight = mouseSelection.Height / Globals.CharSize;
-                int tileWidthInTiles = charWidth / tileWidth;
-                int tileHeightInTiles = charHeight / tileHeight;
+                int tileWidthInTiles = charWidth / tileWidthChars;
+                int tileHeightInTiles = charHeight / tileHeightChars;
                 int absoluteCharX = dataSource.OffsetX + charX;
                 int absoluteCharY = dataSource.OffsetY + charY;
-                int absoluteTileX = absoluteCharX / tileWidth;
-                int absoluteTileY = absoluteCharY / tileHeight;
+                int absoluteTileX = absoluteCharX / tileWidthChars;
+                int absoluteTileY = absoluteCharY / tileHeightChars;
                 IsTileIndexes = true;
                 ClipboardWidth = tileWidthInTiles;
                 ClipboardHeight = tileHeightInTiles;
@@ -226,6 +126,282 @@ namespace AtariMapMaker
                         if (dataIndex >= 0 && dataIndex < sourceData.Length)
                             data[x, y] = sourceData[dataIndex];
                     }
+            }
+
+            // Clipboard image: fast 8bpp crop from indexed renderer buffer, or draw + quantize fallback.
+            // Crop is in unzoomed buffer space; editor overlay expects zoomed pixel size (same as mouseSelection).
+            if (!SkipZero)
+            {
+                Bitmap bmp8;
+                if (!TryBuild8bppClipboardCrop(srcBmp, mouseSelection, out bmp8))
+                    bmp8 = Build8bppClipboardViaDrawAndQuantize(srcBmp, mouseSelection);
+                else
+                    bmp8 = EnsureClipboard8bppDisplaySize(bmp8, mouseSelection.Width, mouseSelection.Height);
+                ClipboardImage = bmp8;
+            }
+            else
+            {
+                Bitmap temp8;
+                if (!TryBuild8bppClipboardCrop(srcBmp, mouseSelection, out temp8))
+                    temp8 = Build8bppClipboardViaDrawAndQuantize(srcBmp, mouseSelection);
+                else
+                    temp8 = EnsureClipboard8bppDisplaySize(temp8, mouseSelection.Width, mouseSelection.Height);
+                try
+                {
+                    ClipboardImage = ConvertOpaque8bppToArgb32(temp8);
+                    int cellPxW = IsTileIndexes ? tileWidthChars * Globals.CharSize : Globals.CharSize;
+                    int cellPxH = IsTileIndexes ? tileHeightChars * Globals.CharSize : Globals.CharSize;
+                    ApplySkipZeroTransparencyMask(ClipboardImage, data, ClipboardWidth, ClipboardHeight, cellPxW, cellPxH);
+                }
+                finally
+                {
+                    temp8.Dispose();
+                }
+            }
+        }
+
+        /// <summary>LockBits copy from Format8bppIndexed map buffer; no RGB requantization.</summary>
+        private static bool TryBuild8bppClipboardCrop(Bitmap srcBmp, Rectangle mouseSelectionZoomed, out Bitmap bmp8)
+        {
+            bmp8 = null;
+            if (srcBmp == null || srcBmp.PixelFormat != PixelFormat.Format8bppIndexed)
+                return false;
+            Rectangle srcRect = Globals.UnzoomRectangle(mouseSelectionZoomed);
+            if (srcRect.Width <= 0 || srcRect.Height <= 0)
+                return false;
+            if (srcRect.X < 0 || srcRect.Y < 0 || srcRect.Right > srcBmp.Width || srcRect.Bottom > srcBmp.Height)
+                return false;
+
+            bmp8 = new Bitmap(srcRect.Width, srcRect.Height, PixelFormat.Format8bppIndexed);
+            bmp8.Palette = AtariPalette.GetPalette();
+
+            BitmapData srcData = srcBmp.LockBits(srcRect, ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            BitmapData dstData = bmp8.LockBits(
+                new Rectangle(0, 0, bmp8.Width, bmp8.Height),
+                ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+            try
+            {
+                unsafe
+                {
+                    byte* srcBase = (byte*)srcData.Scan0;
+                    byte* dstBase = (byte*)dstData.Scan0;
+                    int w = srcRect.Width;
+                    int h = srcRect.Height;
+                    for (int y = 0; y < h; y++)
+                    {
+                        byte* s = srcBase + y * srcData.Stride;
+                        byte* d = dstBase + y * dstData.Stride;
+                        for (int x = 0; x < w; x++)
+                            d[x] = s[x];
+                    }
+                }
+            }
+            finally
+            {
+                srcBmp.UnlockBits(srcData);
+                bmp8.UnlockBits(dstData);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Fast crop is 1 map pixel : 1 unzoomed pixel; clipboard overlay uses picture-box pixels (zoomed), same as <paramref name="mouseSelection"/> size.
+        /// </summary>
+        private static Bitmap EnsureClipboard8bppDisplaySize(Bitmap bmp8, int displayWidth, int displayHeight)
+        {
+            if (bmp8 == null)
+                return null;
+            if (bmp8.Width == displayWidth && bmp8.Height == displayHeight)
+                return bmp8;
+            return ScaleNearestNeighbor8bppIndexed(bmp8, displayWidth, displayHeight);
+        }
+
+        private static Bitmap ScaleNearestNeighbor8bppIndexed(Bitmap src, int dstW, int dstH)
+        {
+            var dst = new Bitmap(dstW, dstH, PixelFormat.Format8bppIndexed);
+            dst.Palette = AtariPalette.GetPalette();
+            int srcW = src.Width;
+            int srcH = src.Height;
+            if (srcW <= 0 || srcH <= 0)
+            {
+                src.Dispose();
+                return dst;
+            }
+            BitmapData sbd = src.LockBits(
+                new Rectangle(0, 0, srcW, srcH),
+                ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            BitmapData dbd = dst.LockBits(
+                new Rectangle(0, 0, dstW, dstH),
+                ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+            try
+            {
+                unsafe
+                {
+                    byte* sp = (byte*)sbd.Scan0;
+                    byte* dp = (byte*)dbd.Scan0;
+                    for (int dy = 0; dy < dstH; dy++)
+                    {
+                        int sy = (dy * srcH) / dstH;
+                        if (sy >= srcH)
+                            sy = srcH - 1;
+                        byte* srow = sp + sy * sbd.Stride;
+                        byte* drow = dp + dy * dbd.Stride;
+                        for (int dx = 0; dx < dstW; dx++)
+                        {
+                            int sx = (dx * srcW) / dstW;
+                            if (sx >= srcW)
+                                sx = srcW - 1;
+                            drow[dx] = srow[sx];
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                src.UnlockBits(sbd);
+                dst.UnlockBits(dbd);
+                src.Dispose();
+            }
+            return dst;
+        }
+
+        /// <summary>Draw crop to 32bpp then match palette (fallback when source is not indexed or out of bounds).</summary>
+        private static Bitmap Build8bppClipboardViaDrawAndQuantize(Bitmap srcBmp, Rectangle mouseSelection)
+        {
+            Bitmap temp32Bit = new Bitmap(mouseSelection.Width, mouseSelection.Height, PixelFormat.Format32bppArgb);
+            using (Graphics tempGr = Graphics.FromImage(temp32Bit))
+            {
+                tempGr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                tempGr.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                tempGr.DrawImage(srcBmp, Globals.OriginateRectangle(mouseSelection), Globals.UnzoomRectangle(mouseSelection), GraphicsUnit.Pixel);
+            }
+
+            Bitmap bmp8 = new Bitmap(mouseSelection.Width, mouseSelection.Height, PixelFormat.Format8bppIndexed);
+            bmp8.Palette = AtariPalette.GetPalette();
+            Color[] palette = AtariPalette.GetPalette().Entries;
+
+            BitmapData srcData = temp32Bit.LockBits(
+                new Rectangle(0, 0, temp32Bit.Width, temp32Bit.Height),
+                ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            BitmapData dstData = bmp8.LockBits(
+                new Rectangle(0, 0, bmp8.Width, bmp8.Height),
+                ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+
+            unsafe
+            {
+                int* srcPtr = (int*)srcData.Scan0;
+                byte* dstPtr = (byte*)dstData.Scan0;
+                int srcWordsPerRow = srcData.Stride / 4;
+
+                for (int y = 0; y < temp32Bit.Height; y++)
+                {
+                    for (int x = 0; x < temp32Bit.Width; x++)
+                    {
+                        int argb = srcPtr[y * srcWordsPerRow + x];
+                        Color color = Color.FromArgb(argb);
+
+                        int bestIndex = 0;
+                        int minDistSq = int.MaxValue;
+                        for (int i = 0; i < palette.Length; i++)
+                        {
+                            int dr = color.R - palette[i].R;
+                            int dg = color.G - palette[i].G;
+                            int db = color.B - palette[i].B;
+                            int d = dr * dr + dg * dg + db * db;
+                            if (d < minDistSq)
+                            {
+                                minDistSq = d;
+                                bestIndex = i;
+                            }
+                        }
+
+                        dstPtr[y * dstData.Stride + x] = (byte)bestIndex;
+                    }
+                }
+            }
+
+            temp32Bit.UnlockBits(srcData);
+            bmp8.UnlockBits(dstData);
+            temp32Bit.Dispose();
+            return bmp8;
+        }
+
+        private static Bitmap ConvertOpaque8bppToArgb32(Bitmap src8)
+        {
+            Color[] pal = src8.Palette.Entries;
+            var dst32 = new Bitmap(src8.Width, src8.Height, PixelFormat.Format32bppArgb);
+            BitmapData srcData = src8.LockBits(
+                new Rectangle(0, 0, src8.Width, src8.Height),
+                ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            BitmapData dstData = dst32.LockBits(
+                new Rectangle(0, 0, dst32.Width, dst32.Height),
+                ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                unsafe
+                {
+                    byte* sp = (byte*)srcData.Scan0;
+                    int* dp = (int*)dstData.Scan0;
+                    int w = src8.Width;
+                    int h = src8.Height;
+                    int dStride = dstData.Stride / 4;
+                    for (int y = 0; y < h; y++)
+                    {
+                        byte* srow = sp + y * srcData.Stride;
+                        int* drow = dp + y * dStride;
+                        for (int x = 0; x < w; x++)
+                        {
+                            int idx = srow[x];
+                            int rgb = pal[idx].ToArgb() & 0x00FFFFFF;
+                            drow[x] = rgb | unchecked((int)0xFF000000);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                src8.UnlockBits(srcData);
+                dst32.UnlockBits(dstData);
+            }
+            return dst32;
+        }
+
+        /// <summary>Full alpha=0 for each cell where pasted data is 0x00 (same rule as <see cref="Paste"/>).</summary>
+        private static void ApplySkipZeroTransparencyMask(Bitmap argb32, byte[,] clipData, int cellsW, int cellsH, int cellPixelW, int cellPixelH)
+        {
+            if (argb32 == null || clipData == null)
+                return;
+            BitmapData bd = argb32.LockBits(
+                new Rectangle(0, 0, argb32.Width, argb32.Height),
+                ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            try
+            {
+                unsafe
+                {
+                    int* p = (int*)bd.Scan0;
+                    int strideInts = bd.Stride / 4;
+                    for (int cy = 0; cy < cellsH; cy++)
+                    {
+                        for (int cx = 0; cx < cellsW; cx++)
+                        {
+                            if (clipData[cx, cy] != 0)
+                                continue;
+                            int x0 = cx * cellPixelW;
+                            int y0 = cy * cellPixelH;
+                            for (int yy = 0; yy < cellPixelH; yy++)
+                            {
+                                int* row = p + (y0 + yy) * strideInts + x0;
+                                for (int xx = 0; xx < cellPixelW; xx++)
+                                    row[xx] &= 0x00FFFFFF;
+                            }
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                argb32.UnlockBits(bd);
             }
         }
         
