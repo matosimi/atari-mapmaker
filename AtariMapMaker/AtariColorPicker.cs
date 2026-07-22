@@ -106,7 +106,7 @@ namespace AtariMapMaker
             panelDual = new Panel
             {
                 Location = new Point(160, 8),
-                Size = new Size(100, 260),
+                Size = new Size(100, 270),
                 Visible = false
             };
 
@@ -120,44 +120,44 @@ namespace AtariMapMaker
             pictureBoxPrimary = new PictureBox
             {
                 Location = new Point(11, 18),
-                Size = new Size(78, 48),
+                Size = new Size(78, 56),
                 BorderStyle = BorderStyle.FixedSingle,
                 Cursor = Cursors.Hand
             };
             pictureBoxPrimary.Click += (s, e) => { editingPrimary = true; HighlightActiveTarget(); RenderPalette(); };
             labelPrimaryValue = new Label
             {
-                Location = new Point(0, 68),
-                Size = new Size(100, 16),
+                Location = new Point(0, 76),
+                Size = new Size(100, 28),
                 TextAlign = ContentAlignment.MiddleCenter
             };
 
             labelAlternateTitle = new Label
             {
                 Text = "Alternate",
-                Location = new Point(0, 96),
+                Location = new Point(0, 108),
                 Size = new Size(100, 16),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             pictureBoxAlternate = new PictureBox
             {
-                Location = new Point(11, 114),
-                Size = new Size(78, 48),
+                Location = new Point(11, 126),
+                Size = new Size(78, 56),
                 BorderStyle = BorderStyle.FixedSingle,
                 Cursor = Cursors.Hand
             };
             pictureBoxAlternate.Click += (s, e) => { editingPrimary = false; HighlightActiveTarget(); RenderPalette(); };
             labelAlternateValue = new Label
             {
-                Location = new Point(0, 164),
-                Size = new Size(100, 16),
+                Location = new Point(0, 184),
+                Size = new Size(100, 28),
                 TextAlign = ContentAlignment.MiddleCenter
             };
 
             buttonOk = new Button
             {
                 Text = "OK",
-                Location = new Point(11, 200),
+                Location = new Point(11, 220),
                 Size = new Size(78, 28)
             };
             buttonOk.Click += (s, e) =>
@@ -198,10 +198,10 @@ namespace AtariMapMaker
 
         private void UpdateDualSwatches()
         {
-            labelPrimaryValue.Text = "$" + primaryColor.ToString("X2") + " - " + primaryColor;
-            labelAlternateValue.Text = "$" + alternateColor.ToString("X2") + " - " + alternateColor;
-            DrawSwatch(pictureBoxPrimary, primaryColor);
-            DrawSwatch(pictureBoxAlternate, alternateColor);
+            labelPrimaryValue.Text = "was $" + oldPrimaryColor.ToString("X2") + "\nnow $" + primaryColor.ToString("X2");
+            labelAlternateValue.Text = "was $" + oldAlternateColor.ToString("X2") + "\nnow $" + alternateColor.ToString("X2");
+            DrawDualSwatch(pictureBoxPrimary, oldPrimaryColor, primaryColor);
+            DrawDualSwatch(pictureBoxAlternate, oldAlternateColor, alternateColor);
         }
 
         private static void DrawSwatch(PictureBox box, byte colorIndex)
@@ -209,6 +209,20 @@ namespace AtariMapMaker
             Bitmap bmp = new Bitmap(box.Width, box.Height);
             using (Graphics gr = Graphics.FromImage(bmp))
                 gr.Clear(AtariPalette.GetColor(colorIndex));
+            if (box.Image != null)
+                box.Image.Dispose();
+            box.Image = bmp;
+        }
+
+        /// <summary>Top half = previous color, bottom half = current selection (same as single-mode preview).</summary>
+        private static void DrawDualSwatch(PictureBox box, byte oldColor, byte newColor)
+        {
+            Bitmap bmp = new Bitmap(box.Width, box.Height);
+            using (Graphics gr = Graphics.FromImage(bmp))
+            {
+                gr.FillRectangle(new SolidBrush(AtariPalette.GetColor(oldColor)), 0, 0, box.Width, box.Height / 2);
+                gr.FillRectangle(new SolidBrush(AtariPalette.GetColor(newColor)), 0, box.Height / 2, box.Width, box.Height - box.Height / 2);
+            }
             if (box.Image != null)
                 box.Image.Dispose();
             box.Image = bmp;

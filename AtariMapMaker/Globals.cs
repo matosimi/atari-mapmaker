@@ -49,8 +49,16 @@ namespace AtariMapMaker
             return new Rectangle(0, 0, sourceRect.Width, sourceRect.Height); 
         }
 
-        /// <summary>When true, metadata layer overlay is drawn and map clicks add/edit metadata.</summary>
+        /// <summary>When true, metadata layer overlay is drawn on the map.</summary>
         public static bool MetadataLayerVisible { get; set; }
+
+        /// <summary>When true, map clicks add/edit metadata instead of editing the character map.</summary>
+        public static bool MetadataLayerEditable { get; set; }
+
+        /// <summary>
+        /// Blend between charmap and metadata (0–100, step 5). 0 = solid map only, 100 = metadata only, 50 = both at 50%.
+        /// </summary>
+        public static int MetadataLayerBlendPercent { get; set; } = 50;
 
         /// <summary>When true, metadata text (white labels) is drawn on the overlay; when false, only value/color indicator is shown.</summary>
         public static bool MetadataLayerShowText { get; set; }

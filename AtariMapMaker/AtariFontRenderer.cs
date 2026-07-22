@@ -26,6 +26,8 @@ namespace AtariMapMaker
         /// <summary>When set, CharPicker window uses this font index from CharPickerFontSourceMap instead of default.</summary>
         public static int? CharPickerFontIndex { get; set; }
         public static AtariMap CharPickerFontSourceMap { get; set; }
+        /// <summary>When set, CharPicker rendering uses these colors instead of the global Color5 palette.</summary>
+        public static byte[] CharPickerColorOverride { get; set; }
         public static string LastFontFile
         {
             get { return lastFontFile; }
@@ -417,6 +419,9 @@ namespace AtariMapMaker
             BitmapData fntd = null;
             Bitmap lockedFontBmp = null;
             AtariFont currentFont = defaultFont;
+            byte[] activeColors = color5;
+            if (windowType == Globals.WindowType.CharPicker && CharPickerColorOverride != null && CharPickerColorOverride.Length > 0)
+                activeColors = CharPickerColorOverride;
             try
             {
                 bmd = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
@@ -497,13 +502,13 @@ namespace AtariMapMaker
                                 if (charValue * 8 + 7 >= fntd.Stride * fntd.Height)
                                     charValue = 0; // Use character 0 if out of bounds
                                 
-                                byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : color5;
-                                if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
+                                byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : activeColors;
+                                if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = activeColors;
                                 bool oddScanline = (scln & 0x1) == 1;
                                 for (int c = 0; c < 8; c++)
                                 {
                                     int colorIndex = fntRow[charValue * 8 + c];
-                                    byte color = ResolveAlpaColor(dliColor5, colorIndex, oddScanline);
+                                    byte color = ResolveAlpaColor(dliColor5, colorIndex, oddScanline, activeColors);
                                     row[x * 8 + c] = (index < data.Length) ? color : (byte)0;
                                 }
                             }
@@ -540,12 +545,13 @@ namespace AtariMapMaker
 
         /// <summary>
         /// Resolve a playfield color for the current scanline. ALPA alternates come from the
-        /// per-line DLI array when present (indices 5–8); otherwise from the global Color5 palette.
+        /// per-line DLI array when present (indices 5–8); otherwise from the active palette.
         /// Missing PF1 alter falls back to normal PF1.
         /// </summary>
-        private static byte ResolveAlpaColor(byte[] lineColors, int colorIndex, bool oddScanline)
+        private static byte ResolveAlpaColor(byte[] lineColors, int colorIndex, bool oddScanline, byte[] paletteColors = null)
         {
-            if (color5.Length <= 5 || !oddScanline)
+            byte[] alpaSource = paletteColors ?? color5;
+            if (alpaSource.Length <= 5 || !oddScanline)
                 return lineColors[colorIndex];
 
             int altIndex;
@@ -560,11 +566,11 @@ namespace AtariMapMaker
 
             if (altIndex < lineColors.Length)
                 return lineColors[altIndex];
-            if (altIndex < color5.Length)
-                return color5[altIndex];
-            // PF1 alter not present: same as normal PF1 (from DLI line or global)
+            if (altIndex < alpaSource.Length)
+                return alpaSource[altIndex];
+            // PF1 alter not present: same as normal PF1 (from DLI line or palette)
             if (colorIndex == 1)
-                return lineColors.Length > 1 ? lineColors[1] : color5[1];
+                return lineColors.Length > 1 ? lineColors[1] : alpaSource[1];
             return lineColors[colorIndex];
         }
 

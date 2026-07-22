@@ -81,6 +81,39 @@ namespace AtariMapMaker
         }
     }
 
+    /// <summary>Multi-item clipboard for Screen Metadata dialog Copy/Paste between screens.</summary>
+    public static class ScreenMetadataListClipboard
+    {
+        private static readonly List<MetadataLayerItem> items = new List<MetadataLayerItem>();
+
+        public static int Count => items.Count;
+        public static IReadOnlyList<MetadataLayerItem> Items => items;
+
+        public static void Copy(IEnumerable<MetadataLayerItem> source)
+        {
+            items.Clear();
+            if (source == null) return;
+            foreach (var item in source)
+            {
+                if (item == null) continue;
+                items.Add(new MetadataLayerItem
+                {
+                    X = item.X,
+                    Y = item.Y,
+                    Text = item.Text ?? "",
+                    Type = item.Type,
+                    Value = item.Value,
+                    Color = item.Color
+                });
+            }
+        }
+
+        public static void Clear()
+        {
+            items.Clear();
+        }
+    }
+
     public class TilemapData
     {
         public int TileWidth { get; set; }  // In characters

@@ -184,6 +184,21 @@ namespace AtariMapMaker
 
         private void CheckBoxMetadataLayer_CheckedChanged(object sender, EventArgs e)
         {
+            bool show = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            Globals.MetadataLayerVisible = show;
+            if (!show && checkBoxMetadataEdit != null && checkBoxMetadataEdit.Checked)
+                checkBoxMetadataEdit.Checked = false;
+            UpdateMetadataLayerUI();
+            RedrawEditorWindow();
+            pictureBoxMap.Refresh();
+        }
+
+        private void CheckBoxMetadataEdit_CheckedChanged(object sender, EventArgs e)
+        {
+            bool edit = checkBoxMetadataEdit != null && checkBoxMetadataEdit.Checked;
+            if (edit && checkBoxMetadataLayer != null && !checkBoxMetadataLayer.Checked)
+                checkBoxMetadataLayer.Checked = true;
+            Globals.MetadataLayerEditable = edit;
             Globals.MetadataLayerVisible = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
             UpdateMetadataLayerUI();
             RedrawEditorWindow();
@@ -204,22 +219,33 @@ namespace AtariMapMaker
             int itemCount = GetMetadataItemCount();
             if (groupBoxMetadata != null)
                 groupBoxMetadata.Text = $"Metadata {itemCount}";
-            bool metadataChecked = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            bool showChecked = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            bool editChecked = checkBoxMetadataEdit != null && checkBoxMetadataEdit.Checked;
             if (groupBoxDli != null)
-                groupBoxDli.Enabled = !metadataChecked;
+                groupBoxDli.Enabled = !editChecked;
             if (groupBoxFont != null)
-                groupBoxFont.Enabled = !metadataChecked;
+                groupBoxFont.Enabled = !editChecked;
             if (buttonMassChangeMetadata != null)
-                buttonMassChangeMetadata.Enabled = metadataChecked;
+                buttonMassChangeMetadata.Enabled = editChecked;
             if (checkBoxMetaDataShowColorLinks != null)
-                checkBoxMetaDataShowColorLinks.Enabled = metadataChecked;
+                checkBoxMetaDataShowColorLinks.Enabled = showChecked;
             if (checkBoxMetaDataShowValueLinks != null)
-                checkBoxMetaDataShowValueLinks.Enabled = metadataChecked;
-            if (metadataChecked)
+                checkBoxMetaDataShowValueLinks.Enabled = showChecked;
+            if (trackBarMetadataBlend != null)
+                trackBarMetadataBlend.Enabled = showChecked;
+            if (labelMetadataBlend != null)
+                labelMetadataBlend.Enabled = showChecked;
+            if (checkBoxMetadataShowText != null)
+                checkBoxMetadataShowText.Enabled = showChecked;
+            if (showChecked)
             {
                 Globals.MetadataLayerShowColorLinks = checkBoxMetaDataShowColorLinks != null && checkBoxMetaDataShowColorLinks.Checked;
                 Globals.MetadataLayerShowValueLinks = checkBoxMetaDataShowValueLinks != null && checkBoxMetaDataShowValueLinks.Checked;
+                if (trackBarMetadataBlend != null)
+                    Globals.MetadataLayerBlendPercent = trackBarMetadataBlend.Value * 5;
             }
+            Globals.MetadataLayerEditable = editChecked;
+            Globals.MetadataLayerVisible = showChecked;
         }
 
         private void CheckBoxMetadataShowText_CheckedChanged(object sender, EventArgs e)
@@ -227,6 +253,19 @@ namespace AtariMapMaker
             Globals.MetadataLayerShowText = checkBoxMetadataShowText != null && checkBoxMetadataShowText.Checked;
             RedrawEditorWindow();
             pictureBoxMap.Refresh();
+        }
+
+        private void TrackBarMetadataBlend_Scroll(object sender, EventArgs e)
+        {
+            int pct = trackBarMetadataBlend.Value * 5;
+            Globals.MetadataLayerBlendPercent = pct;
+            if (labelMetadataBlend != null)
+                labelMetadataBlend.Text = $"Map ↔ Meta: {pct}%";
+            if (checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked)
+            {
+                RedrawEditorWindow();
+                pictureBoxMap.Refresh();
+            }
         }
 
         private void CheckBoxMetaDataShowColorLinks_CheckedChanged(object sender, EventArgs e)
@@ -271,22 +310,51 @@ namespace AtariMapMaker
 
         private void ContextMenuStripScreen_Opening(object sender, CancelEventArgs e)
         {
+            Point targetScreen = isScreenLocked ? lockedScreen : currentScreen;
+            bool hasLink = myMap?.ScreenLinks != null &&
+                myMap.ScreenLinks.Exists(l => l.SourceScreen.X == targetScreen.X && l.SourceScreen.Y == targetScreen.Y);
+            bool hasMeta = myMap != null && myMap.ScreenHasMetadata(targetScreen.X, targetScreen.Y);
+            bool hasDesc = false;
+            if (myMap?.ScreenDescriptions != null)
+            {
+                string key = $"{targetScreen.X},{targetScreen.Y}";
+                if (myMap.ScreenDescriptions.TryGetValue(key, out string desc))
+                    hasDesc = !string.IsNullOrWhiteSpace(desc);
+            }
+
+            if (menuItemLinkScreen != null)
+            {
+                menuItemLinkScreen.Checked = hasLink;
+                menuItemLinkScreen.Text = "Link to Screen...";
+            }
+            if (menuItemScreenDescription != null)
+            {
+                menuItemScreenDescription.Checked = hasDesc;
+                menuItemScreenDescription.Text = "Screen Description...";
+            }
+            if (menuItemScreenMetadata != null)
+            {
+                menuItemScreenMetadata.Checked = hasMeta;
+                menuItemScreenMetadata.Text = "Screen Metadata...";
+            }
+            if (menuItemExportMetadata != null)
+            {
+                menuItemExportMetadata.Checked = hasMeta;
+                menuItemExportMetadata.Text = "Export metadata...";
+            }
+
             // Update enabled state of Apply Font Template menu item
             foreach (ToolStripItem item in contextMenuStripScreen.Items)
             {
-                if (item.Text == "Apply Font Template...")
+                if (item.Text == "Apply Font Template..." || item.Text.EndsWith("Apply Font Template..."))
                 {
                     bool enabled = myMap != null && myMap.MultiFontEnabled;
                     if (enabled)
                     {
-                        // Check if current/locked screen references another screen
-                        Point targetScreen = isScreenLocked ? lockedScreen : currentScreen;
                         int refScreenX, refScreenY;
                         bool isReferencing = myMap.GetFontMappingReference(targetScreen.X, targetScreen.Y, out refScreenX, out refScreenY);
                         if (isReferencing && (refScreenX != targetScreen.X || refScreenY != targetScreen.Y))
-                        {
-                            enabled = false; // Disable if referencing another screen
-                        }
+                            enabled = false;
                     }
                     item.Enabled = enabled;
                     break;
@@ -336,6 +404,7 @@ namespace AtariMapMaker
                 AtariFontRenderer.SetFontData(defaultFontData, Globals.FontType.Screen);
             }
             myCharPicker.SetMainMap(myMap);
+            myCharPicker.NotifyScreenChanged(isScreenLocked ? lockedScreen : currentScreen);
             myCharPicker.SetZoom();
             myCharPicker.Refresh();
             myCharPicker.RedrawFontWindow();
@@ -626,6 +695,8 @@ namespace AtariMapMaker
             {
                 RedrawEditorWindow();
                 previousScreen = currentScreen;
+                if (myCharPicker != null && myCharPicker.Visible)
+                    myCharPicker.NotifyScreenChanged(currentScreen);
             }
 
             if (e.Button == MouseButtons.Right)     //SCROLL
@@ -992,7 +1063,7 @@ namespace AtariMapMaker
                     // Redraw the editor window to show the pasted data immediately
                     // Force a complete redraw by calling Redraw with all parameters
                     // This ensures RenderMapData reads the freshly pasted data
-                    AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen);
+                    AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
                     
                     // After redrawing, update the UnderClipBoardImage with the NEW content under the clipboard position
                     // This is critical - otherwise the old UnderClipBoardImage will overwrite the pasted data on mouse move
@@ -1006,7 +1077,7 @@ namespace AtariMapMaker
                     
                     pictureBoxMap.Refresh();
                 }
-                else if (Globals.MetadataLayerVisible)
+                else if (Globals.MetadataLayerEditable)
                 {
                     // Metadata layer: add or edit metadata at this position (tile position for tilemap, char position otherwise)
                     int xx = myMap.OffsetX + e.X / Globals.CharSize;
@@ -1240,7 +1311,11 @@ namespace AtariMapMaker
             {
                 contextMenuStripScreen.Show(pictureBoxMap, e.Location);
             }
-
+            else if (e.Button == MouseButtons.Right)
+            {
+                // Scroll redraws without hover labels; refresh them for the screen under the cursor
+                RedrawEditorWindow();
+            }
         }
 
         private void PictureBoxMap_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -1351,7 +1426,7 @@ namespace AtariMapMaker
             {
                 AtariFontRenderer.ClearFontCache();
             }
-            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen);
+            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
             pictureBoxMap.Refresh();
         }
 
@@ -2620,10 +2695,17 @@ namespace AtariMapMaker
         private void RedrawEditorWindow()
         {
             //AtariFontRenderer.RenderMapData(myMap, AtariFontRenderer.offset, dataImage); //redraw data
-            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen); //dataImage);                         //redraw grids
-            if (!ScreenSelectionShown)  //refresh only when selection is not supposed to be drawn (prevents flickering)
-                pictureBoxMap.Refresh();
-            ScreenSelectionShown = false;
+            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
+            if (ShouldShowScreenSelectionOverlay())
+                DrawScreenSelectionOverlay();
+            else
+                ScreenSelectionShown = false;
+            pictureBoxMap.Refresh();
+        }
+
+        private bool ShouldShowScreenSelectionOverlay()
+        {
+            return tabControl1.SelectedTab == tabPage2 && checkBoxShowScreenSelection.Checked;
         }
 
         private void ComboBoxOperation_SelectedIndexChanged(object sender, EventArgs e)
@@ -2679,8 +2761,26 @@ namespace AtariMapMaker
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
+                case 6: // Export screen by screen — range
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = true;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = true;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
+                case 7: // Import screen by screen — single From screen
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = false;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = false;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
             }
             maskedTextBoxDli.Visible = labelDliMask.Visible = comboOperation.SelectedIndex == 4;
+            if (checkBoxShowScreenSelection.Checked)
+                ShowScreenSelection();
 
         }
 
@@ -3236,10 +3336,10 @@ namespace AtariMapMaker
             RedrawEditorWindow();
         }
 
-        private void ShowScreenSelection(bool redraw = true)
+        private void DrawScreenSelectionOverlay()
         {
-            if (redraw)
-                RedrawEditorWindow();
+            if (pictureBoxMap?.Image == null || myMap == null)
+                return;
             // Use character units per screen (for tilemap, ScreenSize is in tiles so multiply by tile size)
             int screenCharWidth = myMap.ScreenSize.Width;
             int screenCharHeight = myMap.ScreenSize.Height;
@@ -3250,13 +3350,36 @@ namespace AtariMapMaker
             }
             int left = (int)numericUpDownScreenFromX.Value * screenCharWidth;
             int top = (int)numericUpDownScreenFromY.Value * screenCharHeight;
-            int width = (int)(numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * screenCharWidth * Globals.CharSize;
-            int height = (int)(numericUpDownScreenToY.Value - numericUpDownScreenFromY.Value + 1) * screenCharHeight * Globals.CharSize;
+            // Import-style ops disable To X/Y — highlight only the From screen
+            bool singleScreen = !numericUpDownScreenToX.Enabled || !numericUpDownScreenToY.Enabled;
+            int screensWide = singleScreen ? 1 : (int)(numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1);
+            int screensHigh = singleScreen ? 1 : (int)(numericUpDownScreenToY.Value - numericUpDownScreenFromY.Value + 1);
+            if (screensWide < 1) screensWide = 1;
+            if (screensHigh < 1) screensHigh = 1;
+            int width = screensWide * screenCharWidth * Globals.CharSize;
+            int height = screensHigh * screenCharHeight * Globals.CharSize;
+            int x = (left - myMap.OffsetX) * Globals.CharSize;
+            int y = (top - myMap.OffsetY) * Globals.CharSize;
+            int penWidth = 2 * Globals.CharSize;
             Graphics g = Graphics.FromImage(pictureBoxMap.Image);
-            Brush b = new HatchBrush(HatchStyle.Percent80, Color.FromArgb(96, Color.GreenYellow));
-            g.FillRectangle(b, (left - myMap.OffsetX) * Globals.CharSize, (top - myMap.OffsetY) * Globals.CharSize, width, height);
-            pictureBoxMap.Refresh();
-            this.ScreenSelectionShown = true;
+            using (Pen p = new Pen(Color.FromArgb(96, Color.GreenYellow), penWidth))
+            {
+                // Pen is centered on the path; inset by half width so the stroke stays inside the selection
+                float inset = penWidth / 2f;
+                g.DrawRectangle(p, x + inset, y + inset, width - penWidth, height - penWidth);
+            }
+            ScreenSelectionShown = true;
+        }
+
+        private void ShowScreenSelection(bool redraw = true)
+        {
+            if (redraw)
+                RedrawEditorWindow();
+            else
+            {
+                DrawScreenSelectionOverlay();
+                pictureBoxMap.Refresh();
+            }
         }
 
         private void CheckBoxShowScreenSelection_CheckedChanged(object sender, EventArgs e)

@@ -60,7 +60,10 @@ namespace AtariMapMaker
             this.numericUpDownRefScreenY = new System.Windows.Forms.NumericUpDown();
             this.groupBoxMetadata = new System.Windows.Forms.GroupBox();
             this.checkBoxMetadataLayer = new System.Windows.Forms.CheckBox();
+            this.checkBoxMetadataEdit = new System.Windows.Forms.CheckBox();
             this.checkBoxMetadataShowText = new System.Windows.Forms.CheckBox();
+            this.trackBarMetadataBlend = new System.Windows.Forms.TrackBar();
+            this.labelMetadataBlend = new System.Windows.Forms.Label();
             this.buttonMassChangeMetadata = new System.Windows.Forms.Button();
             this.groupBoxFont = new System.Windows.Forms.GroupBox();
             this.buttonRefreshFont = new System.Windows.Forms.Button();
@@ -165,6 +168,7 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRefScreenX)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRefScreenY)).BeginInit();
             this.groupBoxMetadata.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarMetadataBlend)).BeginInit();
             this.groupBoxFont.SuspendLayout();
             this.tabPage2.SuspendLayout();
             this.groupBox5.SuspendLayout();
@@ -558,12 +562,15 @@ namespace AtariMapMaker
             this.groupBoxMetadata.Controls.Add(this.checkBoxMetaDataShowColorLinks);
             this.groupBoxMetadata.Controls.Add(this.checkBoxMetaDataShowValueLinks);
             this.groupBoxMetadata.Controls.Add(this.checkBoxMetadataLayer);
+            this.groupBoxMetadata.Controls.Add(this.checkBoxMetadataEdit);
             this.groupBoxMetadata.Controls.Add(this.checkBoxMetadataShowText);
+            this.groupBoxMetadata.Controls.Add(this.labelMetadataBlend);
+            this.groupBoxMetadata.Controls.Add(this.trackBarMetadataBlend);
             this.groupBoxMetadata.Controls.Add(this.buttonMassChangeMetadata);
             this.groupBoxMetadata.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
             this.groupBoxMetadata.Location = new System.Drawing.Point(3, 731);
             this.groupBoxMetadata.Name = "groupBoxMetadata";
-            this.groupBoxMetadata.Size = new System.Drawing.Size(325, 165);
+            this.groupBoxMetadata.Size = new System.Drawing.Size(325, 250);
             this.groupBoxMetadata.TabIndex = 21;
             this.groupBoxMetadata.TabStop = false;
             this.groupBoxMetadata.Text = "Metadata";
@@ -573,18 +580,29 @@ namespace AtariMapMaker
             this.checkBoxMetadataLayer.AutoSize = true;
             this.checkBoxMetadataLayer.Location = new System.Drawing.Point(10, 26);
             this.checkBoxMetadataLayer.Name = "checkBoxMetadataLayer";
-            this.checkBoxMetadataLayer.Size = new System.Drawing.Size(176, 25);
+            this.checkBoxMetadataLayer.Size = new System.Drawing.Size(140, 25);
             this.checkBoxMetadataLayer.TabIndex = 19;
-            this.checkBoxMetadataLayer.Text = "Show/Edit metadata";
+            this.checkBoxMetadataLayer.Text = "Show metadata";
             this.checkBoxMetadataLayer.UseVisualStyleBackColor = true;
             this.checkBoxMetadataLayer.CheckedChanged += new System.EventHandler(this.CheckBoxMetadataLayer_CheckedChanged);
+            // 
+            // checkBoxMetadataEdit
+            // 
+            this.checkBoxMetadataEdit.AutoSize = true;
+            this.checkBoxMetadataEdit.Location = new System.Drawing.Point(10, 50);
+            this.checkBoxMetadataEdit.Name = "checkBoxMetadataEdit";
+            this.checkBoxMetadataEdit.Size = new System.Drawing.Size(130, 25);
+            this.checkBoxMetadataEdit.TabIndex = 25;
+            this.checkBoxMetadataEdit.Text = "Edit metadata";
+            this.checkBoxMetadataEdit.UseVisualStyleBackColor = true;
+            this.checkBoxMetadataEdit.CheckedChanged += new System.EventHandler(this.CheckBoxMetadataEdit_CheckedChanged);
             // 
             // checkBoxMetadataShowText
             // 
             this.checkBoxMetadataShowText.AutoSize = true;
             this.checkBoxMetadataShowText.Checked = true;
             this.checkBoxMetadataShowText.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkBoxMetadataShowText.Location = new System.Drawing.Point(10, 63);
+            this.checkBoxMetadataShowText.Location = new System.Drawing.Point(10, 74);
             this.checkBoxMetadataShowText.Name = "checkBoxMetadataShowText";
             this.checkBoxMetadataShowText.Size = new System.Drawing.Size(111, 25);
             this.checkBoxMetadataShowText.TabIndex = 20;
@@ -592,11 +610,31 @@ namespace AtariMapMaker
             this.checkBoxMetadataShowText.UseVisualStyleBackColor = true;
             this.checkBoxMetadataShowText.CheckedChanged += new System.EventHandler(this.CheckBoxMetadataShowText_CheckedChanged);
             // 
+            // labelMetadataBlend
+            // 
+            this.labelMetadataBlend.AutoSize = true;
+            this.labelMetadataBlend.Location = new System.Drawing.Point(10, 178);
+            this.labelMetadataBlend.Name = "labelMetadataBlend";
+            this.labelMetadataBlend.Size = new System.Drawing.Size(160, 20);
+            this.labelMetadataBlend.TabIndex = 26;
+            this.labelMetadataBlend.Text = "Map ↔ Meta: 50%";
+            // 
+            // trackBarMetadataBlend
+            // 
+            this.trackBarMetadataBlend.Location = new System.Drawing.Point(8, 198);
+            this.trackBarMetadataBlend.Maximum = 20;
+            this.trackBarMetadataBlend.Name = "trackBarMetadataBlend";
+            this.trackBarMetadataBlend.Size = new System.Drawing.Size(210, 69);
+            this.trackBarMetadataBlend.TabIndex = 27;
+            this.trackBarMetadataBlend.TickFrequency = 1;
+            this.trackBarMetadataBlend.Value = 10;
+            this.trackBarMetadataBlend.Scroll += new System.EventHandler(this.TrackBarMetadataBlend_Scroll);
+            // 
             // buttonMassChangeMetadata
             // 
             this.buttonMassChangeMetadata.Location = new System.Drawing.Point(223, 20);
             this.buttonMassChangeMetadata.Name = "buttonMassChangeMetadata";
-            this.buttonMassChangeMetadata.Size = new System.Drawing.Size(96, 84);
+            this.buttonMassChangeMetadata.Size = new System.Drawing.Size(96, 100);
             this.buttonMassChangeMetadata.TabIndex = 21;
             this.buttonMassChangeMetadata.Text = "Mass change metadata...";
             this.buttonMassChangeMetadata.UseVisualStyleBackColor = true;
@@ -611,7 +649,7 @@ namespace AtariMapMaker
             this.groupBoxFont.Controls.Add(this.buttonShowTiles);
             this.groupBoxFont.Controls.Add(this.buttonFontTemplate);
             this.groupBoxFont.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.groupBoxFont.Location = new System.Drawing.Point(3, 902);
+            this.groupBoxFont.Location = new System.Drawing.Point(3, 987);
             this.groupBoxFont.Name = "groupBoxFont";
             this.groupBoxFont.Size = new System.Drawing.Size(325, 121);
             this.groupBoxFont.TabIndex = 13;
@@ -1338,6 +1376,7 @@ namespace AtariMapMaker
             this.menuItemUndo,
             this.menuItemRedo});
             this.contextMenuStripScreen.Name = "contextMenuStripScreen";
+            this.contextMenuStripScreen.ShowCheckMargin = true;
             this.contextMenuStripScreen.Size = new System.Drawing.Size(261, 336);
             this.contextMenuStripScreen.Opening += new System.ComponentModel.CancelEventHandler(this.ContextMenuStripScreen_Opening);
             // 
@@ -1478,7 +1517,7 @@ namespace AtariMapMaker
             this.checkBoxMetaDataShowValueLinks.AutoSize = true;
             this.checkBoxMetaDataShowValueLinks.Checked = true;
             this.checkBoxMetaDataShowValueLinks.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkBoxMetaDataShowValueLinks.Location = new System.Drawing.Point(10, 94);
+            this.checkBoxMetaDataShowValueLinks.Location = new System.Drawing.Point(10, 98);
             this.checkBoxMetaDataShowValueLinks.Name = "checkBoxMetaDataShowValueLinks";
             this.checkBoxMetaDataShowValueLinks.Size = new System.Drawing.Size(152, 25);
             this.checkBoxMetaDataShowValueLinks.TabIndex = 22;
@@ -1489,7 +1528,7 @@ namespace AtariMapMaker
             // checkBoxMetaDataShowColorLinks
             // 
             this.checkBoxMetaDataShowColorLinks.AutoSize = true;
-            this.checkBoxMetaDataShowColorLinks.Location = new System.Drawing.Point(9, 125);
+            this.checkBoxMetaDataShowColorLinks.Location = new System.Drawing.Point(9, 124);
             this.checkBoxMetaDataShowColorLinks.Name = "checkBoxMetaDataShowColorLinks";
             this.checkBoxMetaDataShowColorLinks.Size = new System.Drawing.Size(150, 25);
             this.checkBoxMetaDataShowColorLinks.TabIndex = 23;
@@ -1533,6 +1572,7 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRefScreenX)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRefScreenY)).EndInit();
             this.groupBoxMetadata.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarMetadataBlend)).EndInit();
             this.groupBoxMetadata.PerformLayout();
             this.groupBoxFont.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
@@ -1625,7 +1665,10 @@ namespace AtariMapMaker
         private System.Windows.Forms.CheckBox checkBoxEditDli;
         private System.Windows.Forms.CheckBox checkBoxShowDli;
         private System.Windows.Forms.CheckBox checkBoxMetadataLayer;
+        private System.Windows.Forms.CheckBox checkBoxMetadataEdit;
         private System.Windows.Forms.CheckBox checkBoxMetadataShowText;
+        private System.Windows.Forms.TrackBar trackBarMetadataBlend;
+        private System.Windows.Forms.Label labelMetadataBlend;
         private System.Windows.Forms.Label labelDliMask;
         private System.Windows.Forms.MaskedTextBox maskedTextBoxDli;
         private System.Windows.Forms.TabPage tabPage4;

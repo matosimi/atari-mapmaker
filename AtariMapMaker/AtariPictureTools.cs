@@ -294,15 +294,20 @@ namespace AtariMapMaker
                     myMap.ScreenLinks.Any(l => l.SourceScreen.X == effectiveCurrentScreen.X && l.SourceScreen.Y == effectiveCurrentScreen.Y));
                 if (window == Globals.WindowType.Editor && Globals.MetadataLayerVisible)
                 {
-                    // Draw map at 50% opacity so metadata text is visible on top
-                    var cm = new ColorMatrix();
-                    cm.Matrix00 = cm.Matrix11 = cm.Matrix22 = 1f;
-                    cm.Matrix33 = 0.5f;
-                    cm.Matrix44 = 1f;
-                    using (var ia = new ImageAttributes())
+                    float mapAlpha = (100 - Globals.MetadataLayerBlendPercent) / 100f;
+                    if (mapAlpha >= 0.999f)
+                        gr.DrawImage(mapImage, destRect, srcRect, GraphicsUnit.Pixel);
+                    else if (mapAlpha > 0.001f)
                     {
-                        ia.SetColorMatrix(cm);
-                        gr.DrawImage(mapImage, destRect, 0, 0, mapImage.Width, mapImage.Height, GraphicsUnit.Pixel, ia);
+                        var cm = new ColorMatrix();
+                        cm.Matrix00 = cm.Matrix11 = cm.Matrix22 = 1f;
+                        cm.Matrix33 = mapAlpha;
+                        cm.Matrix44 = 1f;
+                        using (var ia = new ImageAttributes())
+                        {
+                            ia.SetColorMatrix(cm);
+                            gr.DrawImage(mapImage, destRect, 0, 0, mapImage.Width, mapImage.Height, GraphicsUnit.Pixel, ia);
+                        }
                     }
                 }
                 else
@@ -410,12 +415,38 @@ namespace AtariMapMaker
             // Draw metadata link lines then overlay (cells + text on top)
             if (window == Globals.WindowType.Editor && Globals.MetadataLayerVisible)
             {
-                Rectangle viewport = new Rectangle(0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
-                MetadataLayerRenderer.RenderMetadataLinkLines(myMap, gr, viewport, Globals.Zoom);
-                MetadataLayerRenderer.RenderMetadataLayer(myMap, gr, viewport, Globals.Zoom);
+                float metaAlpha = Globals.MetadataLayerBlendPercent / 100f;
+                if (metaAlpha > 0.001f)
+                {
+                    Rectangle viewport = new Rectangle(0, 0, mapImage.Width * Globals.Zoom, mapImage.Height * Globals.Zoom);
+                    if (metaAlpha >= 0.999f)
+                    {
+                        MetadataLayerRenderer.RenderMetadataLinkLines(myMap, gr, viewport, Globals.Zoom);
+                        MetadataLayerRenderer.RenderMetadataLayer(myMap, gr, viewport, Globals.Zoom);
+                    }
+                    else
+                    {
+                        using (var metaBmp = new Bitmap(viewport.Width, viewport.Height, PixelFormat.Format32bppArgb))
+                        using (var metaGr = Graphics.FromImage(metaBmp))
+                        {
+                            metaGr.Clear(Color.Transparent);
+                            MetadataLayerRenderer.RenderMetadataLinkLines(myMap, metaGr, viewport, Globals.Zoom);
+                            MetadataLayerRenderer.RenderMetadataLayer(myMap, metaGr, viewport, Globals.Zoom);
+                            var cm = new ColorMatrix();
+                            cm.Matrix00 = cm.Matrix11 = cm.Matrix22 = 1f;
+                            cm.Matrix33 = metaAlpha;
+                            cm.Matrix44 = 1f;
+                            using (var ia = new ImageAttributes())
+                            {
+                                ia.SetColorMatrix(cm);
+                                gr.DrawImage(metaBmp, viewport, 0, 0, metaBmp.Width, metaBmp.Height, GraphicsUnit.Pixel, ia);
+                            }
+                        }
+                    }
+                }
             }
 
-            // Hover screen flags (metadata / custom DLI), same vertical band as "Locked", left-aligned
+            // Hover screen flags (metadata / custom DLI / description), same vertical band as "Locked", left-aligned
             if (window == Globals.WindowType.Editor &&
                 currentScreen.X >= 0 && currentScreen.Y >= 0 &&
                 currentScreen.X < myMap.MapSize.Width && currentScreen.Y < myMap.MapSize.Height)
@@ -556,19 +587,30 @@ namespace AtariMapMaker
                 textY = screenPixelY + screenPixelHeight + 5;
             else
                 textY = screenPixelY - textSize.Height - 5;
-            
+
+            DrawLabelBackdrop(gr, textX, textY, textSize.Width, textSize.Height);
             gr.DrawString(lockedText, textFont, yellowBrush, textX, textY);
+        }
+
+        private static void DrawLabelBackdrop(Graphics gr, float x, float y, float width, float height)
+        {
+            const float pad = 2f;
+            using (Brush back = new SolidBrush(Color.FromArgb(179, Color.Black)))
+                gr.FillRectangle(back, x - pad, y - pad, width + pad * 2, height + pad * 2);
         }
 
         private static void DrawScreenHoverInfoLabels(Graphics gr, AtariMap myMap, Point screen)
         {
             bool hasMeta = myMap.ScreenHasMetadata(screen.X, screen.Y);
             bool hasDli = myMap.ScreenHasCustomDli(screen.X, screen.Y);
-            if (!hasMeta && !hasDli)
+            string descLine = GetScreenDescriptionFirstLine(myMap, screen.X, screen.Y);
+            bool hasDesc = !string.IsNullOrEmpty(descLine);
+            if (!hasMeta && !hasDli && !hasDesc)
                 return;
 
             using (Font textFont = new Font("Segoe UI", 12, FontStyle.Bold))
             using (Brush cyanBrush = new SolidBrush(Color.Cyan))
+            using (Brush descBrush = new SolidBrush(Color.FromArgb(0x00, 0xFF, 0x00)))
             {
                 int screenCharWidth = myMap.ScreenSize.Width;
                 int screenCharHeight = myMap.ScreenSize.Height;
@@ -584,24 +626,50 @@ namespace AtariMapMaker
                 int screenPixelY = (screenStartY - myMap.OffsetY) * Globals.CharSize;
                 int screenPixelHeight = screenCharHeight * Globals.CharSize;
 
-                float textY;
-                SizeF lockedLineSize = gr.MeasureString("Locked", textFont);
-                if (screen.Y == 0)
-                    textY = screenPixelY + screenPixelHeight + 5;
-                else
-                    textY = screenPixelY - lockedLineSize.Height - 5;
-
                 const float marginLeft = 2f;
-                float lineY = textY;
-                if (hasMeta)
+                float lineGap = 2f;
+                var lines = new List<(string text, bool isDesc)>();
+                if (hasDesc) lines.Add((descLine, true));
+                if (hasMeta) lines.Add(("Metadata included", false));
+                if (hasDli) lines.Add(("DLI included", false));
+
+                float maxW = 0, totalH = 0;
+                foreach (var line in lines)
                 {
-                    const string label = "Metadata included";
-                    gr.DrawString(label, textFont, cyanBrush, screenPixelX + marginLeft, lineY);
-                    lineY += gr.MeasureString(label, textFont).Height + 2f;
+                    SizeF sz = gr.MeasureString(line.text, textFont);
+                    if (sz.Width > maxW) maxW = sz.Width;
+                    totalH += sz.Height;
                 }
-                if (hasDli)
-                    gr.DrawString("DLI included", textFont, cyanBrush, screenPixelX + marginLeft, lineY);
+                if (lines.Count > 1)
+                    totalH += lineGap * (lines.Count - 1);
+
+                // Row 0: block the whole block under the screen. Other rows: place the whole block above so nothing overlaps the screen.
+                float textY = screen.Y == 0
+                    ? screenPixelY + screenPixelHeight + 5
+                    : screenPixelY - totalH - 5;
+
+                DrawLabelBackdrop(gr, screenPixelX + marginLeft, textY, maxW, totalH);
+
+                float lineY = textY;
+                foreach (var line in lines)
+                {
+                    gr.DrawString(line.text, textFont, line.isDesc ? descBrush : cyanBrush, screenPixelX + marginLeft, lineY);
+                    lineY += gr.MeasureString(line.text, textFont).Height + lineGap;
+                }
             }
+        }
+
+        private static string GetScreenDescriptionFirstLine(AtariMap myMap, int screenX, int screenY)
+        {
+            if (myMap?.ScreenDescriptions == null) return null;
+            string key = $"{screenX},{screenY}";
+            if (!myMap.ScreenDescriptions.TryGetValue(key, out string desc) || string.IsNullOrWhiteSpace(desc))
+                return null;
+            string first = desc.Replace("\r\n", "\n").Replace('\r', '\n');
+            int nl = first.IndexOf('\n');
+            if (nl >= 0) first = first.Substring(0, nl);
+            first = first.Trim();
+            return string.IsNullOrEmpty(first) ? null : first;
         }
 
         /// <summary>

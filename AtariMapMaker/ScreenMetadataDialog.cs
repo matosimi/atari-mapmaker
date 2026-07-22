@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace AtariMapMaker
@@ -17,7 +18,9 @@ namespace AtariMapMaker
             InitializeComponent();
             this.Font = new Font("Segoe UI", 8F);
             this.Text = $"Screen Metadata - ({screen.X},{screen.Y})";
+            listViewItems.MultiSelect = true;
             LoadItems();
+            UpdatePasteButton();
         }
 
         private string Key => $"{screen.X},{screen.Y}";
@@ -52,6 +55,13 @@ namespace AtariMapMaker
                 li.Tag = item;
                 listViewItems.Items.Add(li);
             }
+        }
+
+        private void UpdatePasteButton()
+        {
+            int n = ScreenMetadataListClipboard.Count;
+            buttonPaste.Text = n > 0 ? $"Paste ({n})" : "Paste";
+            buttonPaste.Enabled = n > 0;
         }
 
         private void ButtonAdd_Click(object sender, EventArgs e)
@@ -108,10 +118,67 @@ namespace AtariMapMaker
         private void ButtonDelete_Click(object sender, EventArgs e)
         {
             if (listViewItems.SelectedItems.Count == 0) return;
-            var item = listViewItems.SelectedItems[0].Tag as MetadataLayerItem;
-            if (item == null) return;
             var meta = GetOrCreateMetadata();
-            meta.ParsedItems.Remove(item);
+            var toRemove = new List<MetadataLayerItem>();
+            foreach (ListViewItem li in listViewItems.SelectedItems)
+            {
+                if (li.Tag is MetadataLayerItem item)
+                    toRemove.Add(item);
+            }
+            foreach (var item in toRemove)
+                meta.ParsedItems.Remove(item);
+            LoadItems();
+        }
+
+        private void ButtonCopy_Click(object sender, EventArgs e)
+        {
+            if (listViewItems.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Select one or more metadata items to copy.", "Copy", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            var selected = new List<MetadataLayerItem>();
+            foreach (ListViewItem li in listViewItems.SelectedItems)
+            {
+                if (li.Tag is MetadataLayerItem item)
+                    selected.Add(item);
+            }
+            ScreenMetadataListClipboard.Copy(selected);
+            UpdatePasteButton();
+        }
+
+        private void ButtonPaste_Click(object sender, EventArgs e)
+        {
+            if (ScreenMetadataListClipboard.Count == 0) return;
+            var meta = GetOrCreateMetadata();
+            if (meta.ParsedItems == null)
+                meta.ParsedItems = new List<MetadataLayerItem>();
+
+            var overlapping = ScreenMetadataListClipboard.Items
+                .Where(c => meta.ParsedItems.Any(e2 => e2.X == c.X && e2.Y == c.Y))
+                .ToList();
+            if (overlapping.Count > 0)
+            {
+                string msg = overlapping.Count == 1
+                    ? $"Clipboard item at ({overlapping[0].X},{overlapping[0].Y}) overlaps existing metadata on this screen. Paste anyway?"
+                    : $"{overlapping.Count} clipboard items overlap existing metadata on this screen. Paste anyway?";
+                if (MessageBox.Show(msg, "Paste overlap", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK)
+                    return;
+            }
+
+            foreach (var c in ScreenMetadataListClipboard.Items)
+            {
+                meta.ParsedItems.RemoveAll(e2 => e2.X == c.X && e2.Y == c.Y);
+                meta.ParsedItems.Add(new MetadataLayerItem
+                {
+                    X = c.X,
+                    Y = c.Y,
+                    Text = c.Text ?? "",
+                    Type = c.Type,
+                    Value = c.Value,
+                    Color = c.Color
+                });
+            }
             LoadItems();
         }
 
