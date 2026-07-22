@@ -59,11 +59,13 @@ namespace AtariMapMaker
             this.labelRefScreenComma = new System.Windows.Forms.Label();
             this.numericUpDownRefScreenY = new System.Windows.Forms.NumericUpDown();
             this.groupBoxMetadata = new System.Windows.Forms.GroupBox();
+            this.checkBoxMetaDataShowColorLinks = new System.Windows.Forms.CheckBox();
+            this.checkBoxMetaDataShowValueLinks = new System.Windows.Forms.CheckBox();
             this.checkBoxMetadataLayer = new System.Windows.Forms.CheckBox();
             this.checkBoxMetadataEdit = new System.Windows.Forms.CheckBox();
             this.checkBoxMetadataShowText = new System.Windows.Forms.CheckBox();
-            this.trackBarMetadataBlend = new System.Windows.Forms.TrackBar();
             this.labelMetadataBlend = new System.Windows.Forms.Label();
+            this.trackBarMetadataBlend = new System.Windows.Forms.TrackBar();
             this.buttonMassChangeMetadata = new System.Windows.Forms.Button();
             this.groupBoxFont = new System.Windows.Forms.GroupBox();
             this.buttonRefreshFont = new System.Windows.Forms.Button();
@@ -79,8 +81,12 @@ namespace AtariMapMaker
             this.buttonImport = new System.Windows.Forms.Button();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
             this.checkBoxShowScreenSelection = new System.Windows.Forms.CheckBox();
+            this.checkBoxExportSingleScreen = new System.Windows.Forms.CheckBox();
             this.labelDliMask = new System.Windows.Forms.Label();
             this.maskedTextBoxDli = new System.Windows.Forms.MaskedTextBox();
+            this.labelAlpaDliMask = new System.Windows.Forms.Label();
+            this.maskedTextBoxAlpaDli = new System.Windows.Forms.MaskedTextBox();
+            this.labelDliOrderHint = new System.Windows.Forms.Label();
             this.numericUpDown6 = new System.Windows.Forms.NumericUpDown();
             this.lblDataWidth = new System.Windows.Forms.Label();
             this.buttonPerform = new System.Windows.Forms.Button();
@@ -147,8 +153,6 @@ namespace AtariMapMaker
             this.toolStripStatusLabel2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusSpring2 = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.checkBoxMetaDataShowValueLinks = new System.Windows.Forms.CheckBox();
-            this.checkBoxMetaDataShowColorLinks = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -575,12 +579,36 @@ namespace AtariMapMaker
             this.groupBoxMetadata.TabStop = false;
             this.groupBoxMetadata.Text = "Metadata";
             // 
+            // checkBoxMetaDataShowColorLinks
+            // 
+            this.checkBoxMetaDataShowColorLinks.AutoSize = true;
+            this.checkBoxMetaDataShowColorLinks.Location = new System.Drawing.Point(9, 124);
+            this.checkBoxMetaDataShowColorLinks.Name = "checkBoxMetaDataShowColorLinks";
+            this.checkBoxMetaDataShowColorLinks.Size = new System.Drawing.Size(150, 25);
+            this.checkBoxMetaDataShowColorLinks.TabIndex = 23;
+            this.checkBoxMetaDataShowColorLinks.Text = "Show color links";
+            this.checkBoxMetaDataShowColorLinks.UseVisualStyleBackColor = true;
+            this.checkBoxMetaDataShowColorLinks.CheckedChanged += new System.EventHandler(this.CheckBoxMetaDataShowColorLinks_CheckedChanged);
+            // 
+            // checkBoxMetaDataShowValueLinks
+            // 
+            this.checkBoxMetaDataShowValueLinks.AutoSize = true;
+            this.checkBoxMetaDataShowValueLinks.Checked = true;
+            this.checkBoxMetaDataShowValueLinks.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxMetaDataShowValueLinks.Location = new System.Drawing.Point(10, 98);
+            this.checkBoxMetaDataShowValueLinks.Name = "checkBoxMetaDataShowValueLinks";
+            this.checkBoxMetaDataShowValueLinks.Size = new System.Drawing.Size(152, 25);
+            this.checkBoxMetaDataShowValueLinks.TabIndex = 22;
+            this.checkBoxMetaDataShowValueLinks.Text = "Show value links";
+            this.checkBoxMetaDataShowValueLinks.UseVisualStyleBackColor = true;
+            this.checkBoxMetaDataShowValueLinks.CheckedChanged += new System.EventHandler(this.CheckBoxMetaDataShowValueLinks_CheckedChanged);
+            // 
             // checkBoxMetadataLayer
             // 
             this.checkBoxMetadataLayer.AutoSize = true;
             this.checkBoxMetadataLayer.Location = new System.Drawing.Point(10, 26);
             this.checkBoxMetadataLayer.Name = "checkBoxMetadataLayer";
-            this.checkBoxMetadataLayer.Size = new System.Drawing.Size(140, 25);
+            this.checkBoxMetadataLayer.Size = new System.Drawing.Size(144, 25);
             this.checkBoxMetadataLayer.TabIndex = 19;
             this.checkBoxMetadataLayer.Text = "Show metadata";
             this.checkBoxMetadataLayer.UseVisualStyleBackColor = true;
@@ -591,7 +619,7 @@ namespace AtariMapMaker
             this.checkBoxMetadataEdit.AutoSize = true;
             this.checkBoxMetadataEdit.Location = new System.Drawing.Point(10, 50);
             this.checkBoxMetadataEdit.Name = "checkBoxMetadataEdit";
-            this.checkBoxMetadataEdit.Size = new System.Drawing.Size(130, 25);
+            this.checkBoxMetadataEdit.Size = new System.Drawing.Size(131, 25);
             this.checkBoxMetadataEdit.TabIndex = 25;
             this.checkBoxMetadataEdit.Text = "Edit metadata";
             this.checkBoxMetadataEdit.UseVisualStyleBackColor = true;
@@ -615,7 +643,7 @@ namespace AtariMapMaker
             this.labelMetadataBlend.AutoSize = true;
             this.labelMetadataBlend.Location = new System.Drawing.Point(10, 178);
             this.labelMetadataBlend.Name = "labelMetadataBlend";
-            this.labelMetadataBlend.Size = new System.Drawing.Size(160, 20);
+            this.labelMetadataBlend.Size = new System.Drawing.Size(136, 21);
             this.labelMetadataBlend.TabIndex = 26;
             this.labelMetadataBlend.Text = "Map ↔ Meta: 50%";
             // 
@@ -626,7 +654,6 @@ namespace AtariMapMaker
             this.trackBarMetadataBlend.Name = "trackBarMetadataBlend";
             this.trackBarMetadataBlend.Size = new System.Drawing.Size(210, 69);
             this.trackBarMetadataBlend.TabIndex = 27;
-            this.trackBarMetadataBlend.TickFrequency = 1;
             this.trackBarMetadataBlend.Value = 10;
             this.trackBarMetadataBlend.Scroll += new System.EventHandler(this.TrackBarMetadataBlend_Scroll);
             // 
@@ -724,7 +751,7 @@ namespace AtariMapMaker
             // 
             // buttonElementLibrary
             // 
-            this.buttonElementLibrary.Location = new System.Drawing.Point(4, 1031);
+            this.buttonElementLibrary.Location = new System.Drawing.Point(4, 1116);
             this.buttonElementLibrary.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonElementLibrary.Name = "buttonElementLibrary";
             this.buttonElementLibrary.Size = new System.Drawing.Size(112, 51);
@@ -735,7 +762,7 @@ namespace AtariMapMaker
             // 
             // buttonMapDescription
             // 
-            this.buttonMapDescription.Location = new System.Drawing.Point(124, 1031);
+            this.buttonMapDescription.Location = new System.Drawing.Point(124, 1116);
             this.buttonMapDescription.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonMapDescription.Name = "buttonMapDescription";
             this.buttonMapDescription.Size = new System.Drawing.Size(112, 51);
@@ -746,7 +773,7 @@ namespace AtariMapMaker
             // 
             // buttonTilemapConfig
             // 
-            this.buttonTilemapConfig.Location = new System.Drawing.Point(244, 1031);
+            this.buttonTilemapConfig.Location = new System.Drawing.Point(244, 1116);
             this.buttonTilemapConfig.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonTilemapConfig.Name = "buttonTilemapConfig";
             this.buttonTilemapConfig.Size = new System.Drawing.Size(112, 51);
@@ -788,8 +815,12 @@ namespace AtariMapMaker
             // groupBox5
             // 
             this.groupBox5.Controls.Add(this.checkBoxShowScreenSelection);
+            this.groupBox5.Controls.Add(this.checkBoxExportSingleScreen);
+            this.groupBox5.Controls.Add(this.labelDliOrderHint);
             this.groupBox5.Controls.Add(this.labelDliMask);
             this.groupBox5.Controls.Add(this.maskedTextBoxDli);
+            this.groupBox5.Controls.Add(this.labelAlpaDliMask);
+            this.groupBox5.Controls.Add(this.maskedTextBoxAlpaDli);
             this.groupBox5.Controls.Add(this.numericUpDown6);
             this.groupBox5.Controls.Add(this.lblDataWidth);
             this.groupBox5.Controls.Add(this.buttonPerform);
@@ -806,7 +837,7 @@ namespace AtariMapMaker
             this.groupBox5.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.groupBox5.Name = "groupBox5";
             this.groupBox5.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.groupBox5.Size = new System.Drawing.Size(318, 432);
+            this.groupBox5.Size = new System.Drawing.Size(318, 490);
             this.groupBox5.TabIndex = 18;
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "Data operations";
@@ -825,18 +856,41 @@ namespace AtariMapMaker
             this.checkBoxShowScreenSelection.UseVisualStyleBackColor = true;
             this.checkBoxShowScreenSelection.CheckedChanged += new System.EventHandler(this.CheckBoxShowScreenSelection_CheckedChanged);
             // 
+            // checkBoxExportSingleScreen
+            // 
+            this.checkBoxExportSingleScreen.AutoSize = true;
+            this.checkBoxExportSingleScreen.Location = new System.Drawing.Point(160, 179);
+            this.checkBoxExportSingleScreen.Name = "checkBoxExportSingleScreen";
+            this.checkBoxExportSingleScreen.Size = new System.Drawing.Size(120, 25);
+            this.checkBoxExportSingleScreen.TabIndex = 24;
+            this.checkBoxExportSingleScreen.Text = "Single screen";
+            this.checkBoxExportSingleScreen.UseVisualStyleBackColor = true;
+            this.checkBoxExportSingleScreen.Visible = false;
+            this.checkBoxExportSingleScreen.CheckedChanged += new System.EventHandler(this.CheckBoxExportSingleScreen_CheckedChanged);
+            // 
+            // labelDliOrderHint
+            // 
+            this.labelDliOrderHint.Location = new System.Drawing.Point(4, 328);
+            this.labelDliOrderHint.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.labelDliOrderHint.Name = "labelDliOrderHint";
+            this.labelDliOrderHint.Size = new System.Drawing.Size(306, 36);
+            this.labelDliOrderHint.TabIndex = 25;
+            this.labelDliOrderHint.Text = "Order: color register by register (all lines of each register), not line by line.";
+            this.labelDliOrderHint.Visible = false;
+            // 
             // labelDliMask
             // 
-            this.labelDliMask.Location = new System.Drawing.Point(4, 352);
+            this.labelDliMask.Location = new System.Drawing.Point(4, 368);
             this.labelDliMask.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelDliMask.Name = "labelDliMask";
-            this.labelDliMask.Size = new System.Drawing.Size(80, 27);
+            this.labelDliMask.Size = new System.Drawing.Size(180, 27);
             this.labelDliMask.TabIndex = 22;
             this.labelDliMask.Text = "DLI mask";
+            this.labelDliMask.Visible = false;
             // 
             // maskedTextBoxDli
             // 
-            this.maskedTextBoxDli.Location = new System.Drawing.Point(196, 348);
+            this.maskedTextBoxDli.Location = new System.Drawing.Point(196, 364);
             this.maskedTextBoxDli.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.maskedTextBoxDli.Mask = "00000";
             this.maskedTextBoxDli.Name = "maskedTextBoxDli";
@@ -844,6 +898,29 @@ namespace AtariMapMaker
             this.maskedTextBoxDli.TabIndex = 21;
             this.maskedTextBoxDli.Text = "01110";
             this.maskedTextBoxDli.ValidatingType = typeof(int);
+            this.maskedTextBoxDli.Visible = false;
+            // 
+            // labelAlpaDliMask
+            // 
+            this.labelAlpaDliMask.Location = new System.Drawing.Point(4, 400);
+            this.labelAlpaDliMask.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.labelAlpaDliMask.Name = "labelAlpaDliMask";
+            this.labelAlpaDliMask.Size = new System.Drawing.Size(180, 27);
+            this.labelAlpaDliMask.TabIndex = 26;
+            this.labelAlpaDliMask.Text = "ALPA DLI mask";
+            this.labelAlpaDliMask.Visible = false;
+            // 
+            // maskedTextBoxAlpaDli
+            // 
+            this.maskedTextBoxAlpaDli.Location = new System.Drawing.Point(196, 396);
+            this.maskedTextBoxAlpaDli.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.maskedTextBoxAlpaDli.Mask = "0000";
+            this.maskedTextBoxAlpaDli.Name = "maskedTextBoxAlpaDli";
+            this.maskedTextBoxAlpaDli.Size = new System.Drawing.Size(102, 29);
+            this.maskedTextBoxAlpaDli.TabIndex = 27;
+            this.maskedTextBoxAlpaDli.Text = "1111";
+            this.maskedTextBoxAlpaDli.ValidatingType = typeof(int);
+            this.maskedTextBoxAlpaDli.Visible = false;
             // 
             // numericUpDown6
             // 
@@ -874,7 +951,7 @@ namespace AtariMapMaker
             // 
             // buttonPerform
             // 
-            this.buttonPerform.Location = new System.Drawing.Point(9, 384);
+            this.buttonPerform.Location = new System.Drawing.Point(9, 436);
             this.buttonPerform.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonPerform.Name = "buttonPerform";
             this.buttonPerform.Size = new System.Drawing.Size(300, 37);
@@ -1117,12 +1194,12 @@ namespace AtariMapMaker
             // 
             // labelAbout2
             // 
-            this.labelAbout2.Location = new System.Drawing.Point(9, 63);
+            this.labelAbout2.Location = new System.Drawing.Point(11, 63);
             this.labelAbout2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelAbout2.Name = "labelAbout2";
-            this.labelAbout2.Size = new System.Drawing.Size(297, 58);
+            this.labelAbout2.Size = new System.Drawing.Size(297, 93);
             this.labelAbout2.TabIndex = 4;
-            this.labelAbout2.Text = "\nversion 1.1 - 18.08.2018";
+            this.labelAbout2.Text = "Version\nCommit\nDate";
             // 
             // linkLabel2
             // 
@@ -1149,7 +1226,7 @@ namespace AtariMapMaker
             // linkLabel1
             // 
             this.linkLabel1.AutoSize = true;
-            this.linkLabel1.Location = new System.Drawing.Point(9, 121);
+            this.linkLabel1.Location = new System.Drawing.Point(9, 168);
             this.linkLabel1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.linkLabel1.Name = "linkLabel1";
             this.linkLabel1.Size = new System.Drawing.Size(186, 21);
@@ -1165,7 +1242,7 @@ namespace AtariMapMaker
             this.labelAbout.Name = "labelAbout";
             this.labelAbout.Size = new System.Drawing.Size(297, 30);
             this.labelAbout.TabIndex = 0;
-            this.labelAbout.Text = "Created by Martin �ime�ek";
+            this.labelAbout.Text = "Created by MatoSimi";
             // 
             // nudMapH
             // 
@@ -1377,80 +1454,80 @@ namespace AtariMapMaker
             this.menuItemRedo});
             this.contextMenuStripScreen.Name = "contextMenuStripScreen";
             this.contextMenuStripScreen.ShowCheckMargin = true;
-            this.contextMenuStripScreen.Size = new System.Drawing.Size(261, 336);
+            this.contextMenuStripScreen.Size = new System.Drawing.Size(283, 336);
             this.contextMenuStripScreen.Opening += new System.ComponentModel.CancelEventHandler(this.ContextMenuStripScreen_Opening);
             // 
             // toolStripMenuItemClear
             // 
             this.toolStripMenuItemClear.Name = "toolStripMenuItemClear";
-            this.toolStripMenuItemClear.Size = new System.Drawing.Size(260, 32);
+            this.toolStripMenuItemClear.Size = new System.Drawing.Size(282, 32);
             this.toolStripMenuItemClear.Text = "Clear screen";
             this.toolStripMenuItemClear.Click += new System.EventHandler(this.ToolStripMenuItemClear_Click);
             // 
             // toolStripMenuItemHFlip
             // 
             this.toolStripMenuItemHFlip.Name = "toolStripMenuItemHFlip";
-            this.toolStripMenuItemHFlip.Size = new System.Drawing.Size(260, 32);
+            this.toolStripMenuItemHFlip.Size = new System.Drawing.Size(282, 32);
             this.toolStripMenuItemHFlip.Text = "Flip Screen Horizontal";
             this.toolStripMenuItemHFlip.Click += new System.EventHandler(this.ToolStripMenuItemHFlip_Click);
             // 
             // toolStripMenuItemVFlip
             // 
             this.toolStripMenuItemVFlip.Name = "toolStripMenuItemVFlip";
-            this.toolStripMenuItemVFlip.Size = new System.Drawing.Size(260, 32);
+            this.toolStripMenuItemVFlip.Size = new System.Drawing.Size(282, 32);
             this.toolStripMenuItemVFlip.Text = "Flip Screen Vertical";
             this.toolStripMenuItemVFlip.Click += new System.EventHandler(this.ToolStripMenuItemVFlip_Click);
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(257, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(279, 6);
             // 
             // menuItemLinkScreen
             // 
             this.menuItemLinkScreen.Name = "menuItemLinkScreen";
-            this.menuItemLinkScreen.Size = new System.Drawing.Size(260, 32);
+            this.menuItemLinkScreen.Size = new System.Drawing.Size(282, 32);
             this.menuItemLinkScreen.Text = "Link to Screen...";
             this.menuItemLinkScreen.Click += new System.EventHandler(this.MenuItemLinkScreen_Click);
             // 
             // menuItemScreenMetadata
             // 
             this.menuItemScreenMetadata.Name = "menuItemScreenMetadata";
-            this.menuItemScreenMetadata.Size = new System.Drawing.Size(260, 32);
+            this.menuItemScreenMetadata.Size = new System.Drawing.Size(282, 32);
             this.menuItemScreenMetadata.Text = "Screen Metadata...";
             this.menuItemScreenMetadata.Click += new System.EventHandler(this.MenuItemScreenMetadata_Click);
             // 
             // menuItemExportMetadata
             // 
             this.menuItemExportMetadata.Name = "menuItemExportMetadata";
-            this.menuItemExportMetadata.Size = new System.Drawing.Size(260, 32);
+            this.menuItemExportMetadata.Size = new System.Drawing.Size(282, 32);
             this.menuItemExportMetadata.Text = "Export metadata...";
             this.menuItemExportMetadata.Click += new System.EventHandler(this.MenuItemExportMetadata_Click);
             // 
             // menuItemScreenDescription
             // 
             this.menuItemScreenDescription.Name = "menuItemScreenDescription";
-            this.menuItemScreenDescription.Size = new System.Drawing.Size(260, 32);
+            this.menuItemScreenDescription.Size = new System.Drawing.Size(282, 32);
             this.menuItemScreenDescription.Text = "Screen Description...";
             this.menuItemScreenDescription.Click += new System.EventHandler(this.MenuItemScreenDescription_Click);
             // 
             // menuItemApplyFontTemplate
             // 
             this.menuItemApplyFontTemplate.Name = "menuItemApplyFontTemplate";
-            this.menuItemApplyFontTemplate.Size = new System.Drawing.Size(260, 32);
+            this.menuItemApplyFontTemplate.Size = new System.Drawing.Size(282, 32);
             this.menuItemApplyFontTemplate.Text = "Apply Font Template...";
             this.menuItemApplyFontTemplate.Click += new System.EventHandler(this.MenuItemApplyFontTemplate_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(257, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(279, 6);
             // 
             // menuItemUndo
             // 
             this.menuItemUndo.Name = "menuItemUndo";
             this.menuItemUndo.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Z)));
-            this.menuItemUndo.Size = new System.Drawing.Size(260, 32);
+            this.menuItemUndo.Size = new System.Drawing.Size(282, 32);
             this.menuItemUndo.Text = "Undo";
             this.menuItemUndo.Click += new System.EventHandler(this.MenuItemUndo_Click);
             // 
@@ -1458,7 +1535,7 @@ namespace AtariMapMaker
             // 
             this.menuItemRedo.Name = "menuItemRedo";
             this.menuItemRedo.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Y)));
-            this.menuItemRedo.Size = new System.Drawing.Size(260, 32);
+            this.menuItemRedo.Size = new System.Drawing.Size(282, 32);
             this.menuItemRedo.Text = "Redo";
             this.menuItemRedo.Click += new System.EventHandler(this.MenuItemRedo_Click);
             // 
@@ -1512,30 +1589,6 @@ namespace AtariMapMaker
             this.toolStripStatusLabel3.Text = "char/tile occurence";
             this.toolStripStatusLabel3.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // checkBoxMetaDataShowValueLinks
-            // 
-            this.checkBoxMetaDataShowValueLinks.AutoSize = true;
-            this.checkBoxMetaDataShowValueLinks.Checked = true;
-            this.checkBoxMetaDataShowValueLinks.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkBoxMetaDataShowValueLinks.Location = new System.Drawing.Point(10, 98);
-            this.checkBoxMetaDataShowValueLinks.Name = "checkBoxMetaDataShowValueLinks";
-            this.checkBoxMetaDataShowValueLinks.Size = new System.Drawing.Size(152, 25);
-            this.checkBoxMetaDataShowValueLinks.TabIndex = 22;
-            this.checkBoxMetaDataShowValueLinks.Text = "Show value links";
-            this.checkBoxMetaDataShowValueLinks.UseVisualStyleBackColor = true;
-            this.checkBoxMetaDataShowValueLinks.CheckedChanged += new System.EventHandler(this.CheckBoxMetaDataShowValueLinks_CheckedChanged);
-            // 
-            // checkBoxMetaDataShowColorLinks
-            // 
-            this.checkBoxMetaDataShowColorLinks.AutoSize = true;
-            this.checkBoxMetaDataShowColorLinks.Location = new System.Drawing.Point(9, 124);
-            this.checkBoxMetaDataShowColorLinks.Name = "checkBoxMetaDataShowColorLinks";
-            this.checkBoxMetaDataShowColorLinks.Size = new System.Drawing.Size(150, 25);
-            this.checkBoxMetaDataShowColorLinks.TabIndex = 23;
-            this.checkBoxMetaDataShowColorLinks.Text = "Show color links";
-            this.checkBoxMetaDataShowColorLinks.UseVisualStyleBackColor = true;
-            this.checkBoxMetaDataShowColorLinks.CheckedChanged += new System.EventHandler(this.CheckBoxMetaDataShowColorLinks_CheckedChanged);
-            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
@@ -1572,8 +1625,8 @@ namespace AtariMapMaker
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRefScreenX)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownRefScreenY)).EndInit();
             this.groupBoxMetadata.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.trackBarMetadataBlend)).EndInit();
             this.groupBoxMetadata.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarMetadataBlend)).EndInit();
             this.groupBoxFont.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
             this.groupBox5.ResumeLayout(false);
@@ -1671,6 +1724,9 @@ namespace AtariMapMaker
         private System.Windows.Forms.Label labelMetadataBlend;
         private System.Windows.Forms.Label labelDliMask;
         private System.Windows.Forms.MaskedTextBox maskedTextBoxDli;
+        private System.Windows.Forms.Label labelAlpaDliMask;
+        private System.Windows.Forms.MaskedTextBox maskedTextBoxAlpaDli;
+        private System.Windows.Forms.Label labelDliOrderHint;
         private System.Windows.Forms.TabPage tabPage4;
         private System.Windows.Forms.RadioButton radioButtonWholeMap;
         private System.Windows.Forms.RadioButton radioButtonCurrentScreen;
@@ -1708,6 +1764,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.Button buttonExportFont;
         private System.Windows.Forms.Button buttonShowTiles;
         private System.Windows.Forms.CheckBox checkBoxShowScreenSelection;
+        private System.Windows.Forms.CheckBox checkBoxExportSingleScreen;
         private System.Windows.Forms.GroupBox groupBoxDli;
         private System.Windows.Forms.GroupBox groupBoxFont;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
