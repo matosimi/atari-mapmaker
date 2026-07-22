@@ -17,7 +17,14 @@ namespace AtariMapMaker
         private Size dataSize;      //velkost dat v znakoch
         public Size MapSize { get; }       //pocet screenov v datach (velkost mapy)
         private int offset;
-        public byte[] ColorData { get; set; }   //screens*lines*5 colors
+        public byte[] ColorData { get; set; }   // screens * lines * DliColorsPerLine
+
+        /// <summary>
+        /// Bytes per character line in ColorData: COLPF0–3, COLBAK, PF3/PF0/PF2/PF1 ALPA alternates.
+        /// Older files used 5; <see cref="EnsureDliColorDataLayout"/> migrates on load.
+        /// </summary>
+        public const int DliColorsPerLine = 9;
+        public const int DliPrimaryColorCount = 5;
         
         // New properties for v2.0+
         public byte[][] FontDataArray { get; set; }  // Multiple fonts (max 8)
@@ -117,12 +124,18 @@ namespace AtariMapMaker
                 targetScreenCharHeight = targetMap.ScreenSize.Height * targetMap.TilemapInfo.TileHeight;
             }
             
+            int cpl = DliColorsPerLine;
             // Use the minimum of source and target heights to avoid out-of-bounds
-            int length = Math.Min(sourceScreenCharHeight, targetScreenCharHeight) * 5;
-            int sourceOffset = localScreenNumber * sourceScreenCharHeight * 5;
-            int destOffset = targetScreenNumber * targetScreenCharHeight * 5;
+            int length = Math.Min(sourceScreenCharHeight, targetScreenCharHeight) * cpl;
+            int sourceOffset = localScreenNumber * sourceScreenCharHeight * cpl;
+            int destOffset = targetScreenNumber * targetScreenCharHeight * cpl;
+            if (ColorData == null || targetMap.ColorData == null) return;
             for (int i = 0; i < length; i++)
+            {
+                if (sourceOffset + i >= ColorData.Length || destOffset + i >= targetMap.ColorData.Length)
+                    break;
                 targetMap.ColorData[destOffset + i] = ColorData[sourceOffset + i];
+            }
         }
 
         public void InitDliColorFullMap()
@@ -134,10 +147,71 @@ namespace AtariMapMaker
                 screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
             }
             
-            int totalLength = MapSize.Width * MapSize.Height * screenCharHeight * 5;
+            int cpl = DliColorsPerLine;
+            int totalLength = MapSize.Width * MapSize.Height * screenCharHeight * cpl;
             this.ColorData = new byte[totalLength];
-            for (int i = 0; i < totalLength; i+=5)
+            for (int i = 0; i < totalLength; i += cpl)
                 ColorData[i] = Globals.DEFAULT_COLOR; //0.color in each row indicates that no DLI was used 
+        }
+
+        /// <summary>
+        /// Expand legacy 5-byte-per-line DliData to 9 bytes/line. Alternates filled from global Color5 when ALPA.
+        /// </summary>
+        public void EnsureDliColorDataLayout(byte[] globalColor5 = null)
+        {
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+
+            int linesTotal = MapSize.Width * MapSize.Height * screenCharHeight;
+            int expected9 = linesTotal * DliColorsPerLine;
+            int expected5 = linesTotal * DliPrimaryColorCount;
+
+            if (ColorData == null || ColorData.Length == 0)
+            {
+                InitDliColorFullMap();
+                return;
+            }
+            if (ColorData.Length == expected9)
+                return;
+            if (ColorData.Length != expected5)
+            {
+                // Unexpected size — reinit rather than corrupt
+                InitDliColorFullMap();
+                return;
+            }
+
+            byte[] expanded = new byte[expected9];
+            for (int line = 0; line < linesTotal; line++)
+            {
+                int src = line * DliPrimaryColorCount;
+                int dst = line * DliColorsPerLine;
+                for (int i = 0; i < DliPrimaryColorCount; i++)
+                    expanded[dst + i] = ColorData[src + i];
+                if (globalColor5 != null && globalColor5.Length > 5)
+                {
+                    for (int i = 5; i < DliColorsPerLine && i < globalColor5.Length; i++)
+                        expanded[dst + i] = globalColor5[i];
+                    if (globalColor5.Length < 9 && expanded[dst] != Globals.DEFAULT_COLOR)
+                        expanded[dst + 8] = expanded[dst + 1]; // PF1 alter = PF1
+                }
+                else if (expanded[dst] != Globals.DEFAULT_COLOR)
+                {
+                    // No global ALPA: imply alternates match primaries for that line
+                    expanded[dst + 5] = expanded[dst + 3]; // PF3
+                    expanded[dst + 6] = expanded[dst + 0]; // PF0
+                    expanded[dst + 7] = expanded[dst + 2]; // PF2
+                    expanded[dst + 8] = expanded[dst + 1]; // PF1
+                }
+            }
+            ColorData = expanded;
+        }
+
+        private int GetDliScreenCharHeight()
+        {
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+                return ScreenSize.Height * TilemapInfo.TileHeight;
+            return ScreenSize.Height;
         }
 
         public int Offset
@@ -202,24 +276,17 @@ namespace AtariMapMaker
         //set single color for multiple lines
         public void SetDliColorMultiple(int screenx, int screeny, int startingLine, int lines, int colorNumber, byte colorIndexFromPalette)
         {
-            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
-            int screenCharHeight = ScreenSize.Height;
-            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
-            {
-                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
-            }
-            
-            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * 5;
+            int screenCharHeight = GetDliScreenCharHeight();
+            int cpl = DliColorsPerLine;
+            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * cpl;
             if (lines < 0) lines = screenCharHeight - startingLine;
             if (startingLine + lines > screenCharHeight) throw new Exception($"The screen does not have that many ({lines}) lines.");
             for (int j = 0; j < lines; j++)
-                this.ColorData[screenOffset + (startingLine + j) * 5 + colorNumber] = colorIndexFromPalette;
+                this.ColorData[screenOffset + (startingLine + j) * cpl + colorNumber] = colorIndexFromPalette;
         }
         /// <summary>
-        /// Get byte[5] color structure for given offset (char in AtariMap)
+        /// Get color structure for given offset (char in AtariMap). Length is <see cref="DliColorsPerLine"/>.
         /// </summary>
-        /// <param name="charOffset"></param>
-        /// <returns></returns>
         public byte[] GetDliColor5(int charOffset)
         {
             // For tilemaps, use CharStride and convert ScreenSize from tiles to characters
@@ -238,26 +305,22 @@ namespace AtariMapMaker
             int column = charOffset % stride;
             int line = row % screenCharHeight;
             
-            // Calculate screen coordinates (same formula as SetDliColor uses)
+            int cpl = DliColorsPerLine;
             int screenX = column / screenCharWidth;
             int screenY = row / screenCharHeight;
             
-            // Use same offset calculation as SetDliColor: (screeny * MapSize.Width + screenx) * screenCharHeight * 5
-            int screenOffset = (screenY * MapSize.Width + screenX) * screenCharHeight * 5;
-            int dliOffset = screenOffset + line * 5;
+            int screenOffset = (screenY * MapSize.Width + screenX) * screenCharHeight * cpl;
+            int dliOffset = screenOffset + line * cpl;
 
-            byte[] retValue = new byte[5];
-            // Check bounds to prevent IndexOutOfRangeException
-            if (ColorData != null && dliOffset + 4 < ColorData.Length)
+            byte[] retValue = new byte[cpl];
+            if (ColorData != null && dliOffset + cpl - 1 < ColorData.Length)
             {
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < cpl; i++)
                     retValue[i] = ColorData[dliOffset + i];
             }
             else
             {
-                // Return default colors if out of bounds
-                for (int i = 0; i < 5; i++)
-                    retValue[i] = Globals.DEFAULT_COLOR;
+                retValue[0] = Globals.DEFAULT_COLOR;
             }
             return retValue;
         }
@@ -268,35 +331,26 @@ namespace AtariMapMaker
             return GetDliColor5(charOffset);
         }
 
-        //set all colors multiple lines based on the given 5 colors
+        //set all colors multiple lines based on the given colors (up to DliColorsPerLine)
         public void SetDliColor5Multiple(int screenx, int screeny, int startingLine, int lines, byte[] color5)
         {
-            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
-            int screenCharHeight = ScreenSize.Height;
-            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
-            {
-                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
-            }
-            
-            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * 5;
+            int screenCharHeight = GetDliScreenCharHeight();
+            int cpl = DliColorsPerLine;
+            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * cpl;
             if (lines < 0) lines = screenCharHeight - startingLine;
             if (startingLine + lines > screenCharHeight) throw new Exception($"The screen does not have that many ({lines}) lines.");
+            int n = Math.Min(color5.Length, cpl);
             for (int j = 0; j < lines; j++)
-                for (int i = 0; i < 5; i++)
-                    this.ColorData[screenOffset + (startingLine + j) * 5 + i] = color5[i];
+                for (int i = 0; i < n; i++)
+                    this.ColorData[screenOffset + (startingLine + j) * cpl + i] = color5[i];
         }
 
         public void SetDliColor(int screenx, int screeny, int line, int colorNumber, byte colorIndex)
         {
-            // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
-            int screenCharHeight = ScreenSize.Height;
-            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
-            {
-                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
-            }
-            
-            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * 5;
-            this.ColorData[screenOffset + line * 5 + colorNumber] = colorIndex;
+            int screenCharHeight = GetDliScreenCharHeight();
+            int cpl = DliColorsPerLine;
+            int screenOffset = (screeny * MapSize.Width + screenx) * screenCharHeight * cpl;
+            this.ColorData[screenOffset + line * cpl + colorNumber] = colorIndex;
         }
 
         /// <summary>True if this screen has at least one metadata item in ScreenMetadata.</summary>
@@ -315,19 +369,22 @@ namespace AtariMapMaker
         {
             if (ColorData == null || screenX < 0 || screenY < 0 || screenX >= MapSize.Width || screenY >= MapSize.Height)
                 return false;
-            int screenCharHeight = ScreenSize.Height;
-            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
-                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
-            int screenOffset = (screenY * MapSize.Width + screenX) * screenCharHeight * 5;
-            int byteCount = screenCharHeight * 5;
+            int screenCharHeight = GetDliScreenCharHeight();
+            int cpl = DliColorsPerLine;
+            int screenOffset = (screenY * MapSize.Width + screenX) * screenCharHeight * cpl;
+            int byteCount = screenCharHeight * cpl;
             if (screenOffset < 0 || screenOffset + byteCount > ColorData.Length)
                 return false;
             for (int line = 0; line < screenCharHeight; line++)
             {
-                int o = screenOffset + line * 5;
-                if (ColorData[o] != Globals.DEFAULT_COLOR ||
-                    ColorData[o + 1] != 0 || ColorData[o + 2] != 0 || ColorData[o + 3] != 0 || ColorData[o + 4] != 0)
+                int o = screenOffset + line * cpl;
+                if (ColorData[o] != Globals.DEFAULT_COLOR)
                     return true;
+                for (int i = 1; i < cpl; i++)
+                {
+                    if (ColorData[o + i] != 0)
+                        return true;
+                }
             }
             return false;
         }

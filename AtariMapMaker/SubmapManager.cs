@@ -78,7 +78,13 @@ namespace AtariMapMaker
 
             // Load DLI data
             if (parsedData.DliData != null)
+            {
                 submap.ColorData = parsedData.DliData.Select(i => (byte)i).ToArray();
+                byte[] colors = parsedData.Color5 != null
+                    ? parsedData.Color5.Select(i => (byte)i).ToArray()
+                    : null;
+                submap.EnsureDliColorDataLayout(colors);
+            }
             else
                 submap.InitDliColorFullMap();
 

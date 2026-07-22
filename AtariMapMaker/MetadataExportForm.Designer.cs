@@ -26,6 +26,7 @@ namespace AtariMapMaker
             this.buttonClose = new System.Windows.Forms.Button();
             this.checkBoxIncludeColors = new System.Windows.Forms.CheckBox();
             this.checkBoxIncludeTypes = new System.Windows.Forms.CheckBox();
+            this.checkBoxColumnModeDisplay = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // labelGroupBy
@@ -66,8 +67,10 @@ namespace AtariMapMaker
             this.comboCoordOrder.Items.AddRange(new object[] {
             "x,y (order Y then X)",
             "x,y (order X then Y)",
-            "index dta a($xxxx)"});
-            this.comboCoordOrder.Location = new System.Drawing.Point(140, 38);
+            "index dta a($xxxx)",
+            "type,value",
+            "value,type"});
+            this.comboCoordOrder.Location = new System.Drawing.Point(158, 37);
             this.comboCoordOrder.Name = "comboCoordOrder";
             this.comboCoordOrder.Size = new System.Drawing.Size(200, 28);
             this.comboCoordOrder.TabIndex = 3;
@@ -140,11 +143,23 @@ namespace AtariMapMaker
             this.checkBoxIncludeTypes.Text = "Include type values";
             this.checkBoxIncludeTypes.CheckedChanged += new System.EventHandler(this.RegenerateOutput);
             // 
+            // checkBoxColumnModeDisplay
+            // 
+            this.checkBoxColumnModeDisplay.Checked = true;
+            this.checkBoxColumnModeDisplay.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxColumnModeDisplay.Location = new System.Drawing.Point(297, 11);
+            this.checkBoxColumnModeDisplay.Name = "checkBoxColumnModeDisplay";
+            this.checkBoxColumnModeDisplay.Size = new System.Drawing.Size(253, 27);
+            this.checkBoxColumnModeDisplay.TabIndex = 11;
+            this.checkBoxColumnModeDisplay.Text = "Display data in column mode";
+            this.checkBoxColumnModeDisplay.CheckedChanged += new System.EventHandler(this.RegenerateOutput);
+            // 
             // MetadataExportForm
             // 
             this.AcceptButton = this.buttonClose;
             this.CancelButton = this.buttonClose;
             this.ClientSize = new System.Drawing.Size(619, 484);
+            this.Controls.Add(this.checkBoxColumnModeDisplay);
             this.Controls.Add(this.checkBoxIncludeTypes);
             this.Controls.Add(this.checkBoxIncludeColors);
             this.Controls.Add(this.labelGroupBy);
@@ -178,5 +193,6 @@ namespace AtariMapMaker
         private System.Windows.Forms.Button buttonClose;
         private System.Windows.Forms.CheckBox checkBoxIncludeColors;
         private System.Windows.Forms.CheckBox checkBoxIncludeTypes;
+        private System.Windows.Forms.CheckBox checkBoxColumnModeDisplay;
     }
 }

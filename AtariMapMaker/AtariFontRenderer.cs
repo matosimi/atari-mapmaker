@@ -15,7 +15,8 @@ namespace AtariMapMaker
     public static class AtariFontRenderer
     {
         private static readonly byte[] COLOR5 = { 40, 202, 148, 70, 0 };
-        private static readonly byte[] COLOR8 = { 40, 202, 148, 70, 0, 80, 15, 52 };
+        // ALPA: PF0–3, BAK, PF3 alter, PF0 alter, PF2 alter, PF1 alter (PF1 alter defaults to PF1)
+        private static readonly byte[] COLOR9 = { 40, 202, 148, 70, 0, 80, 15, 52, 148 };
         private static byte[] color5 = COLOR5;
         private static string lastFontFile;
         public static readonly Dictionary<Globals.FontType, AtariFont> fonts = new Dictionary<Globals.FontType, AtariFont>();
@@ -33,7 +34,53 @@ namespace AtariMapMaker
 
         public static void SetAlpa(bool doIt = true)
         {
-            color5 = doIt ? COLOR8 : COLOR5;
+            color5 = doIt ? (byte[])COLOR9.Clone() : (byte[])COLOR5.Clone();
+        }
+
+        /// <summary>
+        /// Color5 index of the ALPA alternate for playfield 0–3, or -1 if none (e.g. BAK).
+        /// Mapping: PF0→6, PF1→8, PF2→7, PF3→5.
+        /// </summary>
+        public static int GetAlpaAlternateColorIndex(int playfieldIndex)
+        {
+            switch (playfieldIndex)
+            {
+                case 0: return 6;
+                case 1: return 8;
+                case 2: return 7;
+                case 3: return 5;
+                default: return -1;
+            }
+        }
+
+        /// <summary>Current global ALPA alternate for PF0–3; if missing (old 8-color maps), returns primary PF1 for PF1 alter.</summary>
+        public static byte GetAlpaAlternateColor(int playfieldIndex)
+        {
+            int alt = GetAlpaAlternateColorIndex(playfieldIndex);
+            if (alt < 0)
+                return color5[Math.Max(0, Math.Min(playfieldIndex, color5.Length - 1))];
+            if (alt < color5.Length)
+                return color5[alt];
+            // PF1 alter not present: same as normal PF1
+            if (playfieldIndex == 1 && color5.Length > 1)
+                return color5[1];
+            return color5[Math.Min(playfieldIndex, color5.Length - 1)];
+        }
+
+        /// <summary>
+        /// Ensures ALPA palettes have PF1 alter (index 8). Older .atrmap files with 8 colors
+        /// get PF1 alter implied as the same value as normal PF1.
+        /// </summary>
+        public static void NormalizeAlpaColors()
+        {
+            if (color5 == null || color5.Length <= 5 || color5.Length >= 9)
+                return;
+            byte[] expanded = new byte[9];
+            Array.Copy(COLOR9, expanded, 9);
+            Array.Copy(color5, expanded, color5.Length);
+            if (color5.Length < 9)
+                expanded[8] = color5.Length > 1 ? color5[1] : COLOR9[1];
+            color5 = expanded;
         }
         public static bool UseDli { get { return useDli; } set { useDli = value; } }
 
@@ -65,6 +112,7 @@ namespace AtariMapMaker
             set
             {
                 color5 = value;
+                NormalizeAlpaColors();
             }
         }
 
@@ -365,135 +413,159 @@ namespace AtariMapMaker
                 height = Math.Max(height, 0);
             }
 
-            BitmapData bmd = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-            int index;
-
-            unsafe
+            BitmapData bmd = null;
+            BitmapData fntd = null;
+            Bitmap lockedFontBmp = null;
+            AtariFont currentFont = defaultFont;
+            try
             {
-                byte* row = (byte*)bmd.Scan0;
-                AtariFont currentFont = defaultFont;
-                BitmapData fntd = currentFont.bitmap.LockBits(new Rectangle(0, 0, currentFont.bitmap.Width, currentFont.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
-                
-                // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
-                int screenCharHeight = myMap.ScreenSize.Height;
-                if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.TileHeight > 0)
-                {
-                    screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
-                }
-                
-                for (int y = 0; y < height; y++)
-                {
-                    // Determine which font to use for this line
-                    int absoluteLine = myMap.OffsetY + y;
-                    int lineInScreen = absoluteLine % screenCharHeight;
-                    int screenY = absoluteLine / screenCharHeight;
-                    // Clamp screen Y to valid range
-                    if (screenY < 0) screenY = 0;
-                    if (screenY >= myMap.MapSize.Height) screenY = myMap.MapSize.Height - 1;
-                    
-                    // Track current screen X to detect when we cross screen boundaries
-                    int lastScreenX = -1;
-                    
-                    // For tilemaps, ScreenSize.Width is in tiles, so convert to character lines
-                    int screenCharWidth = myMap.ScreenSize.Width;
-                    if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.TileWidth > 0)
-                    {
-                        screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
-                    }
-                    
-                    for (int scln = 0; scln < 8; scln++)
-                    {
-                        byte* fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
-                        for (int x = 0; x < width; x++)
-                        {
-                            // Calculate which screen this character belongs to
-                            int absoluteX = myMap.OffsetX + x;
-                            int screenX = absoluteX / screenCharWidth;
-                            // Clamp screen X to valid range
-                            if (screenX < 0) screenX = 0;
-                            if (screenX >= myMap.MapSize.Width) screenX = myMap.MapSize.Width - 1;
-                            
-                            // If we've crossed into a new screen, switch to that screen's font (skip when CharPicker uses override font)
-                            if (!useCharPickerFont && screenX != lastScreenX)
-                            {
-                                AtariFont lineFont = GetFontForLine(myMap, screenX, screenY, lineInScreen, fontType);
-                                
-                                // If font changed, unlock old and lock new
-                                if (lineFont.bitmap != currentFont.bitmap)
-                                {
-                                    currentFont.bitmap.UnlockBits(fntd);
-                                    currentFont = lineFont;
-                                    fntd = currentFont.bitmap.LockBits(new Rectangle(0, 0, currentFont.bitmap.Width, currentFont.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
-                                    fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
-                                }
-                                lastScreenX = screenX;
-                            }
-                            
-                            index = adrOffset + x;
-                            
-                            // Bounds check for data array
-                            if (index < 0 || index >= data.Length)
-                                continue;
-                            
-                            byte charValue = data[index];
-                            
-                            // Bounds check for font data (font has 256 characters, each 8 bytes wide)
-                            if (charValue * 8 + 7 >= fntd.Stride * fntd.Height)
-                                charValue = 0; // Use character 0 if out of bounds
-                            
-                            byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : color5;
-                            if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
-                            for (int c = 0; c < 8; c++)
-                            {
-                                int colorIndex = fntRow[charValue * 8 + c];
-                                byte color;
-                                if (color5.Length > 5)
-                                {
-                                    if ((scln & 0x1) == 1)
-                                    {
-                                        switch (colorIndex)
-                                        {
-                                            case 3:
-                                                color = dliColor5[5];
-                                                break;
-                                            case 0:
-                                                color = dliColor5[6];
-                                                break;
-                                            case 2:
-                                                color = dliColor5[7];
-                                                break;
-                                            default:
-                                                color = dliColor5[colorIndex];
-                                                break;
-                                        }
-                                    }
-                                    else
-                                        color = dliColor5[colorIndex];
-                                }
-                                else
-                                    color = dliColor5[colorIndex];
-                                row[x * 8 + c] = (index < data.Length) ? color : (byte)0;
-                            }
-                        }
-                        //fill offMap space with the offmap color
-                        for (int x = width; x < widthFull; x++)
-                            for (int c = 0; c < 8; c++)
-                                row[x * 8 + c] = offMapColor;
+                bmd = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+                int index;
 
-                        row += bmd.Stride;
+                unsafe
+                {
+                    byte* row = (byte*)bmd.Scan0;
+                    lockedFontBmp = currentFont.bitmap;
+                    fntd = lockedFontBmp.LockBits(new Rectangle(0, 0, lockedFontBmp.Width, lockedFontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+                    
+                    // For tilemaps, ScreenSize.Height is in tiles, so convert to character lines
+                    int screenCharHeight = myMap.ScreenSize.Height;
+                    if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.TileHeight > 0)
+                    {
+                        screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
                     }
-                    // For tilemaps with CharData, use character stride; otherwise use tile stride
-                    adrOffset += charStride;
+                    
+                    for (int y = 0; y < height; y++)
+                    {
+                        // Determine which font to use for this line
+                        int absoluteLine = myMap.OffsetY + y;
+                        int lineInScreen = absoluteLine % screenCharHeight;
+                        int screenY = absoluteLine / screenCharHeight;
+                        // Clamp screen Y to valid range
+                        if (screenY < 0) screenY = 0;
+                        if (screenY >= myMap.MapSize.Height) screenY = myMap.MapSize.Height - 1;
+                        
+                        // Track current screen X to detect when we cross screen boundaries
+                        int lastScreenX = -1;
+                        
+                        // For tilemaps, ScreenSize.Width is in tiles, so convert to character lines
+                        int screenCharWidth = myMap.ScreenSize.Width;
+                        if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.TileWidth > 0)
+                        {
+                            screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                        }
+                        
+                        for (int scln = 0; scln < 8; scln++)
+                        {
+                            byte* fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
+                            for (int x = 0; x < width; x++)
+                            {
+                                // Calculate which screen this character belongs to
+                                int absoluteX = myMap.OffsetX + x;
+                                int screenX = absoluteX / screenCharWidth;
+                                // Clamp screen X to valid range
+                                if (screenX < 0) screenX = 0;
+                                if (screenX >= myMap.MapSize.Width) screenX = myMap.MapSize.Width - 1;
+                                
+                                // If we've crossed into a new screen, switch to that screen's font (skip when CharPicker uses override font)
+                                if (!useCharPickerFont && screenX != lastScreenX)
+                                {
+                                    AtariFont lineFont = GetFontForLine(myMap, screenX, screenY, lineInScreen, fontType);
+                                    
+                                    // If font changed, unlock old and lock new
+                                    if (lineFont.bitmap != currentFont.bitmap)
+                                    {
+                                        lockedFontBmp.UnlockBits(fntd);
+                                        fntd = null;
+                                        currentFont = lineFont;
+                                        lockedFontBmp = currentFont.bitmap;
+                                        fntd = lockedFontBmp.LockBits(new Rectangle(0, 0, lockedFontBmp.Width, lockedFontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+                                        fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
+                                    }
+                                    lastScreenX = screenX;
+                                }
+                                
+                                index = adrOffset + x;
+                                
+                                // Bounds check for data array
+                                if (index < 0 || index >= data.Length)
+                                    continue;
+                                
+                                byte charValue = data[index];
+                                
+                                // Bounds check for font data (font has 256 characters, each 8 bytes wide)
+                                if (charValue * 8 + 7 >= fntd.Stride * fntd.Height)
+                                    charValue = 0; // Use character 0 if out of bounds
+                                
+                                byte[] dliColor5 = useDli ? myMap.GetDliColor5(index) : color5;
+                                if (dliColor5[0] == Globals.DEFAULT_COLOR) dliColor5 = color5;
+                                bool oddScanline = (scln & 0x1) == 1;
+                                for (int c = 0; c < 8; c++)
+                                {
+                                    int colorIndex = fntRow[charValue * 8 + c];
+                                    byte color = ResolveAlpaColor(dliColor5, colorIndex, oddScanline);
+                                    row[x * 8 + c] = (index < data.Length) ? color : (byte)0;
+                                }
+                            }
+                            //fill offMap space with the offmap color
+                            for (int x = width; x < widthFull; x++)
+                                for (int c = 0; c < 8; c++)
+                                    row[x * 8 + c] = offMapColor;
+
+                            row += bmd.Stride;
+                        }
+                        // For tilemaps with CharData, use character stride; otherwise use tile stride
+                        adrOffset += charStride;
+                    }
+                    
+                    int offUnderPixelAmount = (heightFull - height) * 8 * 8 * widthFull;
+                    for (int i = 0; i < offUnderPixelAmount; i++)
+                        row[i] = offMapColor;
                 }
-                
-                currentFont.bitmap.UnlockBits(fntd);
-                
-                int offUnderPixelAmount = (heightFull - height) * 8 * 8 * widthFull;
-                for (int i = 0; i < offUnderPixelAmount; i++)
-                    row[i] = offMapColor;
             }
-            outBmp.UnlockBits(bmd);
-            return;
+            finally
+            {
+                if (fntd != null && lockedFontBmp != null)
+                {
+                    try { lockedFontBmp.UnlockBits(fntd); } catch { /* already unlocked */ }
+                    fntd = null;
+                }
+                if (bmd != null)
+                {
+                    try { outBmp.UnlockBits(bmd); } catch { /* already unlocked */ }
+                    bmd = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Resolve a playfield color for the current scanline. ALPA alternates come from the
+        /// per-line DLI array when present (indices 5–8); otherwise from the global Color5 palette.
+        /// Missing PF1 alter falls back to normal PF1.
+        /// </summary>
+        private static byte ResolveAlpaColor(byte[] lineColors, int colorIndex, bool oddScanline)
+        {
+            if (color5.Length <= 5 || !oddScanline)
+                return lineColors[colorIndex];
+
+            int altIndex;
+            switch (colorIndex)
+            {
+                case 3: altIndex = 5; break; // PF3 alter
+                case 0: altIndex = 6; break; // PF0 alter
+                case 2: altIndex = 7; break; // PF2 alter
+                case 1: altIndex = 8; break; // PF1 alter
+                default: return lineColors[colorIndex];
+            }
+
+            if (altIndex < lineColors.Length)
+                return lineColors[altIndex];
+            if (altIndex < color5.Length)
+                return color5[altIndex];
+            // PF1 alter not present: same as normal PF1 (from DLI line or global)
+            if (colorIndex == 1)
+                return lineColors.Length > 1 ? lineColors[1] : color5[1];
+            return lineColors[colorIndex];
         }
 
         private static byte SwapColor(byte paletteIndex)

@@ -79,7 +79,7 @@ namespace AtariMapMaker
             comboOperation.Items.AddRange(new String[8] { "Export", "Import", "Column Export", "Column Import", "Export DLI", "Import DLI", "Export screen by screen", "Import screen by screen" });
             comboOperation.SelectedIndex = 0;
 
-            dliForm = new DliForm(myMap, pictureBoxMap);
+            dliForm = CreateDliForm();
             dliForm.RenderData();
 
             // Set initial state for V2 UI (controls are in Designer)
@@ -389,6 +389,17 @@ namespace AtariMapMaker
                 lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[7]));
                 listViewColors.Items.Add(lviAlter);
 
+                if (AtariFontRenderer.Color5.Length > 8)
+                {
+                    lviAlter = new ListViewItem
+                    {
+                        ImageIndex = 8,
+                        Text = "PF1 alter"
+                    };
+                    lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[8]));
+                    listViewColors.Items.Add(lviAlter);
+                }
+
                 listViewColors.Columns[0].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
                 listViewColors.Columns[1].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
             }
@@ -451,16 +462,58 @@ namespace AtariMapMaker
             HideClipboardFromMap();
         }
 
+        private DliForm CreateDliForm()
+        {
+            var form = new DliForm(myMap, pictureBoxMap);
+            form.OnGlobalColorsChanged = () =>
+            {
+                FillFontColorList();
+                AtariFontRenderer.RedrawFontImage(Globals.FontType.Screen);
+                AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
+                if (myCharPicker != null)
+                {
+                    myCharPicker.Refresh();
+                    myCharPicker.GetPictureBox()?.Refresh();
+                }
+                if (tilePicker != null && tilePicker.Visible)
+                    tilePicker.Refresh();
+            };
+            return form;
+        }
+
         private void ListView1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             if (listViewColors.SelectedItems.Count == 1)
             {
                 int colorIndex = listViewColors.SelectedItems[0].Index;
-                byte index = AtariFontRenderer.Color5[colorIndex];
+                // Dual pick for PF0–PF3 when ALPA is on (not for BAK or dedicated alter rows)
+                bool dualPf = AtariFontRenderer.Color5.Length > 5 && colorIndex < 4;
                 colorPickerForm.Owner = this;
-                colorPickerForm.Pick(index);
+                if (dualPf)
+                {
+                    byte primary = AtariFontRenderer.Color5[colorIndex];
+                    byte alternate = AtariFontRenderer.GetAlpaAlternateColor(colorIndex);
+                    colorPickerForm.Pick(primary, alternate);
+                    if (colorPickerForm.PickedNewColor)
+                    {
+                        if (colorPickerForm.PickedPrimaryChanged)
+                            AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
+                        if (colorPickerForm.PickedAlternateChanged)
+                        {
+                            AtariFontRenderer.NormalizeAlpaColors();
+                            int altIndex = AtariFontRenderer.GetAlpaAlternateColorIndex(colorIndex);
+                            if (altIndex >= 0 && altIndex < AtariFontRenderer.Color5.Length)
+                                AtariFontRenderer.Color5[altIndex] = colorPickerForm.PickedAlternateIndex;
+                        }
+                    }
+                }
+                else
+                {
+                    byte index = AtariFontRenderer.Color5[colorIndex];
+                    colorPickerForm.Pick(index);
+                    AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
+                }
 
-                AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
                 FillFontColorList();
                 AtariFontRenderer.RedrawFontImage(Globals.FontType.Screen);
                 AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
@@ -476,13 +529,6 @@ namespace AtariMapMaker
                 {
                     tilePicker.Refresh();
                 }
-                //pictureBoxClipboard.Image = AtariPictureTools.windows[Globals.WindowType.Editor].destinationImage;
-
-                //AtariFontRenderer.RedrawFont();
-                //pictureBoxMap.Invalidate();
-                //myCharPicker.GetRenderer().RedrawFont();
-                //myCharPicker.RedrawFontWindow();
-                //RedrawEditorWindow();
             }
         }
 
@@ -1414,6 +1460,7 @@ namespace AtariMapMaker
                     AtariPictureTools.SetGridVisibility(comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked);
                   
                     checkBoxShowDli.Checked = true;
+                    checkBoxAlpa.Checked = AtariFontRenderer.Color5.Length > 5;
                     this.FillFontColorList();
                     
                     // Update numeric up/down controls for new map size
@@ -1443,7 +1490,7 @@ namespace AtariMapMaker
                     if (myCharPicker != null)
                         myCharPicker.RedrawFontWindow();
                     dliForm.Dispose();
-                    dliForm = new DliForm(myMap, pictureBoxMap);
+                    dliForm = CreateDliForm();
                     dliForm.RenderData();
                     dliForm.ZoomResize();
                     numericUpDownScreenFromX.Maximum = myMap.MapSize.Width;
@@ -1566,7 +1613,10 @@ namespace AtariMapMaker
             if (AtariJson.ParsedData.DliData == null)
                 myMap.InitDliColorFullMap();
             else
+            {
                 myMap.ColorData = AtariJson.ParsedData.DliData.Select(i => (byte)i).ToArray();
+                myMap.EnsureDliColorDataLayout(AtariFontRenderer.Color5);
+            }
 
             // Load v2.0 fields
             if (!string.IsNullOrEmpty(AtariJson.ParsedData.MapDescription))
@@ -2534,7 +2584,7 @@ namespace AtariMapMaker
                 UpdateClipboardInverseButtonState();  // Update button state when map type changes
                 RedrawEditorWindow();
                 dliForm.Dispose();
-                dliForm = new DliForm(myMap, pictureBoxMap);
+                dliForm = CreateDliForm();
                 dliForm.RenderData();
             }
 
@@ -3156,7 +3206,7 @@ namespace AtariMapMaker
             undoManager = new UndoManager(myMap);
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
             dliForm?.Dispose();
-            dliForm = new DliForm(myMap, pictureBoxMap);
+            dliForm = CreateDliForm();
             dliForm.RenderData();
             if (myCharPicker != null)
                 myCharPicker.RedrawFontWindow();

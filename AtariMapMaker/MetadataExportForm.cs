@@ -29,7 +29,47 @@ namespace AtariMapMaker
             }
             InitializeComponent();
             this.Font = new Font("Segoe UI", 8F);
+            LoadExportSettings();
+            FormClosing += MetadataExportForm_FormClosing;
             RegenerateOutput(null, EventArgs.Empty);
+        }
+
+        // Session-only: remembered while the app is running
+        private static int savedGroupBy;
+        private static int savedCoordOrder;
+        private static bool savedIncludeHeader;
+        private static bool savedIncludeTypes;
+        private static bool savedIncludeColors;
+        private static bool savedColumnMode = true;
+        private static bool hasSavedSettings;
+
+        private void LoadExportSettings()
+        {
+            if (!hasSavedSettings) return;
+            if (comboGroupBy.Items.Count > 0)
+                comboGroupBy.SelectedIndex = Math.Max(0, Math.Min(savedGroupBy, comboGroupBy.Items.Count - 1));
+            if (comboCoordOrder.Items.Count > 0)
+                comboCoordOrder.SelectedIndex = Math.Max(0, Math.Min(savedCoordOrder, comboCoordOrder.Items.Count - 1));
+            checkHeader.Checked = savedIncludeHeader;
+            checkBoxIncludeTypes.Checked = savedIncludeTypes;
+            checkBoxIncludeColors.Checked = savedIncludeColors;
+            checkBoxColumnModeDisplay.Checked = savedColumnMode;
+        }
+
+        private void SaveExportSettings()
+        {
+            savedGroupBy = comboGroupBy.SelectedIndex;
+            savedCoordOrder = comboCoordOrder.SelectedIndex;
+            savedIncludeHeader = checkHeader.Checked;
+            savedIncludeTypes = checkBoxIncludeTypes.Checked;
+            savedIncludeColors = checkBoxIncludeColors.Checked;
+            savedColumnMode = checkBoxColumnModeDisplay.Checked;
+            hasSavedSettings = true;
+        }
+
+        private void MetadataExportForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            SaveExportSettings();
         }
 
         private void ButtonCopy_Click(object sender, EventArgs e)
@@ -55,6 +95,7 @@ namespace AtariMapMaker
             bool header = checkHeader.Checked;
             bool includeColors = checkBoxIncludeColors.Checked;
             bool includeTypes = checkBoxIncludeTypes.Checked;
+            bool columnModeLists = checkBoxColumnModeDisplay.Checked;
 
             var groups = new List<List<MetadataLayerItem>>();
             if (groupBy == 0)
@@ -147,7 +188,8 @@ namespace AtariMapMaker
                 }
 
                 sb.AppendLine();
-                AppendAddressLists(sb, groupItems);
+                if (columnModeLists)
+                    AppendAddressLists(sb, groupItems);
             }
 
             textBoxOutput.Text = sb.ToString();
@@ -293,23 +335,39 @@ namespace AtariMapMaker
             int groupBy = comboGroupBy.SelectedIndex;
             int coordOrder = comboCoordOrder.SelectedIndex;
             Func<MetadataLayerItem, int> indexOf = i => i.Y * screenCharWidth + i.X;
-            List<MetadataLayerItem> byPosition()
+
+            if (groupBy == 0)
             {
+                if (coordOrder == 3)
+                    return items.OrderBy(i => i.Type).ThenBy(i => i.Value).ThenBy(i => i.Y).ThenBy(i => i.X).ToList();
+                if (coordOrder == 4)
+                    return items.OrderBy(i => i.Value).ThenBy(i => i.Type).ThenBy(i => i.Y).ThenBy(i => i.X).ToList();
                 if (coordOrder == 0) return items.OrderBy(i => i.Y).ThenBy(i => i.X).ToList();
                 if (coordOrder == 1) return items.OrderBy(i => i.X).ThenBy(i => i.Y).ToList();
                 return items.OrderBy(indexOf).ToList();
             }
-            if (groupBy == 0) return byPosition();
-            if (groupBy == 1) return coordOrder == 0 ? items.OrderBy(i => i.Color).ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
-                : coordOrder == 1 ? items.OrderBy(i => i.Color).ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
-                : items.OrderBy(i => i.Color).ThenBy(indexOf).ToList();
-            if (groupBy == 2) return coordOrder == 0 ? items.OrderBy(i => i.Value).ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
-                : coordOrder == 1 ? items.OrderBy(i => i.Value).ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
-                : items.OrderBy(i => i.Value).ThenBy(indexOf).ToList();
-            if (groupBy == 3) return coordOrder == 0 ? items.OrderBy(i => i.Type).ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
-                : coordOrder == 1 ? items.OrderBy(i => i.Type).ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
-                : items.OrderBy(i => i.Type).ThenBy(indexOf).ToList();
-            return byPosition();
+
+            IOrderedEnumerable<MetadataLayerItem> ordered =
+                groupBy == 1 ? items.OrderBy(i => i.Color)
+                : groupBy == 2 ? items.OrderBy(i => i.Value)
+                : groupBy == 3 ? items.OrderBy(i => i.Type)
+                : items.OrderBy(i => i.Y);
+
+            return ApplySecondarySortKey(ordered, coordOrder, indexOf).ToList();
+        }
+
+        /// <summary>Tie-break after primary group/sort key (color, value, or type).</summary>
+        private static IOrderedEnumerable<MetadataLayerItem> ApplySecondarySortKey(
+            IOrderedEnumerable<MetadataLayerItem> primary,
+            int coordOrder,
+            Func<MetadataLayerItem, int> indexOf)
+        {
+            if (coordOrder == 0) return primary.ThenBy(i => i.Y).ThenBy(i => i.X);
+            if (coordOrder == 1) return primary.ThenBy(i => i.X).ThenBy(i => i.Y);
+            if (coordOrder == 2) return primary.ThenBy(indexOf);
+            if (coordOrder == 3) return primary.ThenBy(i => i.Type).ThenBy(i => i.Value).ThenBy(i => i.Y).ThenBy(i => i.X);
+            if (coordOrder == 4) return primary.ThenBy(i => i.Value).ThenBy(i => i.Type).ThenBy(i => i.Y).ThenBy(i => i.X);
+            return primary.ThenBy(indexOf);
         }
     }
 }
