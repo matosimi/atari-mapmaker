@@ -5,16 +5,22 @@ namespace AtariMapMaker
 {
     public class UndoManager
     {
-        private const int MAX_UNDO_STEPS = 50;
-        private Stack<IUndoableOperation> undoStack;
-        private Stack<IUndoableOperation> redoStack;
+        private const int MAX_UNDO_STEPS = 5;
+        private readonly List<IUndoableOperation> undoStack;
+        private readonly List<IUndoableOperation> redoStack;
         private AtariMap map;
 
         public UndoManager(AtariMap map)
         {
             this.map = map;
-            undoStack = new Stack<IUndoableOperation>(MAX_UNDO_STEPS);
-            redoStack = new Stack<IUndoableOperation>(MAX_UNDO_STEPS);
+            undoStack = new List<IUndoableOperation>(MAX_UNDO_STEPS);
+            redoStack = new List<IUndoableOperation>(MAX_UNDO_STEPS);
+        }
+
+        public void SetMap(AtariMap map)
+        {
+            this.map = map;
+            Clear();
         }
 
         public void PushOperation(IUndoableOperation operation)
@@ -22,23 +28,11 @@ namespace AtariMapMaker
             if (operation == null)
                 return;
 
-            // Clear redo stack when new operation is pushed
             redoStack.Clear();
+            undoStack.Add(operation);
 
-            // Limit undo stack size
-            if (undoStack.Count >= MAX_UNDO_STEPS)
-            {
-                // Remove oldest operation (would need a different data structure for this)
-                // For now, just limit to MAX_UNDO_STEPS
-                Stack<IUndoableOperation> tempStack = new Stack<IUndoableOperation>();
-                while (undoStack.Count > MAX_UNDO_STEPS - 1)
-                    tempStack.Push(undoStack.Pop());
-                undoStack.Clear();
-                while (tempStack.Count > 0)
-                    undoStack.Push(tempStack.Pop());
-            }
-
-            undoStack.Push(operation);
+            while (undoStack.Count > MAX_UNDO_STEPS)
+                undoStack.RemoveAt(0);
         }
 
         public bool CanUndo()
@@ -56,9 +50,10 @@ namespace AtariMapMaker
             if (!CanUndo())
                 return;
 
-            IUndoableOperation operation = undoStack.Pop();
+            IUndoableOperation operation = undoStack[undoStack.Count - 1];
+            undoStack.RemoveAt(undoStack.Count - 1);
             operation.Undo(map);
-            redoStack.Push(operation);
+            redoStack.Add(operation);
         }
 
         public void Redo()
@@ -66,23 +61,24 @@ namespace AtariMapMaker
             if (!CanRedo())
                 return;
 
-            IUndoableOperation operation = redoStack.Pop();
+            IUndoableOperation operation = redoStack[redoStack.Count - 1];
+            redoStack.RemoveAt(redoStack.Count - 1);
             operation.Redo(map);
-            undoStack.Push(operation);
+            undoStack.Add(operation);
         }
 
         public string GetUndoDescription()
         {
             if (!CanUndo())
                 return "";
-            return undoStack.Peek().Description;
+            return undoStack[undoStack.Count - 1].Description;
         }
 
         public string GetRedoDescription()
         {
             if (!CanRedo())
                 return "";
-            return redoStack.Peek().Description;
+            return redoStack[redoStack.Count - 1].Description;
         }
 
         public void Clear()
@@ -92,7 +88,84 @@ namespace AtariMapMaker
         }
     }
 
-    // Concrete undo operation implementations
+    /// <summary>
+    /// Restores a set of map Data[] cells (used for clipboard paste undo/redo).
+    /// </summary>
+    public class MapDataRegionOperation : IUndoableOperation
+    {
+        private readonly int[] indices;
+        private readonly byte[] oldValues;
+        private readonly byte[] newValues;
+
+        public string Description { get; }
+
+        public MapDataRegionOperation(int[] indices, byte[] oldValues, byte[] newValues, string description = "Paste")
+        {
+            this.indices = indices ?? throw new ArgumentNullException(nameof(indices));
+            this.oldValues = oldValues ?? throw new ArgumentNullException(nameof(oldValues));
+            this.newValues = newValues ?? throw new ArgumentNullException(nameof(newValues));
+            if (indices.Length != oldValues.Length || indices.Length != newValues.Length)
+                throw new ArgumentException("Change arrays must have the same length.");
+            Description = description;
+        }
+
+        /// <summary>
+        /// Builds an operation from before/after Data snapshots. Returns null if nothing changed.
+        /// </summary>
+        public static MapDataRegionOperation CreateFromDiff(byte[] before, byte[] after, string description = "Paste")
+        {
+            if (before == null || after == null)
+                return null;
+
+            int len = Math.Min(before.Length, after.Length);
+            var indices = new List<int>();
+            var oldVals = new List<byte>();
+            var newVals = new List<byte>();
+
+            for (int i = 0; i < len; i++)
+            {
+                if (before[i] != after[i])
+                {
+                    indices.Add(i);
+                    oldVals.Add(before[i]);
+                    newVals.Add(after[i]);
+                }
+            }
+
+            if (indices.Count == 0)
+                return null;
+
+            return new MapDataRegionOperation(indices.ToArray(), oldVals.ToArray(), newVals.ToArray(), description);
+        }
+
+        public void Undo(AtariMap map)
+        {
+            Apply(map, oldValues);
+        }
+
+        public void Redo(AtariMap map)
+        {
+            Apply(map, newValues);
+        }
+
+        private void Apply(AtariMap map, byte[] values)
+        {
+            if (map?.Data == null)
+                return;
+
+            for (int i = 0; i < indices.Length; i++)
+            {
+                int index = indices[i];
+                if (index >= 0 && index < map.Data.Length)
+                    map.Data[index] = values[i];
+            }
+
+            if (map.IsTilemap)
+                map.RegenerateCharDataFromTiles();
+        }
+    }
+
+    // Concrete undo operation implementations (scaffolding for future use)
     public class MapDataChangeOperation : IUndoableOperation
     {
         private int index;

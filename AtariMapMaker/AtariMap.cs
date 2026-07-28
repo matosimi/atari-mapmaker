@@ -188,20 +188,26 @@ namespace AtariMapMaker
                 int dst = line * DliColorsPerLine;
                 for (int i = 0; i < DliPrimaryColorCount; i++)
                     expanded[dst + i] = ColorData[src + i];
-                if (globalColor5 != null && globalColor5.Length > 5)
+                // Only fill ALPA slots for lines that already have custom DLI.
+                // Empty lines keep DEFAULT_COLOR sentinel in [0]; do not copy global alternates
+                // onto them or every screen looks like it has DLI.
+                if (expanded[dst] != Globals.DEFAULT_COLOR)
                 {
-                    for (int i = 5; i < DliColorsPerLine && i < globalColor5.Length; i++)
-                        expanded[dst + i] = globalColor5[i];
-                    if (globalColor5.Length < 9 && expanded[dst] != Globals.DEFAULT_COLOR)
-                        expanded[dst + 8] = expanded[dst + 1]; // PF1 alter = PF1
-                }
-                else if (expanded[dst] != Globals.DEFAULT_COLOR)
-                {
-                    // No global ALPA: imply alternates match primaries for that line
-                    expanded[dst + 5] = expanded[dst + 3]; // PF3
-                    expanded[dst + 6] = expanded[dst + 0]; // PF0
-                    expanded[dst + 7] = expanded[dst + 2]; // PF2
-                    expanded[dst + 8] = expanded[dst + 1]; // PF1
+                    if (globalColor5 != null && globalColor5.Length > 5)
+                    {
+                        for (int i = 5; i < DliColorsPerLine && i < globalColor5.Length; i++)
+                            expanded[dst + i] = globalColor5[i];
+                        if (globalColor5.Length < 9)
+                            expanded[dst + 8] = expanded[dst + 1]; // PF1 alter = PF1
+                    }
+                    else
+                    {
+                        // No global ALPA: imply alternates match primaries for that line
+                        expanded[dst + 5] = expanded[dst + 3]; // PF3
+                        expanded[dst + 6] = expanded[dst + 0]; // PF0
+                        expanded[dst + 7] = expanded[dst + 2]; // PF2
+                        expanded[dst + 8] = expanded[dst + 1]; // PF1
+                    }
                 }
             }
             ColorData = expanded;
@@ -364,7 +370,11 @@ namespace AtariMapMaker
             return meta.ParsedItems.Count > 0;
         }
 
-        /// <summary>True if DLI color data for this screen differs from the initialized default (no per-line DLI).</summary>
+        /// <summary>
+        /// True if this screen has per-line DLI colors (general palette not used for those lines).
+        /// A line uses screen-specific DLI when ColorData[line][0] != DEFAULT_COLOR (255);
+        /// that matches rendering in AtariFontRenderer.
+        /// </summary>
         public bool ScreenHasCustomDli(int screenX, int screenY)
         {
             if (ColorData == null || screenX < 0 || screenY < 0 || screenX >= MapSize.Width || screenY >= MapSize.Height)
@@ -380,11 +390,6 @@ namespace AtariMapMaker
                 int o = screenOffset + line * cpl;
                 if (ColorData[o] != Globals.DEFAULT_COLOR)
                     return true;
-                for (int i = 1; i < cpl; i++)
-                {
-                    if (ColorData[o + i] != 0)
-                        return true;
-                }
             }
             return false;
         }

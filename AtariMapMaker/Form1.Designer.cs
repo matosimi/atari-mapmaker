@@ -47,6 +47,9 @@ namespace AtariMapMaker
             this.checkBoxClipboardSkip0 = new System.Windows.Forms.CheckBox();
             this.buttonClipboardInverse = new System.Windows.Forms.Button();
             this.pictureBoxClipboard = new System.Windows.Forms.PictureBox();
+            this.groupBoxHistory = new System.Windows.Forms.GroupBox();
+            this.buttonUndo = new System.Windows.Forms.Button();
+            this.buttonRedo = new System.Windows.Forms.Button();
             this.groupBoxUnderClipboard = new System.Windows.Forms.GroupBox();
             this.pictureBoxUnderClipBoard = new System.Windows.Forms.PictureBox();
             this.groupBoxDli = new System.Windows.Forms.GroupBox();
@@ -82,11 +85,11 @@ namespace AtariMapMaker
             this.groupBox5 = new System.Windows.Forms.GroupBox();
             this.checkBoxShowScreenSelection = new System.Windows.Forms.CheckBox();
             this.checkBoxExportSingleScreen = new System.Windows.Forms.CheckBox();
+            this.labelDliOrderHint = new System.Windows.Forms.Label();
             this.labelDliMask = new System.Windows.Forms.Label();
             this.maskedTextBoxDli = new System.Windows.Forms.MaskedTextBox();
             this.labelAlpaDliMask = new System.Windows.Forms.Label();
             this.maskedTextBoxAlpaDli = new System.Windows.Forms.MaskedTextBox();
-            this.labelDliOrderHint = new System.Windows.Forms.Label();
             this.numericUpDown6 = new System.Windows.Forms.NumericUpDown();
             this.lblDataWidth = new System.Windows.Forms.Label();
             this.buttonPerform = new System.Windows.Forms.Button();
@@ -166,6 +169,7 @@ namespace AtariMapMaker
             this.groupBoxColors.SuspendLayout();
             this.groupBoxClipBoard.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxClipboard)).BeginInit();
+            this.groupBoxHistory.SuspendLayout();
             this.groupBoxUnderClipboard.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxUnderClipBoard)).BeginInit();
             this.groupBoxDli.SuspendLayout();
@@ -210,8 +214,8 @@ namespace AtariMapMaker
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.tabControl1);
-            this.splitContainer1.Size = new System.Drawing.Size(857, 905);
-            this.splitContainer1.SplitterDistance = 429;
+            this.splitContainer1.Size = new System.Drawing.Size(913, 905);
+            this.splitContainer1.SplitterDistance = 457;
             this.splitContainer1.SplitterWidth = 6;
             this.splitContainer1.TabIndex = 0;
             this.splitContainer1.SplitterMoving += new System.Windows.Forms.SplitterCancelEventHandler(this.splitContainer1_SplitterMoving);
@@ -223,7 +227,7 @@ namespace AtariMapMaker
             this.pictureBoxMap.Location = new System.Drawing.Point(0, 0);
             this.pictureBoxMap.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.pictureBoxMap.Name = "pictureBoxMap";
-            this.pictureBoxMap.Size = new System.Drawing.Size(429, 905);
+            this.pictureBoxMap.Size = new System.Drawing.Size(457, 905);
             this.pictureBoxMap.TabIndex = 0;
             this.pictureBoxMap.TabStop = false;
             this.pictureBoxMap.ClientSizeChanged += new System.EventHandler(this.PictureBoxMap_ClientSizeChanged);
@@ -246,7 +250,7 @@ namespace AtariMapMaker
             this.tabControl1.Multiline = true;
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(422, 905);
+            this.tabControl1.Size = new System.Drawing.Size(450, 905);
             this.tabControl1.SizeMode = System.Windows.Forms.TabSizeMode.Fixed;
             this.tabControl1.TabIndex = 0;
             this.tabControl1.SelectedIndexChanged += new System.EventHandler(this.TabControl1_SelectedIndexChanged);
@@ -258,7 +262,7 @@ namespace AtariMapMaker
             this.tabPageColors.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.tabPageColors.Name = "tabPageColors";
             this.tabPageColors.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.tabPageColors.Size = new System.Drawing.Size(414, 845);
+            this.tabPageColors.Size = new System.Drawing.Size(442, 845);
             this.tabPageColors.TabIndex = 0;
             this.tabPageColors.Text = "Colors";
             this.tabPageColors.UseVisualStyleBackColor = true;
@@ -270,6 +274,7 @@ namespace AtariMapMaker
             this.flowLayoutPanel1.Controls.Add(this.groupBoxColors);
             this.flowLayoutPanel1.Controls.Add(this.groupBoxClipBoard);
             this.flowLayoutPanel1.Controls.Add(this.groupBoxUnderClipboard);
+            this.flowLayoutPanel1.Controls.Add(this.groupBoxHistory);
             this.flowLayoutPanel1.Controls.Add(this.groupBoxDli);
             this.flowLayoutPanel1.Controls.Add(this.groupBoxMetadata);
             this.flowLayoutPanel1.Controls.Add(this.groupBoxFont);
@@ -279,7 +284,7 @@ namespace AtariMapMaker
             this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(4, 5);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(406, 835);
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(434, 835);
             this.flowLayoutPanel1.TabIndex = 16;
             // 
             // groupBoxZoom
@@ -427,6 +432,42 @@ namespace AtariMapMaker
             this.pictureBoxClipboard.TabIndex = 6;
             this.pictureBoxClipboard.TabStop = false;
             // 
+            // groupBoxHistory
+            // 
+            this.groupBoxHistory.Controls.Add(this.buttonUndo);
+            this.groupBoxHistory.Controls.Add(this.buttonRedo);
+            this.groupBoxHistory.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+            this.groupBoxHistory.Location = new System.Drawing.Point(4, 554);
+            this.groupBoxHistory.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.groupBoxHistory.Name = "groupBoxHistory";
+            this.groupBoxHistory.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.groupBoxHistory.Size = new System.Drawing.Size(182, 87);
+            this.groupBoxHistory.TabIndex = 17;
+            this.groupBoxHistory.TabStop = false;
+            this.groupBoxHistory.Text = "History";
+            // 
+            // buttonUndo
+            // 
+            this.buttonUndo.Enabled = false;
+            this.buttonUndo.Location = new System.Drawing.Point(10, 30);
+            this.buttonUndo.Name = "buttonUndo";
+            this.buttonUndo.Size = new System.Drawing.Size(81, 40);
+            this.buttonUndo.TabIndex = 0;
+            this.buttonUndo.Text = "Undo";
+            this.buttonUndo.UseVisualStyleBackColor = true;
+            this.buttonUndo.Click += new System.EventHandler(this.ButtonUndo_Click);
+            // 
+            // buttonRedo
+            // 
+            this.buttonRedo.Enabled = false;
+            this.buttonRedo.Location = new System.Drawing.Point(97, 30);
+            this.buttonRedo.Name = "buttonRedo";
+            this.buttonRedo.Size = new System.Drawing.Size(78, 40);
+            this.buttonRedo.TabIndex = 1;
+            this.buttonRedo.Text = "Redo";
+            this.buttonRedo.UseVisualStyleBackColor = true;
+            this.buttonRedo.Click += new System.EventHandler(this.ButtonRedo_Click);
+            // 
             // groupBoxUnderClipboard
             // 
             this.groupBoxUnderClipboard.Controls.Add(this.pictureBoxUnderClipBoard);
@@ -459,7 +500,7 @@ namespace AtariMapMaker
             this.groupBoxDli.Controls.Add(this.labelRefScreenComma);
             this.groupBoxDli.Controls.Add(this.numericUpDownRefScreenY);
             this.groupBoxDli.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.groupBoxDli.Location = new System.Drawing.Point(3, 552);
+            this.groupBoxDli.Location = new System.Drawing.Point(3, 649);
             this.groupBoxDli.Name = "groupBoxDli";
             this.groupBoxDli.Size = new System.Drawing.Size(325, 173);
             this.groupBoxDli.TabIndex = 14;
@@ -572,7 +613,7 @@ namespace AtariMapMaker
             this.groupBoxMetadata.Controls.Add(this.trackBarMetadataBlend);
             this.groupBoxMetadata.Controls.Add(this.buttonMassChangeMetadata);
             this.groupBoxMetadata.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.groupBoxMetadata.Location = new System.Drawing.Point(3, 731);
+            this.groupBoxMetadata.Location = new System.Drawing.Point(3, 828);
             this.groupBoxMetadata.Name = "groupBoxMetadata";
             this.groupBoxMetadata.Size = new System.Drawing.Size(325, 250);
             this.groupBoxMetadata.TabIndex = 21;
@@ -676,7 +717,7 @@ namespace AtariMapMaker
             this.groupBoxFont.Controls.Add(this.buttonShowTiles);
             this.groupBoxFont.Controls.Add(this.buttonFontTemplate);
             this.groupBoxFont.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.groupBoxFont.Location = new System.Drawing.Point(3, 987);
+            this.groupBoxFont.Location = new System.Drawing.Point(3, 1084);
             this.groupBoxFont.Name = "groupBoxFont";
             this.groupBoxFont.Size = new System.Drawing.Size(325, 121);
             this.groupBoxFont.TabIndex = 13;
@@ -751,7 +792,7 @@ namespace AtariMapMaker
             // 
             // buttonElementLibrary
             // 
-            this.buttonElementLibrary.Location = new System.Drawing.Point(4, 1116);
+            this.buttonElementLibrary.Location = new System.Drawing.Point(4, 1213);
             this.buttonElementLibrary.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonElementLibrary.Name = "buttonElementLibrary";
             this.buttonElementLibrary.Size = new System.Drawing.Size(112, 51);
@@ -762,7 +803,7 @@ namespace AtariMapMaker
             // 
             // buttonMapDescription
             // 
-            this.buttonMapDescription.Location = new System.Drawing.Point(124, 1116);
+            this.buttonMapDescription.Location = new System.Drawing.Point(124, 1213);
             this.buttonMapDescription.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonMapDescription.Name = "buttonMapDescription";
             this.buttonMapDescription.Size = new System.Drawing.Size(112, 51);
@@ -773,7 +814,7 @@ namespace AtariMapMaker
             // 
             // buttonTilemapConfig
             // 
-            this.buttonTilemapConfig.Location = new System.Drawing.Point(244, 1116);
+            this.buttonTilemapConfig.Location = new System.Drawing.Point(244, 1213);
             this.buttonTilemapConfig.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonTilemapConfig.Name = "buttonTilemapConfig";
             this.buttonTilemapConfig.Size = new System.Drawing.Size(112, 51);
@@ -861,7 +902,7 @@ namespace AtariMapMaker
             this.checkBoxExportSingleScreen.AutoSize = true;
             this.checkBoxExportSingleScreen.Location = new System.Drawing.Point(160, 179);
             this.checkBoxExportSingleScreen.Name = "checkBoxExportSingleScreen";
-            this.checkBoxExportSingleScreen.Size = new System.Drawing.Size(120, 25);
+            this.checkBoxExportSingleScreen.Size = new System.Drawing.Size(128, 25);
             this.checkBoxExportSingleScreen.TabIndex = 24;
             this.checkBoxExportSingleScreen.Text = "Single screen";
             this.checkBoxExportSingleScreen.UseVisualStyleBackColor = true;
@@ -875,7 +916,8 @@ namespace AtariMapMaker
             this.labelDliOrderHint.Name = "labelDliOrderHint";
             this.labelDliOrderHint.Size = new System.Drawing.Size(306, 36);
             this.labelDliOrderHint.TabIndex = 25;
-            this.labelDliOrderHint.Text = "Order: color register by register (all lines of each register), not line by line.";
+            this.labelDliOrderHint.Text = "Order: color register by register (all lines of each register), not line by line." +
+    "";
             this.labelDliOrderHint.Visible = false;
             // 
             // labelDliMask
@@ -1550,7 +1592,7 @@ namespace AtariMapMaker
             this.toolStripStatusLabel3});
             this.statusStrip1.Location = new System.Drawing.Point(0, 905);
             this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(857, 34);
+            this.statusStrip1.Size = new System.Drawing.Size(913, 34);
             this.statusStrip1.TabIndex = 2;
             this.statusStrip1.Text = "statusStrip1";
             // 
@@ -1593,7 +1635,7 @@ namespace AtariMapMaker
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.ClientSize = new System.Drawing.Size(857, 939);
+            this.ClientSize = new System.Drawing.Size(913, 939);
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.statusStrip1);
             this.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
@@ -1618,6 +1660,7 @@ namespace AtariMapMaker
             this.groupBoxClipBoard.ResumeLayout(false);
             this.groupBoxClipBoard.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxClipboard)).EndInit();
+            this.groupBoxHistory.ResumeLayout(false);
             this.groupBoxUnderClipboard.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxUnderClipBoard)).EndInit();
             this.groupBoxDli.ResumeLayout(false);
@@ -1701,6 +1744,9 @@ namespace AtariMapMaker
         private System.Windows.Forms.GroupBox groupBoxMap;
         private System.Windows.Forms.ComboBox comboOperation;
         private System.Windows.Forms.GroupBox groupBoxClipBoard;
+        private System.Windows.Forms.GroupBox groupBoxHistory;
+        private System.Windows.Forms.Button buttonUndo;
+        private System.Windows.Forms.Button buttonRedo;
         private System.Windows.Forms.GroupBox groupBox5;
         private System.Windows.Forms.Label lblScrToXY;
         private System.Windows.Forms.Button buttonPerform;

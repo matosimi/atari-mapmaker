@@ -113,28 +113,111 @@ namespace AtariMapMaker
             
             // Update button state based on map type
             UpdateClipboardInverseButtonState();
+            UpdateUndoRedoUI();
         }
 
         private UndoManager undoManager;
 
         private void MenuItemUndo_Click(object sender, EventArgs e)
         {
-            if (undoManager != null && undoManager.CanUndo())
-            {
-                undoManager.Undo();
-                AtariPictureTools.Redraw(Globals.WindowType.Editor);
-                pictureBoxMap.Refresh();
-            }
+            PerformUndo();
         }
 
         private void MenuItemRedo_Click(object sender, EventArgs e)
         {
-            if (undoManager != null && undoManager.CanRedo())
+            PerformRedo();
+        }
+
+        private void ButtonUndo_Click(object sender, EventArgs e)
+        {
+            PerformUndo();
+        }
+
+        private void ButtonRedo_Click(object sender, EventArgs e)
+        {
+            PerformRedo();
+        }
+
+        private void PerformUndo()
+        {
+            if (undoManager == null || !undoManager.CanUndo())
+                return;
+
+            undoManager.Undo();
+            AfterMapDataUndoRedo();
+        }
+
+        private void PerformRedo()
+        {
+            if (undoManager == null || !undoManager.CanRedo())
+                return;
+
+            undoManager.Redo();
+            AfterMapDataUndoRedo();
+        }
+
+        private void AfterMapDataUndoRedo()
+        {
+            if (myMap != null && myMap.IsTilemap)
+                AtariFontRenderer.ClearFontCache();
+
+            RedrawEditorWindow();
+
+            if (AtariClipboard.IsValid && AtariPictureTools.PreviousClipboardLocation.HasValue)
             {
-                undoManager.Redo();
-                AtariPictureTools.Redraw(Globals.WindowType.Editor);
-                pictureBoxMap.Refresh();
+                AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
+                pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
+                pictureBoxUnderClipBoard.Refresh();
             }
+
+            pictureBoxMap.Refresh();
+            UpdateUndoRedoUI();
+        }
+
+        private void UpdateUndoRedoUI()
+        {
+            bool canUndo = undoManager != null && undoManager.CanUndo();
+            bool canRedo = undoManager != null && undoManager.CanRedo();
+
+            if (buttonUndo != null)
+                buttonUndo.Enabled = canUndo;
+            if (buttonRedo != null)
+                buttonRedo.Enabled = canRedo;
+            if (menuItemUndo != null)
+            {
+                menuItemUndo.Enabled = canUndo;
+                string undoDesc = canUndo ? undoManager.GetUndoDescription() : "";
+                menuItemUndo.Text = string.IsNullOrEmpty(undoDesc) ? "Undo" : "Undo " + undoDesc;
+            }
+            if (menuItemRedo != null)
+            {
+                menuItemRedo.Enabled = canRedo;
+                string redoDesc = canRedo ? undoManager.GetRedoDescription() : "";
+                menuItemRedo.Text = string.IsNullOrEmpty(redoDesc) ? "Redo" : "Redo " + redoDesc;
+            }
+            if (toolTip1 != null)
+            {
+                if (buttonUndo != null)
+                    toolTip1.SetToolTip(buttonUndo, canUndo ? "Undo " + undoManager.GetUndoDescription() + " (Ctrl+Z)" : "Nothing to undo (Ctrl+Z)");
+                if (buttonRedo != null)
+                    toolTip1.SetToolTip(buttonRedo, canRedo ? "Redo " + undoManager.GetRedoDescription() + " (Ctrl+Y)" : "Nothing to redo (Ctrl+Y)");
+            }
+        }
+
+        /// <summary>
+        /// Runs a paste action and records a map-data undo step if anything changed.
+        /// </summary>
+        private void PasteWithUndo(Action pasteAction)
+        {
+            if (myMap?.Data == null || pasteAction == null)
+                return;
+
+            byte[] before = (byte[])myMap.Data.Clone();
+            pasteAction();
+            var operation = MapDataRegionOperation.CreateFromDiff(before, myMap.Data, "Paste");
+            if (operation != null && undoManager != null)
+                undoManager.PushOperation(operation);
+            UpdateUndoRedoUI();
         }
 
         private void MenuItemLinkScreen_Click(object sender, EventArgs e)
@@ -978,60 +1061,9 @@ namespace AtariMapMaker
 
                 if (AtariClipboard.IsValid)
                 {
-                    AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
                     int charX = e.X / Globals.CharSize;
                     int charY = e.Y / Globals.CharSize;
-                    
-                    // If tilemap is enabled, snap to tile grid
-                    if (myMap.IsTilemap && myMap.TilemapInfo != null)
-                    {
-                        int tileWidth = myMap.TilemapInfo.TileWidth;
-                        int tileHeight = myMap.TilemapInfo.TileHeight;
-                        charX = (charX / tileWidth) * tileWidth;
-                        charY = (charY / tileHeight) * tileHeight;
-                        
-                        // For tilemaps, check if clipboard contains tile indexes
-                        if (AtariClipboard.IsTileIndexes)
-                        {
-                            // Convert character coordinates to tile coordinates
-                            // charX and charY are relative to the visible area, need to add offset
-                            int absoluteCharX = myMap.OffsetX + charX;
-                            int absoluteCharY = myMap.OffsetY + charY;
-                            int tileX = absoluteCharX / tileWidth;
-                            int tileY = absoluteCharY / tileHeight;
-                            
-                            // Calculate character offset for Paste
-                            // For tilemaps, use CharStride (character stride)
-                            int charStride = myMap.CharStride;
-                            int charOffset = absoluteCharX + charStride * absoluteCharY;
-                            AtariClipboard.Paste(myMap.Offset + charOffset);
-                        }
-                        else
-                        {
-                            // Paste characters (normal mode, but snapped to tile grid)
-                            // For tilemaps, we need to use character stride, not tile stride
-                            int charStride = myMap.CharStride;
-                            if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= charStride)
-                            {
-                                // Need to add the offset from the map
-                                int absoluteCharX = myMap.OffsetX + charX;
-                                int absoluteCharY = myMap.OffsetY + charY;
-                                int absoluteCharOffset = absoluteCharX + charStride * absoluteCharY;
-                                AtariClipboard.Paste(myMap.Offset + absoluteCharOffset);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Normal map - paste characters
-                        if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= myMap.Stride)
-                        {
-                            int absoluteCharX = myMap.OffsetX + charX;
-                            int absoluteCharY = myMap.OffsetY + charY;
-                            int addoffset = absoluteCharX + myMap.Stride * absoluteCharY;
-                            AtariClipboard.Paste(myMap.Offset + addoffset);
-                        }
-                    }
+                    PasteClipboardAtCharCoords(charX, charY);
                     
                     // For tilemaps, ensure CharData is up to date after pasting
                     if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
@@ -1366,49 +1398,9 @@ namespace AtariMapMaker
                 
             lastContinuousPasteCell = currentGridCell;
             
-            // Perform the paste (reuse the logic from MouseDown)
-            AtariClipboard.SetDataSource(myMap);
             int charX = location.X / Globals.CharSize;
             int charY = location.Y / Globals.CharSize;
-            
-            // If tilemap is enabled, snap to tile grid
-            if (myMap.IsTilemap && myMap.TilemapInfo != null)
-            {
-                int tileWidth = myMap.TilemapInfo.TileWidth;
-                int tileHeight = myMap.TilemapInfo.TileHeight;
-                charX = (charX / tileWidth) * tileWidth;
-                charY = (charY / tileHeight) * tileHeight;
-                
-                if (AtariClipboard.IsTileIndexes)
-                {
-                    int absoluteCharX = myMap.OffsetX + charX;
-                    int absoluteCharY = myMap.OffsetY + charY;
-                    int charStride = myMap.CharStride;
-                    int charOffset = absoluteCharX + charStride * absoluteCharY;
-                    AtariClipboard.Paste(myMap.Offset + charOffset);
-                }
-                else
-                {
-                    int charStride = myMap.CharStride;
-                    if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= charStride)
-                    {
-                        int absoluteCharX = myMap.OffsetX + charX;
-                        int absoluteCharY = myMap.OffsetY + charY;
-                        int absoluteCharOffset = absoluteCharX + charStride * absoluteCharY;
-                        AtariClipboard.Paste(myMap.Offset + absoluteCharOffset);
-                    }
-                }
-            }
-            else
-            {
-                if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= myMap.Stride)
-                {
-                    int absoluteCharX = myMap.OffsetX + charX;
-                    int absoluteCharY = myMap.OffsetY + charY;
-                    int addoffset = absoluteCharX + myMap.Stride * absoluteCharY;
-                    AtariClipboard.Paste(myMap.Offset + addoffset);
-                }
-            }
+            PasteClipboardAtCharCoords(charX, charY);
             
             // Redraw after paste
             if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
@@ -1418,6 +1410,56 @@ namespace AtariMapMaker
             AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
             pictureBoxMap.Refresh();
         }
+
+        /// <summary>
+        /// Pastes clipboard at character coordinates relative to the visible editor area, with undo recording.
+        /// </summary>
+        private void PasteClipboardAtCharCoords(int charX, int charY)
+        {
+            AtariClipboard.SetDataSource(myMap);
+
+            PasteWithUndo(() =>
+            {
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    int tileWidth = myMap.TilemapInfo.TileWidth;
+                    int tileHeight = myMap.TilemapInfo.TileHeight;
+                    charX = (charX / tileWidth) * tileWidth;
+                    charY = (charY / tileHeight) * tileHeight;
+
+                    if (AtariClipboard.IsTileIndexes)
+                    {
+                        int absoluteCharX = myMap.OffsetX + charX;
+                        int absoluteCharY = myMap.OffsetY + charY;
+                        int charStride = myMap.CharStride;
+                        int charOffset = absoluteCharX + charStride * absoluteCharY;
+                        AtariClipboard.Paste(myMap.Offset + charOffset);
+                    }
+                    else
+                    {
+                        int charStride = myMap.CharStride;
+                        if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= charStride)
+                        {
+                            int absoluteCharX = myMap.OffsetX + charX;
+                            int absoluteCharY = myMap.OffsetY + charY;
+                            int absoluteCharOffset = absoluteCharX + charStride * absoluteCharY;
+                            AtariClipboard.Paste(myMap.Offset + absoluteCharOffset);
+                        }
+                    }
+                }
+                else
+                {
+                    if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= myMap.Stride)
+                    {
+                        int absoluteCharX = myMap.OffsetX + charX;
+                        int absoluteCharY = myMap.OffsetY + charY;
+                        int addoffset = absoluteCharX + myMap.Stride * absoluteCharY;
+                        AtariClipboard.Paste(myMap.Offset + addoffset);
+                    }
+                }
+            });
+        }
+
 
         private void Timer1_Tick(object sender, EventArgs e)
         {
@@ -1631,6 +1673,7 @@ namespace AtariMapMaker
             };
             
             undoManager = new UndoManager(myMap);
+            UpdateUndoRedoUI();
             AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
             
             // Load fonts - handle v1.2 and v2.0 formats
@@ -2731,6 +2774,7 @@ namespace AtariMapMaker
                 
                 ClearClipboard();
                 undoManager = new UndoManager(myMap);
+                UpdateUndoRedoUI();
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                 if (myCharPicker != null)
                     myCharPicker.RedrawFontWindow();
@@ -3108,6 +3152,20 @@ namespace AtariMapMaker
                     return;
                 }
             }
+            if (e.Control && e.KeyCode == Keys.Z)
+            {
+                PerformUndo();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+            if (e.Control && e.KeyCode == Keys.Y)
+            {
+                PerformRedo();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
             if (e.KeyCode == Keys.I && buttonClipboardInverse != null && buttonClipboardInverse.Enabled)
             {
                 InvertClipboard();
@@ -3467,6 +3525,7 @@ namespace AtariMapMaker
             AtariMap newMap = myMap.ExtendWithNewScreenRow();
             myMap = newMap;
             undoManager = new UndoManager(myMap);
+            UpdateUndoRedoUI();
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
             dliForm?.Dispose();
             dliForm = CreateDliForm();
