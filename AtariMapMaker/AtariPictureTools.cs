@@ -166,15 +166,55 @@ namespace AtariMapMaker
             }
         }
 
-        public static bool SelectionEnd(Globals.WindowType window)
+        public static bool SelectionEnd(Globals.WindowType window, bool copyToClipboard = true)
         {
-            if (mouseSelection.Width == 0 || mouseSelection.Height == 0)
+            if (!NormalizeSelection())
                 return false;
+
+            if (!copyToClipboard)
+                return true;
+
+            return CopyCurrentSelectionToClipboard(window);
+        }
+
+        /// <summary>
+        /// Copies the current editor/char-picker selection rectangle into the clipboard.
+        /// Selection must already be finalized (normalized, non-empty).
+        /// </summary>
+        public static bool CopyCurrentSelectionToClipboard(Globals.WindowType window)
+        {
+            if (!NormalizeSelection())
+                return false;
+
             if (AtariClipboard.UnderClipBoardImage != null)
                 AtariClipboard.UnderClipBoardImage.Dispose();
             if (AtariClipboard.UnderImageGraphics != null)
                 AtariClipboard.UnderImageGraphics.Dispose();
 
+            AtariClipboard.SetDataSource(windows[window].map);
+            AtariClipboard.Copy(windows[window].fontRendererMapImage, mouseSelection, windows[window].map.Offset);
+            AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.ClipboardImage);
+            AtariClipboard.UnderImageGraphics = Graphics.FromImage(AtariClipboard.UnderClipBoardImage);
+            return true;
+        }
+
+        /// <summary>True if there is a non-empty selection rectangle.</summary>
+        public static bool HasSelection
+        {
+            get { return mouseSelection.Width != 0 && mouseSelection.Height != 0; }
+        }
+
+        /// <summary>Redraws the selection rectangle on top of the current view.</summary>
+        public static void RedrawSelection(Globals.WindowType window)
+        {
+            if (HasSelection)
+                DrawSelection(window);
+        }
+
+        private static bool NormalizeSelection()
+        {
+            if (mouseSelection.Width == 0 || mouseSelection.Height == 0)
+                return false;
 
             if (mouseSelection.Width < 0)
             {
@@ -186,12 +226,7 @@ namespace AtariMapMaker
                 mouseSelection.Y += mouseSelection.Height;
                 mouseSelection.Height = -mouseSelection.Height;
             }
-
-            AtariClipboard.SetDataSource(windows[window].map);
-            AtariClipboard.Copy(windows[window].fontRendererMapImage, mouseSelection, windows[window].map.Offset);
-            AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.ClipboardImage);
-            AtariClipboard.UnderImageGraphics = Graphics.FromImage(AtariClipboard.UnderClipBoardImage);
-            return true;
+            return mouseSelection.Width != 0 && mouseSelection.Height != 0;
         }
 
         public static Point PreviousMouseLocation

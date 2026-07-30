@@ -41,6 +41,10 @@ namespace AtariMapMaker
         private Point? previousMetadataOverlayLocation = null;
         private string mainFormBaseTitle = "";
         private string currentAtrmapPath = null;
+        private string currentDataPath = null;  // last export/import path (separate from atrmap save/load)
+        private Point lastMapMouseLocation = Point.Empty;
+        /// <summary>When Autopaste is off, Ctrl+V arms one floating-paste session until the user clicks to place it.</summary>
+        private bool floatingPasteArmed = false;
         public MainForm()
         {
             InitializeComponent();
@@ -114,6 +118,8 @@ namespace AtariMapMaker
             // Update button state based on map type
             UpdateClipboardInverseButtonState();
             UpdateUndoRedoUI();
+            if (checkBoxAutopaste != null)
+                toolTip1.SetToolTip(checkBoxAutopaste, "On: select copies clipboard, click/Ctrl+V pastes. Off: Ctrl+C copies, Ctrl+V arms floating paste, click places once.");
         }
 
         private UndoManager undoManager;
@@ -163,7 +169,7 @@ namespace AtariMapMaker
 
             RedrawEditorWindow();
 
-            if (AtariClipboard.IsValid && AtariPictureTools.PreviousClipboardLocation.HasValue)
+            if (IsFloatingPasteActive && AtariClipboard.IsValid && AtariPictureTools.PreviousClipboardLocation.HasValue)
             {
                 AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
                 pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
@@ -691,6 +697,7 @@ namespace AtariMapMaker
 
         private void PictureBoxMap_MouseMove(object sender, MouseEventArgs e)
         {
+            lastMapMouseLocation = e.Location;
             int xx = myMap.OffsetX + e.X / Globals.CharSize;
             int yy = myMap.OffsetY + e.Y / Globals.CharSize;
             
@@ -797,9 +804,9 @@ namespace AtariMapMaker
                     AtariPictureTools.SelectionChange(e.Location, Globals.WindowType.Editor);
                     pictureBoxMap.Refresh();
                 }
-                else if (AtariClipboard.IsValid && (Control.ModifierKeys & Keys.Control) == Keys.Control)
+                else if (IsAutopasteEnabled && AtariClipboard.IsValid && (Control.ModifierKeys & Keys.Control) == Keys.Control)
                 {
-                    // Continuous paste mode: CTRL + Left mouse button
+                    // Continuous paste mode: CTRL + Left mouse button (autopaste only)
                     isContinuousPasteMode = true;
                     PerformPasteAtLocation(e.Location);
                 }
@@ -807,8 +814,10 @@ namespace AtariMapMaker
 
             if (e.Button == MouseButtons.None)  //nothing is pressed
             {
+                lastMapMouseLocation = e.Location;
+
                 // Check for continuous paste mode on mouse move (CTRL still held)
-                if (isContinuousPasteMode && (Control.ModifierKeys & Keys.Control) == Keys.Control && AtariClipboard.IsValid)
+                if (IsAutopasteEnabled && isContinuousPasteMode && (Control.ModifierKeys & Keys.Control) == Keys.Control && AtariClipboard.IsValid)
                 {
                     // Continue pasting as mouse moves in continuous paste mode
                     PerformPasteAtLocation(e.Location);
@@ -822,7 +831,7 @@ namespace AtariMapMaker
 
               
               
-                if (AtariClipboard.IsValid)  //copy mode (shows alpha blended clipBoard)
+                if (IsFloatingPasteActive)  //copy mode (shows alpha blended clipBoard)
                 {
                     // Calculate current grid cell based on map type
                     int alignSizeX = Globals.CharSize;
@@ -1056,39 +1065,14 @@ namespace AtariMapMaker
         private void PictureBoxMap_MouseDown(object sender, MouseEventArgs e)
         {
             AtariPictureTools.PreviousMouseLocation = e.Location;
+            lastMapMouseLocation = e.Location;
             if (e.Button == MouseButtons.Left)
             {
 
-                if (AtariClipboard.IsValid)
+                if (IsFloatingPasteActive)
                 {
-                    int charX = e.X / Globals.CharSize;
-                    int charY = e.Y / Globals.CharSize;
-                    PasteClipboardAtCharCoords(charX, charY);
-                    
-                    // For tilemaps, ensure CharData is up to date after pasting
-                    if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
-                    {
-                        // CharData is already updated by ExpandTileToCharData in Paste method
-                        // But we may need to clear font cache if fonts changed
-                        AtariFontRenderer.ClearFontCache();
-                    }
-                    
-                    // Redraw the editor window to show the pasted data immediately
-                    // Force a complete redraw by calling Redraw with all parameters
-                    // This ensures RenderMapData reads the freshly pasted data
-                    AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
-                    
-                    // After redrawing, update the UnderClipBoardImage with the NEW content under the clipboard position
-                    // This is critical - otherwise the old UnderClipBoardImage will overwrite the pasted data on mouse move
-                    if (AtariPictureTools.PreviousClipboardLocation.HasValue)
-                    {
-                        // Update UnderClipBoardImage with the current content at the clipboard position
-                        AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
-                        pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
-                        pictureBoxUnderClipBoard.Refresh();
-                    }
-                    
-                    pictureBoxMap.Refresh();
+                    // Autopaste: stay in paste mode. Manual (Ctrl+V armed): place once, then back to selection.
+                    PasteClipboardAtLocationAndRedraw(e.Location, exitPasteModeAfter: floatingPasteArmed && !IsAutopasteEnabled);
                 }
                 else if (Globals.MetadataLayerEditable)
                 {
@@ -1319,10 +1303,19 @@ namespace AtariMapMaker
             {
                 if (mouseStatus == "SELECTION")
                 {
-                    if (AtariPictureTools.SelectionEnd(Globals.WindowType.Editor))
+                    bool copyToClipboard = IsAutopasteEnabled;
+                    if (AtariPictureTools.SelectionEnd(Globals.WindowType.Editor, copyToClipboard))
                     {
-                        AtariClipboard.IsValid = true;
-                        pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                        if (copyToClipboard)
+                        {
+                            AtariClipboard.IsValid = true;
+                            pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                        }
+                        else
+                        {
+                            // No-autopaste: keep selection visible until Ctrl+C (or a new selection).
+                            AtariPictureTools.RedrawSelection(Globals.WindowType.Editor);
+                        }
                         pictureBoxMap.Refresh();
                     }
                     mouseStatus = "";   //reset mouse status no matter if selection end is valid or not
@@ -1366,11 +1359,107 @@ namespace AtariMapMaker
                 AtariClipboard.IsValid = false;
                 AtariPictureTools.PreviousClipboardLocation = null;
                 AtariPictureTools.PreviousClipboardGridCell = null;
+                floatingPasteArmed = false;
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
             }
         }
         
+        /// <summary>
+        /// Pastes clipboard at the given picture-box location and refreshes the editor view.
+        /// </summary>
+        private void PasteClipboardAtLocationAndRedraw(Point location, bool exitPasteModeAfter = false)
+        {
+            if (!AtariClipboard.IsValid)
+                return;
+
+            int charX = location.X / Globals.CharSize;
+            int charY = location.Y / Globals.CharSize;
+            PasteClipboardAtCharCoords(charX, charY);
+
+            if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
+                AtariFontRenderer.ClearFontCache();
+
+            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
+
+            if (exitPasteModeAfter)
+            {
+                // One-shot floating paste (Autopaste off): do not restore under-image (it would hide the paste).
+                DisarmFloatingPaste(keepClipboardData: true, restoreUnderImage: false);
+            }
+            else if (AtariPictureTools.PreviousClipboardLocation.HasValue)
+            {
+                AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
+                pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
+                pictureBoxUnderClipBoard.Refresh();
+            }
+
+            pictureBoxMap.Refresh();
+        }
+
+        /// <summary>
+        /// Shows the floating clipboard overlay at the given picture-box location.
+        /// </summary>
+        private void ShowFloatingClipboardAt(Point location)
+        {
+            if (!AtariClipboard.IsValid || pictureBoxMap?.Image == null)
+                return;
+
+            if (AtariPictureTools.PreviousClipboardLocation.HasValue)
+                AtariPictureTools.DrawUnderClipBoard(AtariPictureTools.PreviousClipboardLocation.Value);
+
+            AtariPictureTools.DrawClipBoard(location, (Bitmap)pictureBoxMap.Image);
+            pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
+            pictureBoxUnderClipBoard.Refresh();
+
+            AtariPictureTools.PreviousClipboardLocation = location;
+
+            int alignSizeX = Globals.CharSize;
+            int alignSizeY = Globals.CharSize;
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+            }
+            AtariPictureTools.PreviousClipboardGridCell = new Point(location.X / alignSizeX, location.Y / alignSizeY);
+            pictureBoxMap.Refresh();
+        }
+
+        /// <summary>
+        /// Ends floating paste preview. If keepClipboardData, clipboard stays usable for another Ctrl+V.
+        /// </summary>
+        private void DisarmFloatingPaste(bool keepClipboardData, bool restoreUnderImage = true)
+        {
+            if (restoreUnderImage && AtariPictureTools.PreviousClipboardLocation.HasValue)
+                AtariPictureTools.DrawUnderClipBoard(AtariPictureTools.PreviousClipboardLocation.Value);
+
+            AtariPictureTools.PreviousClipboardLocation = null;
+            AtariPictureTools.PreviousClipboardGridCell = null;
+            isContinuousPasteMode = false;
+            lastContinuousPasteCell = null;
+            floatingPasteArmed = false;
+
+            if (!keepClipboardData)
+            {
+                AtariClipboard.IsValid = false;
+                if (pictureBoxClipboard != null)
+                {
+                    pictureBoxClipboard.Image = null;
+                    pictureBoxClipboard.Refresh();
+                }
+            }
+
+            pictureBoxMap.Refresh();
+        }
+
+        /// <summary>
+        /// Leaves floating-clipboard paste mode and returns to selection mode.
+        /// </summary>
+        private void ExitClipboardPasteMode(bool keepClipboardPreview)
+        {
+            DisarmFloatingPaste(keepClipboardData: keepClipboardPreview);
+        }
+
         /// <summary>
         /// Helper method to perform paste at a given location (used for continuous paste mode)
         /// </summary>
@@ -1507,19 +1596,94 @@ namespace AtariMapMaker
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
         }
 
-        private void ButtonSave_Click(object sender, EventArgs e)
+        private void RememberAtrmapPath(string fileName, bool seedDataPath)
+        {
+            currentAtrmapPath = fileName;
+            if (seedDataPath && !string.IsNullOrEmpty(fileName))
+            {
+                string dir = Path.GetDirectoryName(fileName);
+                string baseName = Path.GetFileNameWithoutExtension(fileName);
+                if (!string.IsNullOrEmpty(dir))
+                    currentDataPath = Path.Combine(dir, baseName + ".dat");
+            }
+            UpdateMainFormCaption();
+        }
+
+        private void RememberDataPath(string fileName)
+        {
+            if (!string.IsNullOrEmpty(fileName))
+                currentDataPath = fileName;
+        }
+
+        private void PrepareAtrmapSaveDialog()
         {
             saveFileDialog1.Filter = "Atari MapMaker map (*.atrmap)|*.atrmap";
+            ApplyRememberedPath(saveFileDialog1, currentAtrmapPath, null);
+        }
+
+        private void PrepareAtrmapOpenDialog()
+        {
+            openFileDialog1.Filter = "Atari MapMaker map (*.atrmap)|*.atrmap";
+            ApplyRememberedPath(openFileDialog1, currentAtrmapPath, null);
+        }
+
+        private void PrepareDataSaveDialog(string filter)
+        {
+            saveFileDialog1.Filter = filter;
+            string fallback = null;
+            if (string.IsNullOrEmpty(currentDataPath) && !string.IsNullOrEmpty(currentAtrmapPath))
+                fallback = Path.Combine(Path.GetDirectoryName(currentAtrmapPath) ?? "", Path.GetFileNameWithoutExtension(currentAtrmapPath) + ".dat");
+            ApplyRememberedPath(saveFileDialog1, currentDataPath, fallback);
+        }
+
+        private void PrepareDataOpenDialog(string filter)
+        {
+            openFileDialog1.Filter = filter;
+            string fallback = null;
+            if (string.IsNullOrEmpty(currentDataPath) && !string.IsNullOrEmpty(currentAtrmapPath))
+                fallback = Path.Combine(Path.GetDirectoryName(currentAtrmapPath) ?? "", Path.GetFileNameWithoutExtension(currentAtrmapPath) + ".dat");
+            ApplyRememberedPath(openFileDialog1, currentDataPath, fallback);
+        }
+
+        private static void ApplyRememberedPath(FileDialog dialog, string primaryPath, string fallbackPath)
+        {
+            string path = !string.IsNullOrEmpty(primaryPath) ? primaryPath : fallbackPath;
+            if (string.IsNullOrEmpty(path))
+                return;
+            try
+            {
+                string dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                    dialog.InitialDirectory = dir;
+                string name = Path.GetFileName(path);
+                if (!string.IsNullOrEmpty(name))
+                    dialog.FileName = name;
+            }
+            catch
+            {
+            }
+        }
+
+        private bool IsAutopasteEnabled
+        {
+            get { return checkBoxAutopaste == null || checkBoxAutopaste.Checked; }
+        }
+
+        /// <summary>True when floating clipboard paste preview/click-to-place is active.</summary>
+        private bool IsFloatingPasteActive
+        {
+            get { return AtariClipboard.IsValid && (IsAutopasteEnabled || floatingPasteArmed); }
+        }
+
+        private void ButtonSave_Click(object sender, EventArgs e)
+        {
+            PrepareAtrmapSaveDialog();
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    SaveMap(saveFileDialog1.FileName); //test.dat
+                    SaveMap(saveFileDialog1.FileName);
                     break;
             }
-            //saveFileDialog1.Filter = "AtariMap (*.amp)|*.amp";
-            //if (saveFileDialog1.ShowDialog() == DialogResult.OK)
-            //    Save(saveFileDialog1.FileName);
-
         }
 
         private void SaveMap(string filename)
@@ -1552,8 +1716,7 @@ namespace AtariMapMaker
                 ScreenLinks = myMap.ScreenLinks
             };
             AtariJson.SaveAtrMap(atrmap, filename);
-            currentAtrmapPath = filename;
-            UpdateMainFormCaption();
+            RememberAtrmapPath(filename, seedDataPath: false);
         }
 
         private void UpdateMainFormCaption()
@@ -1586,7 +1749,7 @@ namespace AtariMapMaker
 
         private void ButtonLoad_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "Atari MapMaker map (*.atrmap)|*.atrmap";
+            PrepareAtrmapOpenDialog();
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
@@ -1655,6 +1818,7 @@ namespace AtariMapMaker
             AtariClipboard.IsValid = false;
             AtariPictureTools.PreviousClipboardLocation = null;
             AtariPictureTools.PreviousClipboardGridCell = null;
+            floatingPasteArmed = false;
             if (pictureBoxClipboard != null)
             {
                 pictureBoxClipboard.Image = null;
@@ -1798,16 +1962,16 @@ namespace AtariMapMaker
             // Update clipboard inverse button state based on map type
             UpdateClipboardInverseButtonState();
 
-            currentAtrmapPath = fileName;
-            UpdateMainFormCaption();
+            RememberAtrmapPath(fileName, seedDataPath: true);
         }
 
         private void ButtonExport_Click(object sender, EventArgs e)
         {
-            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(saveFileDialog1.FileName);
                     this.Export((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
                     int width = (int)((numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * myMap.ScreenSize.Width + numericUpDown5.Value);
                     string unit = myMap.IsTilemap ? "tiles" : "characters";
@@ -1875,10 +2039,11 @@ namespace AtariMapMaker
 
         private void ExportScreenByScreen()
         {
-            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(saveFileDialog1.FileName);
                     this.ExportScreens((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, saveFileDialog1.FileName);
                     int width = myMap.ScreenSize.Width;
                     string unit = myMap.IsTilemap ? "tiles" : "characters";
@@ -1889,10 +2054,11 @@ namespace AtariMapMaker
 
         private void ImportScreenByScreen()
         {
-            openFileDialog1.Filter = "Map datafile (*.*)|*.*";
+            PrepareDataOpenDialog("Map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(openFileDialog1.FileName);
                     this.ImportScreens((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
@@ -2492,10 +2658,11 @@ namespace AtariMapMaker
 
         private void ButtonHoboExport_Click(object sender, EventArgs e)
         {
-            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(saveFileDialog1.FileName);
                     this.ExportColumns((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, saveFileDialog1.FileName);
                     break;
             }
@@ -2503,9 +2670,10 @@ namespace AtariMapMaker
 
         private void DliExport()
         {
-            saveFileDialog1.Filter = "Dli column export (*.dat)|*.dat";
+            PrepareDataSaveDialog("Dli column export (*.dat)|*.dat");
             if (saveFileDialog1.ShowDialog() == DialogResult.OK)
             {
+                RememberDataPath(saveFileDialog1.FileName);
                 System.IO.FileStream fs = new System.IO.FileStream(saveFileDialog1.FileName, System.IO.FileMode.Create);
 
                 int lineCount = GetDliExportLineCount();
@@ -2549,9 +2717,10 @@ namespace AtariMapMaker
 
         private void DliImport()
         {
-            openFileDialog1.Filter = "Dli column export (*.dat)|*.dat";
+            PrepareDataOpenDialog("Dli column export (*.dat)|*.dat");
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
+                RememberDataPath(openFileDialog1.FileName);
                 System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open);
 
                 int screenX = (int)numericUpDownScreenFromX.Value;
@@ -2606,10 +2775,11 @@ namespace AtariMapMaker
 
         private void ButtonHoboImport_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "Column based map datafile (*.*)|*.*";
+            PrepareDataOpenDialog("Column based map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(openFileDialog1.FileName);
                     this.ImportColumns((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
@@ -2618,10 +2788,11 @@ namespace AtariMapMaker
 
         private void ButtonImport_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "Map datafile (*.*)|*.*";
+            PrepareDataOpenDialog("Map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(openFileDialog1.FileName);
                     this.Import((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDown6.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
@@ -3132,7 +3303,7 @@ namespace AtariMapMaker
                     return;
                 }
                 // ESC also exits clipboard paste mode (same as right double-click)
-                if (AtariClipboard.IsValid)
+                if (AtariClipboard.IsValid || floatingPasteArmed)
                 {
                     if (AtariPictureTools.PreviousClipboardLocation.HasValue)
                     {
@@ -3141,11 +3312,13 @@ namespace AtariMapMaker
                     AtariClipboard.IsValid = false;
                     AtariPictureTools.PreviousClipboardLocation = null;
                     AtariPictureTools.PreviousClipboardGridCell = null;
+                    floatingPasteArmed = false;
                     AtariPictureTools.Redraw(Globals.WindowType.Editor);
                     pictureBoxMap.Refresh();
-                    if (pictureBoxClipboard != null)
+                    // Keep clipboard preview visible so Ctrl+V / picturebox click can reactivate paste.
+                    if (pictureBoxClipboard != null && AtariClipboard.ClipboardImage != null)
                     {
-                        pictureBoxClipboard.Image = null;
+                        pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
                         pictureBoxClipboard.Refresh();
                     }
                     e.Handled = true;
@@ -3162,6 +3335,44 @@ namespace AtariMapMaker
             if (e.Control && e.KeyCode == Keys.Y)
             {
                 PerformRedo();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+            if (e.Control && e.KeyCode == Keys.C)
+            {
+                // Ctrl+C only used when Autopaste is off (selection copies automatically when Autopaste is on).
+                if (IsAutopasteEnabled)
+                    return;
+
+                if (AtariPictureTools.CopyCurrentSelectionToClipboard(Globals.WindowType.Editor))
+                {
+                    AtariClipboard.IsValid = true;
+                    pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                    floatingPasteArmed = false;
+                    AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
+                    pictureBoxMap.Refresh();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                    return;
+                }
+            }
+            if (e.Control && e.KeyCode == Keys.V)
+            {
+                // Same as clicking the clipboard picturebox: reactivate clipboard if we still have an image.
+                if (AtariClipboard.ClipboardImage != null)
+                {
+                    AtariClipboard.IsValid = true;
+                    if (pictureBoxClipboard != null)
+                        pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                }
+                if (!AtariClipboard.IsValid)
+                    return;
+
+                if (!IsAutopasteEnabled)
+                    floatingPasteArmed = true;
+
+                ShowFloatingClipboardAt(lastMapMouseLocation);
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 return;

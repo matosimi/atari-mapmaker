@@ -44,6 +44,7 @@ namespace AtariMapMaker
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.groupBoxClipBoard = new System.Windows.Forms.GroupBox();
+            this.checkBoxAutopaste = new System.Windows.Forms.CheckBox();
             this.checkBoxClipboardSkip0 = new System.Windows.Forms.CheckBox();
             this.buttonClipboardInverse = new System.Windows.Forms.Button();
             this.pictureBoxClipboard = new System.Windows.Forms.PictureBox();
@@ -391,6 +392,7 @@ namespace AtariMapMaker
             // 
             // groupBoxClipBoard
             // 
+            this.groupBoxClipBoard.Controls.Add(this.checkBoxAutopaste);
             this.groupBoxClipBoard.Controls.Add(this.checkBoxClipboardSkip0);
             this.groupBoxClipBoard.Controls.Add(this.buttonClipboardInverse);
             this.groupBoxClipBoard.Controls.Add(this.pictureBoxClipboard);
@@ -399,15 +401,27 @@ namespace AtariMapMaker
             this.groupBoxClipBoard.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.groupBoxClipBoard.Name = "groupBoxClipBoard";
             this.groupBoxClipBoard.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.groupBoxClipBoard.Size = new System.Drawing.Size(209, 222);
+            this.groupBoxClipBoard.Size = new System.Drawing.Size(209, 252);
             this.groupBoxClipBoard.TabIndex = 10;
             this.groupBoxClipBoard.TabStop = false;
             this.groupBoxClipBoard.Text = "Clipboard";
             // 
+            // checkBoxAutopaste
+            // 
+            this.checkBoxAutopaste.AutoSize = true;
+            this.checkBoxAutopaste.Checked = true;
+            this.checkBoxAutopaste.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxAutopaste.Location = new System.Drawing.Point(16, 186);
+            this.checkBoxAutopaste.Name = "checkBoxAutopaste";
+            this.checkBoxAutopaste.Size = new System.Drawing.Size(152, 25);
+            this.checkBoxAutopaste.TabIndex = 9;
+            this.checkBoxAutopaste.Text = "Edit - Autopaste";
+            this.checkBoxAutopaste.UseVisualStyleBackColor = true;
+            // 
             // checkBoxClipboardSkip0
             // 
             this.checkBoxClipboardSkip0.AutoSize = true;
-            this.checkBoxClipboardSkip0.Location = new System.Drawing.Point(100, 186);
+            this.checkBoxClipboardSkip0.Location = new System.Drawing.Point(100, 216);
             this.checkBoxClipboardSkip0.Name = "checkBoxClipboardSkip0";
             this.checkBoxClipboardSkip0.Size = new System.Drawing.Size(79, 25);
             this.checkBoxClipboardSkip0.TabIndex = 8;
@@ -416,7 +430,7 @@ namespace AtariMapMaker
             // 
             // buttonClipboardInverse
             // 
-            this.buttonClipboardInverse.Location = new System.Drawing.Point(16, 183);
+            this.buttonClipboardInverse.Location = new System.Drawing.Point(16, 213);
             this.buttonClipboardInverse.Name = "buttonClipboardInverse";
             this.buttonClipboardInverse.Size = new System.Drawing.Size(75, 30);
             this.buttonClipboardInverse.TabIndex = 7;
@@ -1744,6 +1758,7 @@ namespace AtariMapMaker
         private System.Windows.Forms.GroupBox groupBoxMap;
         private System.Windows.Forms.ComboBox comboOperation;
         private System.Windows.Forms.GroupBox groupBoxClipBoard;
+        private System.Windows.Forms.CheckBox checkBoxAutopaste;
         private System.Windows.Forms.GroupBox groupBoxHistory;
         private System.Windows.Forms.Button buttonUndo;
         private System.Windows.Forms.Button buttonRedo;
