@@ -654,7 +654,7 @@ namespace AtariMapMaker
             if (myMap.GetFontMappingReference(screen.X, screen.Y, out int refScreenX, out int refScreenY))
             {
                 // Reference Font Mapping checked: show which screen's font mapping is referenced.
-                fontRefLine = $"Reference font mapping from screen {refScreenX}:{refScreenY}";
+                fontRefLine = $"Referenced font mapping from screen {refScreenX}:{refScreenY}";
             }
             else if (myMap.MultiFontEnabled || myMap.ScreenHasCustomFontMapping(screen.X, screen.Y))
             {
