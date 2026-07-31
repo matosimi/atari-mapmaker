@@ -394,6 +394,27 @@ namespace AtariMapMaker
             return false;
         }
 
+        /// <summary>
+        /// True if this screen has non-default per-line font mapping (any line uses font index != 0).
+        /// </summary>
+        public bool ScreenHasCustomFontMapping(int screenX, int screenY)
+        {
+            if (FontLineMappingPerScreen == null || screenX < 0 || screenY < 0 || screenX >= MapSize.Width || screenY >= MapSize.Height)
+                return false;
+            int screenCharHeight = ScreenSize.Height;
+            if (IsTilemap && TilemapInfo != null && TilemapInfo.TileHeight > 0)
+                screenCharHeight = ScreenSize.Height * TilemapInfo.TileHeight;
+            int screenOffset = (screenY * MapSize.Width + screenX) * screenCharHeight;
+            if (screenOffset < 0 || screenOffset + screenCharHeight > FontLineMappingPerScreen.Length)
+                return false;
+            for (int line = 0; line < screenCharHeight; line++)
+            {
+                if (FontLineMappingPerScreen[screenOffset + line] != 0)
+                    return true;
+            }
+            return false;
+        }
+
         public void SwapChar(byte char1, byte char2, bool globalChange, Point screenToUse)
         {
             if (globalChange)

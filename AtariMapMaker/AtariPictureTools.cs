@@ -438,14 +438,6 @@ namespace AtariMapMaker
             {
                 DrawCurrentScreenCorners(gr, myMap, currentScreen);
             }
-            
-            // Draw "locked" text above/below locked screen (use bounds check so screen 0,0 is included)
-            if (window == Globals.WindowType.Editor && isLocked &&
-                lockedScreen.X >= 0 && lockedScreen.Y >= 0 &&
-                lockedScreen.X < myMap.MapSize.Width && lockedScreen.Y < myMap.MapSize.Height)
-            {
-                DrawLockedText(gr, myMap, lockedScreen);
-            }
 
             // Draw metadata link lines then overlay (cells + text on top)
             if (window == Globals.WindowType.Editor && Globals.MetadataLayerVisible)
@@ -481,12 +473,20 @@ namespace AtariMapMaker
                 }
             }
 
-            // Hover screen flags (metadata / custom DLI / description), same vertical band as "Locked", left-aligned
+            // Hover screen flags (metadata / custom DLI / description / link / font ref), same vertical band as "Locked", left-aligned
             if (window == Globals.WindowType.Editor &&
                 currentScreen.X >= 0 && currentScreen.Y >= 0 &&
                 currentScreen.X < myMap.MapSize.Width && currentScreen.Y < myMap.MapSize.Height)
             {
                 DrawScreenHoverInfoLabels(gr, myMap, currentScreen);
+            }
+
+            // Draw "Locked" last so it stays on top of all other screen labels
+            if (window == Globals.WindowType.Editor && isLocked &&
+                lockedScreen.X >= 0 && lockedScreen.Y >= 0 &&
+                lockedScreen.X < myMap.MapSize.Width && lockedScreen.Y < myMap.MapSize.Height)
+            {
+                DrawLockedText(gr, myMap, lockedScreen);
             }
         }
 
@@ -640,7 +640,30 @@ namespace AtariMapMaker
             bool hasDli = myMap.ScreenHasCustomDli(screen.X, screen.Y);
             string descLine = GetScreenDescriptionFirstLine(myMap, screen.X, screen.Y);
             bool hasDesc = !string.IsNullOrEmpty(descLine);
-            if (!hasMeta && !hasDli && !hasDesc)
+
+            string linkedLine = null;
+            if (myMap.ScreenLinks != null)
+            {
+                var link = myMap.ScreenLinks.Find(l => l.SourceScreen.X == screen.X && l.SourceScreen.Y == screen.Y);
+                if (link != null)
+                    linkedLine = $"Linked screen {link.LinkedScreen.X}:{link.LinkedScreen.Y}";
+            }
+            bool hasLink = !string.IsNullOrEmpty(linkedLine);
+
+            string fontRefLine = null;
+            if (myMap.GetFontMappingReference(screen.X, screen.Y, out int refScreenX, out int refScreenY))
+            {
+                // Reference Font Mapping checked: show which screen's font mapping is referenced.
+                fontRefLine = $"Reference font mapping from screen {refScreenX}:{refScreenY}";
+            }
+            else if (myMap.MultiFontEnabled || myMap.ScreenHasCustomFontMapping(screen.X, screen.Y))
+            {
+                // Own mapping: always when multi-font is on; when off, only if mapping data exists.
+                fontRefLine = "Font mapping included";
+            }
+            bool hasFontRef = !string.IsNullOrEmpty(fontRefLine);
+
+            if (!hasMeta && !hasDli && !hasDesc && !hasLink && !hasFontRef)
                 return;
 
             using (Font textFont = new Font("Segoe UI", 12, FontStyle.Bold))
@@ -665,6 +688,8 @@ namespace AtariMapMaker
                 float lineGap = 2f;
                 var lines = new List<(string text, bool isDesc)>();
                 if (hasDesc) lines.Add((descLine, true));
+                if (hasLink) lines.Add((linkedLine, false));
+                if (hasFontRef) lines.Add((fontRefLine, false));
                 if (hasMeta) lines.Add(("Metadata included", false));
                 if (hasDli) lines.Add(("DLI included", false));
 

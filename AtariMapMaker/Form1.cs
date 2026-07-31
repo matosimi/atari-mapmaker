@@ -1789,7 +1789,10 @@ namespace AtariMapMaker
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
                     if (myCharPicker != null)
+                    {
+                        myCharPicker.SetMainMap(myMap);
                         myCharPicker.RedrawFontWindow();
+                    }
                     dliForm.Dispose();
                     dliForm = CreateDliForm();
                     dliForm.RenderData();
@@ -1865,6 +1868,11 @@ namespace AtariMapMaker
                 myMap.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), 0);
                 AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
             }
+
+            // Drop multifont bitmaps and char-picker refs from the previously loaded map
+            AtariFontRenderer.ClearFontCache();
+            AtariFontRenderer.CharPickerFontIndex = null;
+            AtariFontRenderer.CharPickerFontSourceMap = null;
             
             // Load font line mapping (always per-screen now)
             if (AtariJson.ParsedData.FontLineMappingPerScreen != null)
@@ -2923,6 +2931,9 @@ namespace AtariMapMaker
                         {
                             AtariFontRenderer.SetFontData(tempSubmap.FontDataArray[0], Globals.FontType.Screen);
                         }
+                        AtariFontRenderer.ClearFontCache();
+                        AtariFontRenderer.CharPickerFontIndex = null;
+                        AtariFontRenderer.CharPickerFontSourceMap = null;
                     }
                     catch (Exception ex)
                     {
