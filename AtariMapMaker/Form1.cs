@@ -32,12 +32,19 @@ namespace AtariMapMaker
         private bool ScreenSelectionShown = false;
         private bool isScreenLocked = false;
         private Point lockedScreen = new Point(0, 0);
+        private bool suppressFontMappingUiEvents = false;  // Avoid write-back when syncing font-ref controls from current screen
         private bool isContinuousPasteMode = false;  // Track if CTRL+Left mouse is held for continuous paste
         private Point? lastContinuousPasteCell = null;  // Track last grid cell where we pasted in continuous mode
         // Metadata paste-mode overlay: show copied metadata cell under cursor
         private Bitmap metadataUnderImage = null;
         private Bitmap metadataPreviewImage = null;
         private Point? previousMetadataOverlayLocation = null;
+        private string mainFormBaseTitle = "";
+        private string currentAtrmapPath = null;
+        private string currentDataPath = null;  // last export/import path (separate from atrmap save/load)
+        private Point lastMapMouseLocation = Point.Empty;
+        /// <summary>When Autopaste is off, Ctrl+V arms one floating-paste session until the user clicks to place it.</summary>
+        private bool floatingPasteArmed = false;
         public MainForm()
         {
             InitializeComponent();
@@ -46,8 +53,9 @@ namespace AtariMapMaker
         private void MainForm_Load(object sender, EventArgs e)
         {
             string version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            this.Text = "AtariMapMaker v" + version + " by Martin Simecek";
-            labelAbout2.Text = "Version " + version + "\n" + Properties.Resources.BuildDate;
+            mainFormBaseTitle = "AtariMapMaker v" + version + " by Martin Simecek";
+            UpdateMainFormCaption();
+            labelAbout2.Text = "Version " + version + "\nCommit " + GitCommitInfo.CommitHash + "\n" + GitCommitInfo.CommitDate;
             toolTip1.SetToolTip(buttonRefreshFont, "Reload font");
 
             AtariPalette.Load(Properties.Resources.altirraPAL);
@@ -57,6 +65,7 @@ namespace AtariMapMaker
             myMap = new AtariMap(new Size(4, 4), new Size(32, 20));
             undoManager = new UndoManager(myMap);
             numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
+            UpdateDatalineWidthDefault();
 
             this.FillFontColorList();
             pictureBoxMap.Image = new Bitmap(pictureBoxMap.Width, pictureBoxMap.Height)
@@ -79,12 +88,14 @@ namespace AtariMapMaker
             comboOperation.Items.AddRange(new String[8] { "Export", "Import", "Column Export", "Column Import", "Export DLI", "Import DLI", "Export screen by screen", "Import screen by screen" });
             comboOperation.SelectedIndex = 0;
 
-            dliForm = new DliForm(myMap, pictureBoxMap);
+            dliForm = CreateDliForm();
             dliForm.RenderData();
 
             // Set initial state for V2 UI (controls are in Designer)
             checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
             Globals.MetadataLayerShowText = checkBoxMetadataShowText.Checked;
+            Globals.MetadataLayerShowColorLinks = checkBoxMetaDataShowColorLinks != null && checkBoxMetaDataShowColorLinks.Checked;
+            Globals.MetadataLayerShowValueLinks = checkBoxMetaDataShowValueLinks != null && checkBoxMetaDataShowValueLinks.Checked;
             UpdateFontMappingReferenceUI();
             UpdateMultiFontUI();
             UpdateMetadataLayerUI();
@@ -106,28 +117,113 @@ namespace AtariMapMaker
             
             // Update button state based on map type
             UpdateClipboardInverseButtonState();
+            UpdateUndoRedoUI();
+            if (checkBoxAutopaste != null)
+                toolTip1.SetToolTip(checkBoxAutopaste, "On: select copies clipboard, click/Ctrl+V pastes. Off: Ctrl+C copies, Ctrl+V arms floating paste, click places once.");
         }
 
         private UndoManager undoManager;
 
         private void MenuItemUndo_Click(object sender, EventArgs e)
         {
-            if (undoManager != null && undoManager.CanUndo())
-            {
-                undoManager.Undo();
-                AtariPictureTools.Redraw(Globals.WindowType.Editor);
-                pictureBoxMap.Refresh();
-            }
+            PerformUndo();
         }
 
         private void MenuItemRedo_Click(object sender, EventArgs e)
         {
-            if (undoManager != null && undoManager.CanRedo())
+            PerformRedo();
+        }
+
+        private void ButtonUndo_Click(object sender, EventArgs e)
+        {
+            PerformUndo();
+        }
+
+        private void ButtonRedo_Click(object sender, EventArgs e)
+        {
+            PerformRedo();
+        }
+
+        private void PerformUndo()
+        {
+            if (undoManager == null || !undoManager.CanUndo())
+                return;
+
+            undoManager.Undo();
+            AfterMapDataUndoRedo();
+        }
+
+        private void PerformRedo()
+        {
+            if (undoManager == null || !undoManager.CanRedo())
+                return;
+
+            undoManager.Redo();
+            AfterMapDataUndoRedo();
+        }
+
+        private void AfterMapDataUndoRedo()
+        {
+            if (myMap != null && myMap.IsTilemap)
+                AtariFontRenderer.ClearFontCache();
+
+            RedrawEditorWindow();
+
+            if (IsFloatingPasteActive && AtariClipboard.IsValid && AtariPictureTools.PreviousClipboardLocation.HasValue)
             {
-                undoManager.Redo();
-                AtariPictureTools.Redraw(Globals.WindowType.Editor);
-                pictureBoxMap.Refresh();
+                AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
+                pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
+                pictureBoxUnderClipBoard.Refresh();
             }
+
+            pictureBoxMap.Refresh();
+            UpdateUndoRedoUI();
+        }
+
+        private void UpdateUndoRedoUI()
+        {
+            bool canUndo = undoManager != null && undoManager.CanUndo();
+            bool canRedo = undoManager != null && undoManager.CanRedo();
+
+            if (buttonUndo != null)
+                buttonUndo.Enabled = canUndo;
+            if (buttonRedo != null)
+                buttonRedo.Enabled = canRedo;
+            if (menuItemUndo != null)
+            {
+                menuItemUndo.Enabled = canUndo;
+                string undoDesc = canUndo ? undoManager.GetUndoDescription() : "";
+                menuItemUndo.Text = string.IsNullOrEmpty(undoDesc) ? "Undo" : "Undo " + undoDesc;
+            }
+            if (menuItemRedo != null)
+            {
+                menuItemRedo.Enabled = canRedo;
+                string redoDesc = canRedo ? undoManager.GetRedoDescription() : "";
+                menuItemRedo.Text = string.IsNullOrEmpty(redoDesc) ? "Redo" : "Redo " + redoDesc;
+            }
+            if (toolTip1 != null)
+            {
+                if (buttonUndo != null)
+                    toolTip1.SetToolTip(buttonUndo, canUndo ? "Undo " + undoManager.GetUndoDescription() + " (Ctrl+Z)" : "Nothing to undo (Ctrl+Z)");
+                if (buttonRedo != null)
+                    toolTip1.SetToolTip(buttonRedo, canRedo ? "Redo " + undoManager.GetRedoDescription() + " (Ctrl+Y)" : "Nothing to redo (Ctrl+Y)");
+            }
+        }
+
+        /// <summary>
+        /// Runs a paste action and records a map-data undo step if anything changed.
+        /// </summary>
+        private void PasteWithUndo(Action pasteAction)
+        {
+            if (myMap?.Data == null || pasteAction == null)
+                return;
+
+            byte[] before = (byte[])myMap.Data.Clone();
+            pasteAction();
+            var operation = MapDataRegionOperation.CreateFromDiff(before, myMap.Data, "Paste");
+            if (operation != null && undoManager != null)
+                undoManager.PushOperation(operation);
+            UpdateUndoRedoUI();
         }
 
         private void MenuItemLinkScreen_Click(object sender, EventArgs e)
@@ -182,6 +278,21 @@ namespace AtariMapMaker
 
         private void CheckBoxMetadataLayer_CheckedChanged(object sender, EventArgs e)
         {
+            bool show = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            Globals.MetadataLayerVisible = show;
+            if (!show && checkBoxMetadataEdit != null && checkBoxMetadataEdit.Checked)
+                checkBoxMetadataEdit.Checked = false;
+            UpdateMetadataLayerUI();
+            RedrawEditorWindow();
+            pictureBoxMap.Refresh();
+        }
+
+        private void CheckBoxMetadataEdit_CheckedChanged(object sender, EventArgs e)
+        {
+            bool edit = checkBoxMetadataEdit != null && checkBoxMetadataEdit.Checked;
+            if (edit && checkBoxMetadataLayer != null && !checkBoxMetadataLayer.Checked)
+                checkBoxMetadataLayer.Checked = true;
+            Globals.MetadataLayerEditable = edit;
             Globals.MetadataLayerVisible = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
             UpdateMetadataLayerUI();
             RedrawEditorWindow();
@@ -202,13 +313,33 @@ namespace AtariMapMaker
             int itemCount = GetMetadataItemCount();
             if (groupBoxMetadata != null)
                 groupBoxMetadata.Text = $"Metadata {itemCount}";
-            bool metadataChecked = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            bool showChecked = checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked;
+            bool editChecked = checkBoxMetadataEdit != null && checkBoxMetadataEdit.Checked;
             if (groupBoxDli != null)
-                groupBoxDli.Enabled = !metadataChecked;
+                groupBoxDli.Enabled = !editChecked;
             if (groupBoxFont != null)
-                groupBoxFont.Enabled = !metadataChecked;
+                groupBoxFont.Enabled = !editChecked;
             if (buttonMassChangeMetadata != null)
-                buttonMassChangeMetadata.Enabled = metadataChecked;
+                buttonMassChangeMetadata.Enabled = editChecked;
+            if (checkBoxMetaDataShowColorLinks != null)
+                checkBoxMetaDataShowColorLinks.Enabled = showChecked;
+            if (checkBoxMetaDataShowValueLinks != null)
+                checkBoxMetaDataShowValueLinks.Enabled = showChecked;
+            if (trackBarMetadataBlend != null)
+                trackBarMetadataBlend.Enabled = showChecked;
+            if (labelMetadataBlend != null)
+                labelMetadataBlend.Enabled = showChecked;
+            if (checkBoxMetadataShowText != null)
+                checkBoxMetadataShowText.Enabled = showChecked;
+            if (showChecked)
+            {
+                Globals.MetadataLayerShowColorLinks = checkBoxMetaDataShowColorLinks != null && checkBoxMetaDataShowColorLinks.Checked;
+                Globals.MetadataLayerShowValueLinks = checkBoxMetaDataShowValueLinks != null && checkBoxMetaDataShowValueLinks.Checked;
+                if (trackBarMetadataBlend != null)
+                    Globals.MetadataLayerBlendPercent = trackBarMetadataBlend.Value * 5;
+            }
+            Globals.MetadataLayerEditable = editChecked;
+            Globals.MetadataLayerVisible = showChecked;
         }
 
         private void CheckBoxMetadataShowText_CheckedChanged(object sender, EventArgs e)
@@ -216,6 +347,39 @@ namespace AtariMapMaker
             Globals.MetadataLayerShowText = checkBoxMetadataShowText != null && checkBoxMetadataShowText.Checked;
             RedrawEditorWindow();
             pictureBoxMap.Refresh();
+        }
+
+        private void TrackBarMetadataBlend_Scroll(object sender, EventArgs e)
+        {
+            int pct = trackBarMetadataBlend.Value * 5;
+            Globals.MetadataLayerBlendPercent = pct;
+            if (labelMetadataBlend != null)
+                labelMetadataBlend.Text = $"Map ↔ Meta: {pct}%";
+            if (checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked)
+            {
+                RedrawEditorWindow();
+                pictureBoxMap.Refresh();
+            }
+        }
+
+        private void CheckBoxMetaDataShowColorLinks_CheckedChanged(object sender, EventArgs e)
+        {
+            Globals.MetadataLayerShowColorLinks = checkBoxMetaDataShowColorLinks != null && checkBoxMetaDataShowColorLinks.Checked;
+            if (checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked)
+            {
+                RedrawEditorWindow();
+                pictureBoxMap.Refresh();
+            }
+        }
+
+        private void CheckBoxMetaDataShowValueLinks_CheckedChanged(object sender, EventArgs e)
+        {
+            Globals.MetadataLayerShowValueLinks = checkBoxMetaDataShowValueLinks != null && checkBoxMetaDataShowValueLinks.Checked;
+            if (checkBoxMetadataLayer != null && checkBoxMetadataLayer.Checked)
+            {
+                RedrawEditorWindow();
+                pictureBoxMap.Refresh();
+            }
         }
 
         private void ButtonMassChangeMetadata_Click(object sender, EventArgs e)
@@ -240,22 +404,51 @@ namespace AtariMapMaker
 
         private void ContextMenuStripScreen_Opening(object sender, CancelEventArgs e)
         {
+            Point targetScreen = isScreenLocked ? lockedScreen : currentScreen;
+            bool hasLink = myMap?.ScreenLinks != null &&
+                myMap.ScreenLinks.Exists(l => l.SourceScreen.X == targetScreen.X && l.SourceScreen.Y == targetScreen.Y);
+            bool hasMeta = myMap != null && myMap.ScreenHasMetadata(targetScreen.X, targetScreen.Y);
+            bool hasDesc = false;
+            if (myMap?.ScreenDescriptions != null)
+            {
+                string key = $"{targetScreen.X},{targetScreen.Y}";
+                if (myMap.ScreenDescriptions.TryGetValue(key, out string desc))
+                    hasDesc = !string.IsNullOrWhiteSpace(desc);
+            }
+
+            if (menuItemLinkScreen != null)
+            {
+                menuItemLinkScreen.Checked = hasLink;
+                menuItemLinkScreen.Text = "Link to Screen...";
+            }
+            if (menuItemScreenDescription != null)
+            {
+                menuItemScreenDescription.Checked = hasDesc;
+                menuItemScreenDescription.Text = "Screen Description...";
+            }
+            if (menuItemScreenMetadata != null)
+            {
+                menuItemScreenMetadata.Checked = hasMeta;
+                menuItemScreenMetadata.Text = "Screen Metadata...";
+            }
+            if (menuItemExportMetadata != null)
+            {
+                menuItemExportMetadata.Checked = hasMeta;
+                menuItemExportMetadata.Text = "Export metadata...";
+            }
+
             // Update enabled state of Apply Font Template menu item
             foreach (ToolStripItem item in contextMenuStripScreen.Items)
             {
-                if (item.Text == "Apply Font Template...")
+                if (item.Text == "Apply Font Template..." || item.Text.EndsWith("Apply Font Template..."))
                 {
                     bool enabled = myMap != null && myMap.MultiFontEnabled;
                     if (enabled)
                     {
-                        // Check if current/locked screen references another screen
-                        Point targetScreen = isScreenLocked ? lockedScreen : currentScreen;
                         int refScreenX, refScreenY;
                         bool isReferencing = myMap.GetFontMappingReference(targetScreen.X, targetScreen.Y, out refScreenX, out refScreenY);
                         if (isReferencing && (refScreenX != targetScreen.X || refScreenY != targetScreen.Y))
-                        {
-                            enabled = false; // Disable if referencing another screen
-                        }
+                            enabled = false;
                     }
                     item.Enabled = enabled;
                     break;
@@ -305,6 +498,7 @@ namespace AtariMapMaker
                 AtariFontRenderer.SetFontData(defaultFontData, Globals.FontType.Screen);
             }
             myCharPicker.SetMainMap(myMap);
+            myCharPicker.NotifyScreenChanged(isScreenLocked ? lockedScreen : currentScreen);
             myCharPicker.SetZoom();
             myCharPicker.Refresh();
             myCharPicker.RedrawFontWindow();
@@ -357,6 +551,17 @@ namespace AtariMapMaker
                 };
                 lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[7]));
                 listViewColors.Items.Add(lviAlter);
+
+                if (AtariFontRenderer.Color5.Length > 8)
+                {
+                    lviAlter = new ListViewItem
+                    {
+                        ImageIndex = 8,
+                        Text = "PF1 alter"
+                    };
+                    lviAlter.SubItems.Add("$" + String.Format("{0:X2}", AtariFontRenderer.Color5[8]));
+                    listViewColors.Items.Add(lviAlter);
+                }
 
                 listViewColors.Columns[0].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
                 listViewColors.Columns[1].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
@@ -420,16 +625,58 @@ namespace AtariMapMaker
             HideClipboardFromMap();
         }
 
+        private DliForm CreateDliForm()
+        {
+            var form = new DliForm(myMap, pictureBoxMap);
+            form.OnGlobalColorsChanged = () =>
+            {
+                FillFontColorList();
+                AtariFontRenderer.RedrawFontImage(Globals.FontType.Screen);
+                AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
+                if (myCharPicker != null)
+                {
+                    myCharPicker.Refresh();
+                    myCharPicker.GetPictureBox()?.Refresh();
+                }
+                if (tilePicker != null && tilePicker.Visible)
+                    tilePicker.Refresh();
+            };
+            return form;
+        }
+
         private void ListView1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             if (listViewColors.SelectedItems.Count == 1)
             {
                 int colorIndex = listViewColors.SelectedItems[0].Index;
-                byte index = AtariFontRenderer.Color5[colorIndex];
+                // Dual pick for PF0–PF3 when ALPA is on (not for BAK or dedicated alter rows)
+                bool dualPf = AtariFontRenderer.Color5.Length > 5 && colorIndex < 4;
                 colorPickerForm.Owner = this;
-                colorPickerForm.Pick(index);
+                if (dualPf)
+                {
+                    byte primary = AtariFontRenderer.Color5[colorIndex];
+                    byte alternate = AtariFontRenderer.GetAlpaAlternateColor(colorIndex);
+                    colorPickerForm.Pick(primary, alternate);
+                    if (colorPickerForm.PickedNewColor)
+                    {
+                        if (colorPickerForm.PickedPrimaryChanged)
+                            AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
+                        if (colorPickerForm.PickedAlternateChanged)
+                        {
+                            AtariFontRenderer.NormalizeAlpaColors();
+                            int altIndex = AtariFontRenderer.GetAlpaAlternateColorIndex(colorIndex);
+                            if (altIndex >= 0 && altIndex < AtariFontRenderer.Color5.Length)
+                                AtariFontRenderer.Color5[altIndex] = colorPickerForm.PickedAlternateIndex;
+                        }
+                    }
+                }
+                else
+                {
+                    byte index = AtariFontRenderer.Color5[colorIndex];
+                    colorPickerForm.Pick(index);
+                    AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
+                }
 
-                AtariFontRenderer.Color5[colorIndex] = colorPickerForm.PickedColorIndex;
                 FillFontColorList();
                 AtariFontRenderer.RedrawFontImage(Globals.FontType.Screen);
                 AtariPictureTools.Redraw(Globals.WindowType.CharPicker);
@@ -445,18 +692,12 @@ namespace AtariMapMaker
                 {
                     tilePicker.Refresh();
                 }
-                //pictureBoxClipboard.Image = AtariPictureTools.windows[Globals.WindowType.Editor].destinationImage;
-
-                //AtariFontRenderer.RedrawFont();
-                //pictureBoxMap.Invalidate();
-                //myCharPicker.GetRenderer().RedrawFont();
-                //myCharPicker.RedrawFontWindow();
-                //RedrawEditorWindow();
             }
         }
 
         private void PictureBoxMap_MouseMove(object sender, MouseEventArgs e)
         {
+            lastMapMouseLocation = e.Location;
             int xx = myMap.OffsetX + e.X / Globals.CharSize;
             int yy = myMap.OffsetY + e.Y / Globals.CharSize;
             
@@ -506,38 +747,16 @@ namespace AtariMapMaker
             }
             else
             {
-                // Screen not locked, update normally
-                // If DLI form is visible, keep the current screen as the one the DLI form is showing
-                // Don't update currentScreen if mouse is in the DLI form area (to the right of the screen)
-                if (dliForm != null && dliForm.Visible)
+                // Screen not locked: if Edit DLI form is open, keep selection on that screen
+                // (hovering elsewhere must not change DLI content or trigger font-ref UI write-back)
+                if (checkBoxEditDli.Checked && dliForm != null && dliForm.Visible)
                 {
-                    // Get the screen that the DLI form is showing
                     int dliScreenNumber = dliForm.screenNumber;
-                    int dliScreenX = dliScreenNumber % myMap.MapSize.Width;
-                    int dliScreenY = dliScreenNumber / myMap.MapSize.Width;
-                    
-                    // Check if mouse is in the DLI form area (to the right of the screen)
-                    int dliFormStartX = (dliScreenX + 1) * screenCharWidth - 1;
-                    int dliFormEndX = dliFormStartX + 6; // DLI form is 6 characters wide (5 colors + 1 font)
-                    int dliFormStartY = dliScreenY * screenCharHeight;
-                    int dliFormEndY = (dliScreenY + 1) * screenCharHeight;
-                    
-                    // If mouse is in DLI form area, keep current screen as the DLI form's screen
-                    if (xx >= dliFormStartX && xx < dliFormEndX && yy >= dliFormStartY && yy < dliFormEndY)
-                    {
-                        currentScreen.X = dliScreenX;
-                        currentScreen.Y = dliScreenY;
-                    }
-                    else
-                    {
-                        // Mouse is not in DLI form area, update normally
-                        currentScreen.X = scrx;
-                        currentScreen.Y = scry;
-                    }
+                    currentScreen.X = dliScreenNumber % myMap.MapSize.Width;
+                    currentScreen.Y = dliScreenNumber / myMap.MapSize.Width;
                 }
                 else
                 {
-                    // DLI form not visible, update normally
                     currentScreen.X = scrx;
                     currentScreen.Y = scry;
                 }
@@ -549,6 +768,8 @@ namespace AtariMapMaker
             {
                 RedrawEditorWindow();
                 previousScreen = currentScreen;
+                if (myCharPicker != null && myCharPicker.Visible)
+                    myCharPicker.NotifyScreenChanged(currentScreen);
             }
 
             if (e.Button == MouseButtons.Right)     //SCROLL
@@ -566,17 +787,12 @@ namespace AtariMapMaker
                         pictureBoxMap.Refresh();
                 }
 
-                if (checkBoxEditDli.Checked)
+                if (checkBoxEditDli.Checked && dliForm != null && dliForm.Visible)
                 {
-                    if (isScreenLocked)
-                    {
-                        // Keep DLI form showing the locked screen
-                        UpdateAndShowDliForm(lockedScreen.X, lockedScreen.Y, true);
-                    }
-                    else
-                    {
-                        UpdateAndShowDliForm(scrx, scry, true);
-                    }
+                    // Reposition only — keep showing the screen selected by right-click (or lock)
+                    int dliScrX = isScreenLocked ? lockedScreen.X : (dliForm.screenNumber % myMap.MapSize.Width);
+                    int dliScrY = isScreenLocked ? lockedScreen.Y : (dliForm.screenNumber / myMap.MapSize.Width);
+                    UpdateAndShowDliForm(dliScrX, dliScrY, true);
                 }
             }
 
@@ -588,9 +804,9 @@ namespace AtariMapMaker
                     AtariPictureTools.SelectionChange(e.Location, Globals.WindowType.Editor);
                     pictureBoxMap.Refresh();
                 }
-                else if (AtariClipboard.IsValid && (Control.ModifierKeys & Keys.Control) == Keys.Control)
+                else if (IsAutopasteEnabled && AtariClipboard.IsValid && (Control.ModifierKeys & Keys.Control) == Keys.Control)
                 {
-                    // Continuous paste mode: CTRL + Left mouse button
+                    // Continuous paste mode: CTRL + Left mouse button (autopaste only)
                     isContinuousPasteMode = true;
                     PerformPasteAtLocation(e.Location);
                 }
@@ -598,8 +814,10 @@ namespace AtariMapMaker
 
             if (e.Button == MouseButtons.None)  //nothing is pressed
             {
+                lastMapMouseLocation = e.Location;
+
                 // Check for continuous paste mode on mouse move (CTRL still held)
-                if (isContinuousPasteMode && (Control.ModifierKeys & Keys.Control) == Keys.Control && AtariClipboard.IsValid)
+                if (IsAutopasteEnabled && isContinuousPasteMode && (Control.ModifierKeys & Keys.Control) == Keys.Control && AtariClipboard.IsValid)
                 {
                     // Continue pasting as mouse moves in continuous paste mode
                     PerformPasteAtLocation(e.Location);
@@ -613,7 +831,7 @@ namespace AtariMapMaker
 
               
               
-                if (AtariClipboard.IsValid)  //copy mode (shows alpha blended clipBoard)
+                if (IsFloatingPasteActive)  //copy mode (shows alpha blended clipBoard)
                 {
                     // Calculate current grid cell based on map type
                     int alignSizeX = Globals.CharSize;
@@ -802,15 +1020,18 @@ namespace AtariMapMaker
                 dliForm.Left = r.Left + dliPoint.X * Globals.CharSize;
                 dliForm.Top = r.Top + dliPoint.Y * Globals.CharSize;
                 dliForm.Owner = this;
+                int newScreenNumber = scrx + scry * myMap.MapSize.Width;
                 if (!justUpdatePosition)
                 {
-                    myMap.CopyDliColorsFullScreen(scrx + scry * myMap.MapSize.Width, dliForm.DliMap, 0);  //copy screen colors to DLI color editor
+                    myMap.CopyDliColorsFullScreen(newScreenNumber, dliForm.DliMap, 0);  //copy screen colors to DLI color editor
+                    dliForm.Show(newScreenNumber); // update font column before paint
                     dliForm.RenderData();
                 }
                 else
+                {
+                    // Position only — content stays on the already-selected screen
                     dliForm.RenderData(true);
-                dliForm.Show(scrx + scry * myMap.MapSize.Width);
-
+                }
             }
             else
             {
@@ -844,92 +1065,16 @@ namespace AtariMapMaker
         private void PictureBoxMap_MouseDown(object sender, MouseEventArgs e)
         {
             AtariPictureTools.PreviousMouseLocation = e.Location;
+            lastMapMouseLocation = e.Location;
             if (e.Button == MouseButtons.Left)
             {
 
-                if (AtariClipboard.IsValid)
+                if (IsFloatingPasteActive)
                 {
-                    AtariClipboard.SetDataSource(myMap);     //to copy always to map (not to char selector)
-                    int charX = e.X / Globals.CharSize;
-                    int charY = e.Y / Globals.CharSize;
-                    
-                    // If tilemap is enabled, snap to tile grid
-                    if (myMap.IsTilemap && myMap.TilemapInfo != null)
-                    {
-                        int tileWidth = myMap.TilemapInfo.TileWidth;
-                        int tileHeight = myMap.TilemapInfo.TileHeight;
-                        charX = (charX / tileWidth) * tileWidth;
-                        charY = (charY / tileHeight) * tileHeight;
-                        
-                        // For tilemaps, check if clipboard contains tile indexes
-                        if (AtariClipboard.IsTileIndexes)
-                        {
-                            // Convert character coordinates to tile coordinates
-                            // charX and charY are relative to the visible area, need to add offset
-                            int absoluteCharX = myMap.OffsetX + charX;
-                            int absoluteCharY = myMap.OffsetY + charY;
-                            int tileX = absoluteCharX / tileWidth;
-                            int tileY = absoluteCharY / tileHeight;
-                            
-                            // Calculate character offset for Paste
-                            // For tilemaps, use CharStride (character stride)
-                            int charStride = myMap.CharStride;
-                            int charOffset = absoluteCharX + charStride * absoluteCharY;
-                            AtariClipboard.Paste(myMap.Offset + charOffset);
-                        }
-                        else
-                        {
-                            // Paste characters (normal mode, but snapped to tile grid)
-                            // For tilemaps, we need to use character stride, not tile stride
-                            int charStride = myMap.CharStride;
-                            if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= charStride)
-                            {
-                                // Need to add the offset from the map
-                                int absoluteCharX = myMap.OffsetX + charX;
-                                int absoluteCharY = myMap.OffsetY + charY;
-                                int absoluteCharOffset = absoluteCharX + charStride * absoluteCharY;
-                                AtariClipboard.Paste(myMap.Offset + absoluteCharOffset);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Normal map - paste characters
-                        if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= myMap.Stride)
-                        {
-                            int absoluteCharX = myMap.OffsetX + charX;
-                            int absoluteCharY = myMap.OffsetY + charY;
-                            int addoffset = absoluteCharX + myMap.Stride * absoluteCharY;
-                            AtariClipboard.Paste(myMap.Offset + addoffset);
-                        }
-                    }
-                    
-                    // For tilemaps, ensure CharData is up to date after pasting
-                    if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
-                    {
-                        // CharData is already updated by ExpandTileToCharData in Paste method
-                        // But we may need to clear font cache if fonts changed
-                        AtariFontRenderer.ClearFontCache();
-                    }
-                    
-                    // Redraw the editor window to show the pasted data immediately
-                    // Force a complete redraw by calling Redraw with all parameters
-                    // This ensures RenderMapData reads the freshly pasted data
-                    AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen);
-                    
-                    // After redrawing, update the UnderClipBoardImage with the NEW content under the clipboard position
-                    // This is critical - otherwise the old UnderClipBoardImage will overwrite the pasted data on mouse move
-                    if (AtariPictureTools.PreviousClipboardLocation.HasValue)
-                    {
-                        // Update UnderClipBoardImage with the current content at the clipboard position
-                        AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
-                        pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
-                        pictureBoxUnderClipBoard.Refresh();
-                    }
-                    
-                    pictureBoxMap.Refresh();
+                    // Autopaste: stay in paste mode. Manual (Ctrl+V armed): place once, then back to selection.
+                    PasteClipboardAtLocationAndRedraw(e.Location, exitPasteModeAfter: floatingPasteArmed && !IsAutopasteEnabled);
                 }
-                else if (Globals.MetadataLayerVisible)
+                else if (Globals.MetadataLayerEditable)
                 {
                     // Metadata layer: add or edit metadata at this position (tile position for tilemap, char position otherwise)
                     int xx = myMap.OffsetX + e.X / Globals.CharSize;
@@ -977,6 +1122,7 @@ namespace AtariMapMaker
                     var meta = myMap.ScreenMetadata[key];
                     var existing = meta.ParsedItems?.Find(i => i.X == cellX && i.Y == cellY);
                     bool ctrl = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                    bool alt = (Control.ModifierKeys & Keys.Alt) == Keys.Alt;
                     if (ctrl && existing != null)
                     {
                         MetadataItemClipboard.Copy(existing);
@@ -985,11 +1131,41 @@ namespace AtariMapMaker
                         pictureBoxMap.Refresh();
                         return;
                     }
+                    if (alt && existing != null)
+                    {
+                        MetadataItemClipboard.BeginMove(existing, scrx, scry, cellX, cellY);
+                        UpdateMetadataClipboardPreview();
+                        RedrawEditorWindow();
+                        pictureBoxMap.Refresh();
+                        return;
+                    }
                     if (!ctrl && MetadataItemClipboard.HasItem)
                     {
                         var copied = MetadataItemClipboard.CopiedItem;
+                        if (MetadataItemClipboard.IsMovePending)
+                        {
+                            if (scrx == MetadataItemClipboard.MoveSourceScreenX && scry == MetadataItemClipboard.MoveSourceScreenY
+                                && cellX == MetadataItemClipboard.MoveSourceCellX && cellY == MetadataItemClipboard.MoveSourceCellY)
+                            {
+                                MetadataItemClipboard.Clear();
+                                previousMetadataOverlayLocation = null;
+                                UpdateMetadataClipboardPreview();
+                                UpdateMetadataLayerUI();
+                                RedrawEditorWindow();
+                                pictureBoxMap.Refresh();
+                                return;
+                            }
+                            string srcKey = $"{MetadataItemClipboard.MoveSourceScreenX},{MetadataItemClipboard.MoveSourceScreenY}";
+                            if (myMap.ScreenMetadata.TryGetValue(srcKey, out var srcMeta) && srcMeta?.ParsedItems != null)
+                            {
+                                var srcItem = srcMeta.ParsedItems.Find(i => i.X == MetadataItemClipboard.MoveSourceCellX && i.Y == MetadataItemClipboard.MoveSourceCellY);
+                                if (srcItem != null)
+                                    srcMeta.ParsedItems.Remove(srcItem);
+                            }
+                        }
                         meta.ParsedItems.RemoveAll(i => i.X == cellX && i.Y == cellY);
-                        meta.ParsedItems.Add(new MetadataLayerItem { X = cellX, Y = cellY, Text = copied.Text ?? "", Value = copied.Value, Color = copied.Color });
+                        meta.ParsedItems.Add(new MetadataLayerItem { X = cellX, Y = cellY, Text = copied.Text ?? "", Type = copied.Type, Value = copied.Value, Color = copied.Color });
+                        MetadataItemClipboard.Clear();
                         previousMetadataOverlayLocation = null;
                         UpdateMetadataLayerUI();
                         RedrawEditorWindow();
@@ -998,7 +1174,7 @@ namespace AtariMapMaker
                     }
                     if (existing != null)
                     {
-                        using (var edit = new MetadataItemEditDialog(existing, "Edit metadata item", myMap.IsTilemap))
+                        using (var edit = new MetadataItemEditDialog(myMap, existing, "Edit metadata item", myMap.IsTilemap))
                         {
                             if (edit.ShowDialog() == DialogResult.OK && edit.RemoveRequested)
                                 meta.ParsedItems.Remove(existing);
@@ -1006,8 +1182,8 @@ namespace AtariMapMaker
                     }
                     else
                     {
-                        var item = new MetadataLayerItem { X = cellX, Y = cellY, Text = "", Value = 0, Color = 0 };
-                        using (var edit = new MetadataItemEditDialog(item, "Add metadata item", myMap.IsTilemap))
+                        var item = new MetadataLayerItem { X = cellX, Y = cellY, Text = "", Type = 0, Value = 0, Color = 0 };
+                        using (var edit = new MetadataItemEditDialog(myMap, item, "Add metadata item", myMap.IsTilemap))
                         {
                             if (edit.ShowDialog() == DialogResult.OK && !edit.RemoveRequested)
                                 meta.ParsedItems.Add(item);
@@ -1103,6 +1279,14 @@ namespace AtariMapMaker
                         
                         int scrx = xx / screenCharWidth;
                         int scry = yy / screenCharHeight;
+                        if (scrx < 0) scrx = 0;
+                        if (scry < 0) scry = 0;
+                        if (scrx >= myMap.MapSize.Width) scrx = myMap.MapSize.Width - 1;
+                        if (scry >= myMap.MapSize.Height) scry = myMap.MapSize.Height - 1;
+                        currentScreen.X = scrx;
+                        currentScreen.Y = scry;
+                        previousScreen = currentScreen;
+                        UpdateFontMappingReferenceUI();
                         UpdateAndShowDliForm(scrx, scry);
                     }
                     else
@@ -1119,10 +1303,19 @@ namespace AtariMapMaker
             {
                 if (mouseStatus == "SELECTION")
                 {
-                    if (AtariPictureTools.SelectionEnd(Globals.WindowType.Editor))
+                    bool copyToClipboard = IsAutopasteEnabled;
+                    if (AtariPictureTools.SelectionEnd(Globals.WindowType.Editor, copyToClipboard))
                     {
-                        AtariClipboard.IsValid = true;
-                        pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                        if (copyToClipboard)
+                        {
+                            AtariClipboard.IsValid = true;
+                            pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                        }
+                        else
+                        {
+                            // No-autopaste: keep selection visible until Ctrl+C (or a new selection).
+                            AtariPictureTools.RedrawSelection(Globals.WindowType.Editor);
+                        }
                         pictureBoxMap.Refresh();
                     }
                     mouseStatus = "";   //reset mouse status no matter if selection end is valid or not
@@ -1132,7 +1325,11 @@ namespace AtariMapMaker
             {
                 contextMenuStripScreen.Show(pictureBoxMap, e.Location);
             }
-
+            else if (e.Button == MouseButtons.Right)
+            {
+                // Scroll redraws without hover labels; refresh them for the screen under the cursor
+                RedrawEditorWindow();
+            }
         }
 
         private void PictureBoxMap_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -1162,11 +1359,107 @@ namespace AtariMapMaker
                 AtariClipboard.IsValid = false;
                 AtariPictureTools.PreviousClipboardLocation = null;
                 AtariPictureTools.PreviousClipboardGridCell = null;
+                floatingPasteArmed = false;
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
             }
         }
         
+        /// <summary>
+        /// Pastes clipboard at the given picture-box location and refreshes the editor view.
+        /// </summary>
+        private void PasteClipboardAtLocationAndRedraw(Point location, bool exitPasteModeAfter = false)
+        {
+            if (!AtariClipboard.IsValid)
+                return;
+
+            int charX = location.X / Globals.CharSize;
+            int charY = location.Y / Globals.CharSize;
+            PasteClipboardAtCharCoords(charX, charY);
+
+            if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
+                AtariFontRenderer.ClearFontCache();
+
+            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
+
+            if (exitPasteModeAfter)
+            {
+                // One-shot floating paste (Autopaste off): do not restore under-image (it would hide the paste).
+                DisarmFloatingPaste(keepClipboardData: true, restoreUnderImage: false);
+            }
+            else if (AtariPictureTools.PreviousClipboardLocation.HasValue)
+            {
+                AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
+                pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
+                pictureBoxUnderClipBoard.Refresh();
+            }
+
+            pictureBoxMap.Refresh();
+        }
+
+        /// <summary>
+        /// Shows the floating clipboard overlay at the given picture-box location.
+        /// </summary>
+        private void ShowFloatingClipboardAt(Point location)
+        {
+            if (!AtariClipboard.IsValid || pictureBoxMap?.Image == null)
+                return;
+
+            if (AtariPictureTools.PreviousClipboardLocation.HasValue)
+                AtariPictureTools.DrawUnderClipBoard(AtariPictureTools.PreviousClipboardLocation.Value);
+
+            AtariPictureTools.DrawClipBoard(location, (Bitmap)pictureBoxMap.Image);
+            pictureBoxUnderClipBoard.Image = AtariClipboard.UnderClipBoardImage;
+            pictureBoxUnderClipBoard.Refresh();
+
+            AtariPictureTools.PreviousClipboardLocation = location;
+
+            int alignSizeX = Globals.CharSize;
+            int alignSizeY = Globals.CharSize;
+            if (myMap != null && myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                alignSizeX = myMap.TilemapInfo.TileWidth * Globals.CharSize;
+                alignSizeY = myMap.TilemapInfo.TileHeight * Globals.CharSize;
+            }
+            AtariPictureTools.PreviousClipboardGridCell = new Point(location.X / alignSizeX, location.Y / alignSizeY);
+            pictureBoxMap.Refresh();
+        }
+
+        /// <summary>
+        /// Ends floating paste preview. If keepClipboardData, clipboard stays usable for another Ctrl+V.
+        /// </summary>
+        private void DisarmFloatingPaste(bool keepClipboardData, bool restoreUnderImage = true)
+        {
+            if (restoreUnderImage && AtariPictureTools.PreviousClipboardLocation.HasValue)
+                AtariPictureTools.DrawUnderClipBoard(AtariPictureTools.PreviousClipboardLocation.Value);
+
+            AtariPictureTools.PreviousClipboardLocation = null;
+            AtariPictureTools.PreviousClipboardGridCell = null;
+            isContinuousPasteMode = false;
+            lastContinuousPasteCell = null;
+            floatingPasteArmed = false;
+
+            if (!keepClipboardData)
+            {
+                AtariClipboard.IsValid = false;
+                if (pictureBoxClipboard != null)
+                {
+                    pictureBoxClipboard.Image = null;
+                    pictureBoxClipboard.Refresh();
+                }
+            }
+
+            pictureBoxMap.Refresh();
+        }
+
+        /// <summary>
+        /// Leaves floating-clipboard paste mode and returns to selection mode.
+        /// </summary>
+        private void ExitClipboardPasteMode(bool keepClipboardPreview)
+        {
+            DisarmFloatingPaste(keepClipboardData: keepClipboardPreview);
+        }
+
         /// <summary>
         /// Helper method to perform paste at a given location (used for continuous paste mode)
         /// </summary>
@@ -1194,58 +1487,68 @@ namespace AtariMapMaker
                 
             lastContinuousPasteCell = currentGridCell;
             
-            // Perform the paste (reuse the logic from MouseDown)
-            AtariClipboard.SetDataSource(myMap);
             int charX = location.X / Globals.CharSize;
             int charY = location.Y / Globals.CharSize;
-            
-            // If tilemap is enabled, snap to tile grid
-            if (myMap.IsTilemap && myMap.TilemapInfo != null)
-            {
-                int tileWidth = myMap.TilemapInfo.TileWidth;
-                int tileHeight = myMap.TilemapInfo.TileHeight;
-                charX = (charX / tileWidth) * tileWidth;
-                charY = (charY / tileHeight) * tileHeight;
-                
-                if (AtariClipboard.IsTileIndexes)
-                {
-                    int absoluteCharX = myMap.OffsetX + charX;
-                    int absoluteCharY = myMap.OffsetY + charY;
-                    int charStride = myMap.CharStride;
-                    int charOffset = absoluteCharX + charStride * absoluteCharY;
-                    AtariClipboard.Paste(myMap.Offset + charOffset);
-                }
-                else
-                {
-                    int charStride = myMap.CharStride;
-                    if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= charStride)
-                    {
-                        int absoluteCharX = myMap.OffsetX + charX;
-                        int absoluteCharY = myMap.OffsetY + charY;
-                        int absoluteCharOffset = absoluteCharX + charStride * absoluteCharY;
-                        AtariClipboard.Paste(myMap.Offset + absoluteCharOffset);
-                    }
-                }
-            }
-            else
-            {
-                if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= myMap.Stride)
-                {
-                    int absoluteCharX = myMap.OffsetX + charX;
-                    int absoluteCharY = myMap.OffsetY + charY;
-                    int addoffset = absoluteCharX + myMap.Stride * absoluteCharY;
-                    AtariClipboard.Paste(myMap.Offset + addoffset);
-                }
-            }
+            PasteClipboardAtCharCoords(charX, charY);
             
             // Redraw after paste
             if (myMap.IsTilemap && AtariClipboard.IsTileIndexes)
             {
                 AtariFontRenderer.ClearFontCache();
             }
-            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen);
+            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
             pictureBoxMap.Refresh();
         }
+
+        /// <summary>
+        /// Pastes clipboard at character coordinates relative to the visible editor area, with undo recording.
+        /// </summary>
+        private void PasteClipboardAtCharCoords(int charX, int charY)
+        {
+            AtariClipboard.SetDataSource(myMap);
+
+            PasteWithUndo(() =>
+            {
+                if (myMap.IsTilemap && myMap.TilemapInfo != null)
+                {
+                    int tileWidth = myMap.TilemapInfo.TileWidth;
+                    int tileHeight = myMap.TilemapInfo.TileHeight;
+                    charX = (charX / tileWidth) * tileWidth;
+                    charY = (charY / tileHeight) * tileHeight;
+
+                    if (AtariClipboard.IsTileIndexes)
+                    {
+                        int absoluteCharX = myMap.OffsetX + charX;
+                        int absoluteCharY = myMap.OffsetY + charY;
+                        int charStride = myMap.CharStride;
+                        int charOffset = absoluteCharX + charStride * absoluteCharY;
+                        AtariClipboard.Paste(myMap.Offset + charOffset);
+                    }
+                    else
+                    {
+                        int charStride = myMap.CharStride;
+                        if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= charStride)
+                        {
+                            int absoluteCharX = myMap.OffsetX + charX;
+                            int absoluteCharY = myMap.OffsetY + charY;
+                            int absoluteCharOffset = absoluteCharX + charStride * absoluteCharY;
+                            AtariClipboard.Paste(myMap.Offset + absoluteCharOffset);
+                        }
+                    }
+                }
+                else
+                {
+                    if (myMap.OffsetX + charX + AtariClipboard.ClipboardWidth <= myMap.Stride)
+                    {
+                        int absoluteCharX = myMap.OffsetX + charX;
+                        int absoluteCharY = myMap.OffsetY + charY;
+                        int addoffset = absoluteCharX + myMap.Stride * absoluteCharY;
+                        AtariClipboard.Paste(myMap.Offset + addoffset);
+                    }
+                }
+            });
+        }
+
 
         private void Timer1_Tick(object sender, EventArgs e)
         {
@@ -1293,19 +1596,94 @@ namespace AtariMapMaker
             AtariPictureTools.Redraw(Globals.WindowType.Editor);
         }
 
-        private void ButtonSave_Click(object sender, EventArgs e)
+        private void RememberAtrmapPath(string fileName, bool seedDataPath)
+        {
+            currentAtrmapPath = fileName;
+            if (seedDataPath && !string.IsNullOrEmpty(fileName))
+            {
+                string dir = Path.GetDirectoryName(fileName);
+                string baseName = Path.GetFileNameWithoutExtension(fileName);
+                if (!string.IsNullOrEmpty(dir))
+                    currentDataPath = Path.Combine(dir, baseName + ".dat");
+            }
+            UpdateMainFormCaption();
+        }
+
+        private void RememberDataPath(string fileName)
+        {
+            if (!string.IsNullOrEmpty(fileName))
+                currentDataPath = fileName;
+        }
+
+        private void PrepareAtrmapSaveDialog()
         {
             saveFileDialog1.Filter = "Atari MapMaker map (*.atrmap)|*.atrmap";
+            ApplyRememberedPath(saveFileDialog1, currentAtrmapPath, null);
+        }
+
+        private void PrepareAtrmapOpenDialog()
+        {
+            openFileDialog1.Filter = "Atari MapMaker map (*.atrmap)|*.atrmap";
+            ApplyRememberedPath(openFileDialog1, currentAtrmapPath, null);
+        }
+
+        private void PrepareDataSaveDialog(string filter)
+        {
+            saveFileDialog1.Filter = filter;
+            string fallback = null;
+            if (string.IsNullOrEmpty(currentDataPath) && !string.IsNullOrEmpty(currentAtrmapPath))
+                fallback = Path.Combine(Path.GetDirectoryName(currentAtrmapPath) ?? "", Path.GetFileNameWithoutExtension(currentAtrmapPath) + ".dat");
+            ApplyRememberedPath(saveFileDialog1, currentDataPath, fallback);
+        }
+
+        private void PrepareDataOpenDialog(string filter)
+        {
+            openFileDialog1.Filter = filter;
+            string fallback = null;
+            if (string.IsNullOrEmpty(currentDataPath) && !string.IsNullOrEmpty(currentAtrmapPath))
+                fallback = Path.Combine(Path.GetDirectoryName(currentAtrmapPath) ?? "", Path.GetFileNameWithoutExtension(currentAtrmapPath) + ".dat");
+            ApplyRememberedPath(openFileDialog1, currentDataPath, fallback);
+        }
+
+        private static void ApplyRememberedPath(FileDialog dialog, string primaryPath, string fallbackPath)
+        {
+            string path = !string.IsNullOrEmpty(primaryPath) ? primaryPath : fallbackPath;
+            if (string.IsNullOrEmpty(path))
+                return;
+            try
+            {
+                string dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                    dialog.InitialDirectory = dir;
+                string name = Path.GetFileName(path);
+                if (!string.IsNullOrEmpty(name))
+                    dialog.FileName = name;
+            }
+            catch
+            {
+            }
+        }
+
+        private bool IsAutopasteEnabled
+        {
+            get { return checkBoxAutopaste == null || checkBoxAutopaste.Checked; }
+        }
+
+        /// <summary>True when floating clipboard paste preview/click-to-place is active.</summary>
+        private bool IsFloatingPasteActive
+        {
+            get { return AtariClipboard.IsValid && (IsAutopasteEnabled || floatingPasteArmed); }
+        }
+
+        private void ButtonSave_Click(object sender, EventArgs e)
+        {
+            PrepareAtrmapSaveDialog();
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
-                    SaveMap(saveFileDialog1.FileName); //test.dat
+                    SaveMap(saveFileDialog1.FileName);
                     break;
             }
-            //saveFileDialog1.Filter = "AtariMap (*.amp)|*.amp";
-            //if (saveFileDialog1.ShowDialog() == DialogResult.OK)
-            //    Save(saveFileDialog1.FileName);
-
         }
 
         private void SaveMap(string filename)
@@ -1329,6 +1707,7 @@ namespace AtariMapMaker
                 MapDescription = myMap.MapDescription,
                 ScreenDescriptions = myMap.ScreenDescriptions,
                 ScreenMetadataDict = myMap.ScreenMetadata,
+                MetadataTypeLabels = myMap.MetadataTypeLabels,
                 SubmapPath = myMap.SubmapPath,
                 IsTilemap = myMap.IsTilemap,
                 TilemapInfo = myMap.TilemapInfo,
@@ -1337,11 +1716,40 @@ namespace AtariMapMaker
                 ScreenLinks = myMap.ScreenLinks
             };
             AtariJson.SaveAtrMap(atrmap, filename);
+            RememberAtrmapPath(filename, seedDataPath: false);
+        }
+
+        private void UpdateMainFormCaption()
+        {
+            string caption = string.IsNullOrEmpty(mainFormBaseTitle)
+                ? "AtariMapMaker"
+                : mainFormBaseTitle;
+
+            if (!string.IsNullOrEmpty(currentAtrmapPath))
+                caption += " - " + Path.GetFileName(currentAtrmapPath);
+
+            string descFirstLine = GetMapDescriptionFirstLine();
+            if (!string.IsNullOrEmpty(descFirstLine))
+                caption += " - " + descFirstLine;
+
+            this.Text = caption;
+        }
+
+        private string GetMapDescriptionFirstLine()
+        {
+            if (myMap == null || string.IsNullOrWhiteSpace(myMap.MapDescription))
+                return null;
+            string desc = myMap.MapDescription;
+            int nl = desc.IndexOfAny(new[] { '\r', '\n' });
+            if (nl >= 0)
+                desc = desc.Substring(0, nl);
+            desc = desc.Trim();
+            return string.IsNullOrEmpty(desc) ? null : desc;
         }
 
         private void ButtonLoad_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "Atari MapMaker map (*.atrmap)|*.atrmap";
+            PrepareAtrmapOpenDialog();
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
@@ -1351,10 +1759,13 @@ namespace AtariMapMaker
                     AtariPictureTools.SetGridVisibility(comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked);
                   
                     checkBoxShowDli.Checked = true;
+                    checkBoxAlpa.Checked = AtariFontRenderer.Color5.Length > 5;
+                    UpdateDliMaskControlsVisibility();
                     this.FillFontColorList();
                     
                     // Update numeric up/down controls for new map size
                     numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
+                    UpdateDatalineWidthDefault();
                     numericUpDownScreenFromX.Maximum = myMap.MapSize.Width - 1;
                     numericUpDownScreenToX.Maximum = myMap.MapSize.Width - 1;
                     numericUpDownScreenFromY.Maximum = myMap.MapSize.Height - 1;
@@ -1378,9 +1789,12 @@ namespace AtariMapMaker
                     //myCharPicker.GetRenderer().FontData = AtariFontRenderer.FontData;
                     //myCharPicker.GetRenderer().Color5 = AtariFontRenderer.Color5;
                     if (myCharPicker != null)
+                    {
+                        myCharPicker.SetMainMap(myMap);
                         myCharPicker.RedrawFontWindow();
+                    }
                     dliForm.Dispose();
-                    dliForm = new DliForm(myMap, pictureBoxMap);
+                    dliForm = CreateDliForm();
                     dliForm.RenderData();
                     dliForm.ZoomResize();
                     numericUpDownScreenFromX.Maximum = myMap.MapSize.Width;
@@ -1388,6 +1802,7 @@ namespace AtariMapMaker
                     numericUpDownScreenToX.Maximum = myMap.MapSize.Width;
                     numericUpDownScreenToY.Maximum = myMap.MapSize.Height;
                     numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
+                    UpdateDatalineWidthDefault();
                     break;
             }
         }
@@ -1406,6 +1821,7 @@ namespace AtariMapMaker
             AtariClipboard.IsValid = false;
             AtariPictureTools.PreviousClipboardLocation = null;
             AtariPictureTools.PreviousClipboardGridCell = null;
+            floatingPasteArmed = false;
             if (pictureBoxClipboard != null)
             {
                 pictureBoxClipboard.Image = null;
@@ -1424,6 +1840,7 @@ namespace AtariMapMaker
             };
             
             undoManager = new UndoManager(myMap);
+            UpdateUndoRedoUI();
             AtariFontRenderer.Color5 = AtariJson.ParsedData.Color5.Select(i => (byte)i).ToArray();
             
             // Load fonts - handle v1.2 and v2.0 formats
@@ -1451,6 +1868,11 @@ namespace AtariMapMaker
                 myMap.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), 0);
                 AtariFontRenderer.SetFontData(AtariJson.ParsedData.FontData.Select(i => (byte)i).ToArray(), Globals.FontType.Screen);
             }
+
+            // Drop multifont bitmaps and char-picker refs from the previously loaded map
+            AtariFontRenderer.ClearFontCache();
+            AtariFontRenderer.CharPickerFontIndex = null;
+            AtariFontRenderer.CharPickerFontSourceMap = null;
             
             // Load font line mapping (always per-screen now)
             if (AtariJson.ParsedData.FontLineMappingPerScreen != null)
@@ -1503,7 +1925,10 @@ namespace AtariMapMaker
             if (AtariJson.ParsedData.DliData == null)
                 myMap.InitDliColorFullMap();
             else
+            {
                 myMap.ColorData = AtariJson.ParsedData.DliData.Select(i => (byte)i).ToArray();
+                myMap.EnsureDliColorDataLayout(AtariFontRenderer.Color5);
+            }
 
             // Load v2.0 fields
             if (!string.IsNullOrEmpty(AtariJson.ParsedData.MapDescription))
@@ -1512,6 +1937,11 @@ namespace AtariMapMaker
                 myMap.ScreenDescriptions = AtariJson.ParsedData.ScreenDescriptions;
             if (AtariJson.ParsedData.ScreenMetadataDict != null)
                 myMap.ScreenMetadata = AtariJson.ParsedData.ScreenMetadataDict;
+            if (AtariJson.ParsedData.MetadataTypeLabels != null)
+                myMap.MetadataTypeLabels = AtariJson.ParsedData.MetadataTypeLabels;
+            else
+                myMap.MetadataTypeLabels = new Dictionary<byte, string>();
+            MetadataTypeRegistry.SyncAfterLoad(myMap);
             if (!string.IsNullOrEmpty(AtariJson.ParsedData.SubmapPath))
             {
                 myMap.SubmapPath = AtariJson.ParsedData.SubmapPath;
@@ -1539,14 +1969,17 @@ namespace AtariMapMaker
             
             // Update clipboard inverse button state based on map type
             UpdateClipboardInverseButtonState();
+
+            RememberAtrmapPath(fileName, seedDataPath: true);
         }
 
         private void ButtonExport_Click(object sender, EventArgs e)
         {
-            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(saveFileDialog1.FileName);
                     this.Export((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, (int)numericUpDown5.Value, saveFileDialog1.FileName);
                     int width = (int)((numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * myMap.ScreenSize.Width + numericUpDown5.Value);
                     string unit = myMap.IsTilemap ? "tiles" : "characters";
@@ -1614,10 +2047,11 @@ namespace AtariMapMaker
 
         private void ExportScreenByScreen()
         {
-            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(saveFileDialog1.FileName);
                     this.ExportScreens((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, saveFileDialog1.FileName);
                     int width = myMap.ScreenSize.Width;
                     string unit = myMap.IsTilemap ? "tiles" : "characters";
@@ -1628,10 +2062,11 @@ namespace AtariMapMaker
 
         private void ImportScreenByScreen()
         {
-            openFileDialog1.Filter = "Map datafile (*.*)|*.*";
+            PrepareDataOpenDialog("Map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(openFileDialog1.FileName);
                     this.ImportScreens((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
@@ -1880,57 +2315,60 @@ namespace AtariMapMaker
                 {
                     dliForm.ZoomResize();
                     dliForm.Show(dliForm.screenNumber); // Refresh the form with current screen
+                    dliForm.RenderData();
                 }
             }
         }
 
         private void CheckBoxFontMappingReference_CheckedChanged(object sender, EventArgs e)
         {
-            if (myMap != null)
+            if (suppressFontMappingUiEvents || myMap == null)
+                return;
+
+            bool useReference = checkBoxFontMappingReference.Checked;
+            int refX = (int)numericUpDownRefScreenX.Value;
+            int refY = (int)numericUpDownRefScreenY.Value;
+            
+            myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, useReference, refX, refY);
+            
+            // Enable/disable numeric updowns
+            numericUpDownRefScreenX.Enabled = useReference && myMap.MultiFontEnabled;
+            numericUpDownRefScreenY.Enabled = useReference && myMap.MultiFontEnabled;
+            labelRefScreen.Enabled = useReference && myMap.MultiFontEnabled;
+            
+            AtariFontRenderer.ClearFontCache();
+            // Use RedrawEditorWindow to preserve locked marker visibility
+            RedrawEditorWindow();
+            
+            // Update DLI form
+            if (dliForm != null && dliForm.Visible)
             {
-                bool useReference = checkBoxFontMappingReference.Checked;
-                int refX = (int)numericUpDownRefScreenX.Value;
-                int refY = (int)numericUpDownRefScreenY.Value;
-                
-                myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, useReference, refX, refY);
-                
-                // Enable/disable numeric updowns
-                numericUpDownRefScreenX.Enabled = useReference && myMap.MultiFontEnabled;
-                numericUpDownRefScreenY.Enabled = useReference && myMap.MultiFontEnabled;
-                labelRefScreen.Enabled = useReference && myMap.MultiFontEnabled;
-                
-                AtariFontRenderer.ClearFontCache();
-                // Use RedrawEditorWindow to preserve locked marker visibility
-                RedrawEditorWindow();
-                
-                // Update DLI form
-                if (dliForm != null && dliForm.Visible)
-                {
-                    dliForm.ZoomResize();
-                    dliForm.Show(dliForm.screenNumber);
-                }
+                dliForm.ZoomResize();
+                dliForm.Show(dliForm.screenNumber);
+                dliForm.RenderData();
             }
         }
 
         private void NumericUpDownRefScreen_ValueChanged(object sender, EventArgs e)
         {
-            if (myMap != null && checkBoxFontMappingReference.Checked)
+            if (suppressFontMappingUiEvents || myMap == null || !checkBoxFontMappingReference.Checked)
+                return;
+
+            int refX = (int)numericUpDownRefScreenX.Value;
+            int refY = (int)numericUpDownRefScreenY.Value;
+            
+            myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, true, refX, refY);
+            
+            AtariFontRenderer.ClearFontCache();
+            // Use RedrawEditorWindow to preserve locked marker visibility
+            RedrawEditorWindow();
+            
+            // Update DLI form
+            if (dliForm != null && dliForm.Visible)
             {
-                int refX = (int)numericUpDownRefScreenX.Value;
-                int refY = (int)numericUpDownRefScreenY.Value;
-                
-                myMap.SetFontMappingReference(currentScreen.X, currentScreen.Y, true, refX, refY);
-                
-                AtariFontRenderer.ClearFontCache();
-                // Use RedrawEditorWindow to preserve locked marker visibility
-                RedrawEditorWindow();
-                
-                // Update DLI form
-                if (dliForm != null && dliForm.Visible)
-                {
-                    dliForm.ZoomResize();
-                    dliForm.Show(dliForm.screenNumber);
-                }
+                dliForm.ZoomResize();
+                dliForm.Show(dliForm.screenNumber);
+                dliForm.RenderData();
             }
         }
 
@@ -1952,9 +2390,19 @@ namespace AtariMapMaker
             refX = Math.Max(0, Math.Min(myMap.MapSize.Width - 1, refX));
             refY = Math.Max(0, Math.Min(myMap.MapSize.Height - 1, refY));
             
-            checkBoxFontMappingReference.Checked = useReference;
-            numericUpDownRefScreenX.Value = refX;
-            numericUpDownRefScreenY.Value = refY;
+            // Syncing controls must not fire CheckedChanged/ValueChanged (those write mapping
+            // back using stale numeric values and cause a one-frame wrong-font redraw).
+            suppressFontMappingUiEvents = true;
+            try
+            {
+                checkBoxFontMappingReference.Checked = useReference;
+                numericUpDownRefScreenX.Value = refX;
+                numericUpDownRefScreenY.Value = refY;
+            }
+            finally
+            {
+                suppressFontMappingUiEvents = false;
+            }
             
             bool enabled = myMap.MultiFontEnabled;
             checkBoxFontMappingReference.Enabled = enabled;
@@ -2100,7 +2548,8 @@ namespace AtariMapMaker
             if (myMap == null) return;
             using (MapDescriptionDialog dialog = new MapDescriptionDialog(myMap))
             {
-                dialog.ShowDialog();
+                if (dialog.ShowDialog() == DialogResult.OK)
+                    UpdateMainFormCaption();
             }
         }
 
@@ -2217,10 +2666,11 @@ namespace AtariMapMaker
 
         private void ButtonHoboExport_Click(object sender, EventArgs e)
         {
-            saveFileDialog1.Filter = "MapData export (*.dat)|*.dat";
+            PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(saveFileDialog1.FileName);
                     this.ExportColumns((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDownScreenToX.Value, (int)numericUpDownScreenToY.Value, saveFileDialog1.FileName);
                     break;
             }
@@ -2228,24 +2678,46 @@ namespace AtariMapMaker
 
         private void DliExport()
         {
-            saveFileDialog1.Filter = "Dli column export (*.dat)|*.dat";
+            PrepareDataSaveDialog("Dli column export (*.dat)|*.dat");
             if (saveFileDialog1.ShowDialog() == DialogResult.OK)
             {
+                RememberDataPath(saveFileDialog1.FileName);
                 System.IO.FileStream fs = new System.IO.FileStream(saveFileDialog1.FileName, System.IO.FileMode.Create);
 
-                byte myData;
+                int lineCount = GetDliExportLineCount();
+                int charOffset = (int)numericUpDownScreenFromX.Value * myMap.ScreenSize.Width
+                    + (int)numericUpDownScreenFromY.Value * myMap.Stride * myMap.ScreenSize.Height;
 
-                int charOffset = (int)numericUpDownScreenFromX.Value * myMap.ScreenSize.Width + (int)numericUpDownScreenFromY.Value * myMap.Stride * myMap.ScreenSize.Height;
+                // Color-register by color-register: for each enabled register, all lines
+                string mask = (maskedTextBoxDli.Text ?? "").PadRight(5, '0');
                 for (int x = 0; x < 5; x++)
                 {
-                    if (maskedTextBoxDli.Text[x] == '0') continue;    //skip 0 masks
-                    for (int y = 0; y < myMap.ScreenSize.Height; y++)
+                    if (mask[x] == '0') continue;
+                    for (int y = 0; y < lineCount; y++)
                     {
                         byte[] color5 = myMap.GetDliColor5(charOffset + y * myMap.Stride);
-                        myData = color5[x];
-                        fs.WriteByte(myData);
+                        fs.WriteByte(color5[x]);
                     }
                 }
+
+                if (IsAlpaEnabledForDliMask())
+                {
+                    string alpaMask = (maskedTextBoxAlpaDli.Text ?? "").PadRight(4, '0');
+                    // PF0, PF1, PF2, PF3 alternate indices (no BAK alternate)
+                    int[] alpaIndices = { 6, 8, 7, 5 };
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (alpaMask[i] == '0') continue;
+                        int colorIndex = alpaIndices[i];
+                        for (int y = 0; y < lineCount; y++)
+                        {
+                            byte[] color5 = myMap.GetDliColor5(charOffset + y * myMap.Stride);
+                            byte value = colorIndex < color5.Length ? color5[colorIndex] : (byte)0;
+                            fs.WriteByte(value);
+                        }
+                    }
+                }
+
                 fs.Close();
                 fs.Dispose();
             }
@@ -2253,30 +2725,69 @@ namespace AtariMapMaker
 
         private void DliImport()
         {
-            openFileDialog1.Filter = "Dli column export (*.dat)|*.dat";
+            PrepareDataOpenDialog("Dli column export (*.dat)|*.dat");
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
+                RememberDataPath(openFileDialog1.FileName);
                 System.IO.FileStream fs = new System.IO.FileStream(openFileDialog1.FileName, System.IO.FileMode.Open);
-                
+
+                int screenX = (int)numericUpDownScreenFromX.Value;
+                int screenY = (int)numericUpDownScreenFromY.Value;
+                int lineCount = GetDliExportLineCount();
+
+                string mask = (maskedTextBoxDli.Text ?? "").PadRight(5, '0');
                 for (int x = 0; x < 5; x++)
                 {
-                    if (maskedTextBoxDli.Text[x] == '0') continue;    //skip 0 masks
-                    for (int y = 0; y < myMap.ScreenSize.Height; y++)
+                    if (mask[x] == '0') continue;
+                    for (int y = 0; y < lineCount; y++)
                     {
-                        myMap.SetDliColor((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, y, x, (byte)fs.ReadByte());
+                        if (fs.Position >= fs.Length) break;
+                        myMap.SetDliColor(screenX, screenY, y, x, (byte)fs.ReadByte());
                     }
                 }
+
+                if (IsAlpaEnabledForDliMask())
+                {
+                    string alpaMask = (maskedTextBoxAlpaDli.Text ?? "").PadRight(4, '0');
+                    int[] alpaIndices = { 6, 8, 7, 5 };
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (alpaMask[i] == '0') continue;
+                        int colorIndex = alpaIndices[i];
+                        for (int y = 0; y < lineCount; y++)
+                        {
+                            if (fs.Position >= fs.Length) break;
+                            myMap.SetDliColor(screenX, screenY, y, colorIndex, (byte)fs.ReadByte());
+                        }
+                    }
+                }
+
                 fs.Close();
                 fs.Dispose();
+                RedrawEditorWindow();
             }
+        }
+
+        private int GetDliExportLineCount()
+        {
+            int h = myMap.ScreenSize.Height;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null && myMap.TilemapInfo.TileHeight > 0)
+                h = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+            return h;
+        }
+
+        private bool IsAlpaEnabledForDliMask()
+        {
+            return AtariFontRenderer.Color5 != null && AtariFontRenderer.Color5.Length > 5;
         }
 
         private void ButtonHoboImport_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "Column based map datafile (*.*)|*.*";
+            PrepareDataOpenDialog("Column based map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(openFileDialog1.FileName);
                     this.ImportColumns((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
@@ -2285,10 +2796,11 @@ namespace AtariMapMaker
 
         private void ButtonImport_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "Map datafile (*.*)|*.*";
+            PrepareDataOpenDialog("Map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
             {
                 case DialogResult.OK:
+                    RememberDataPath(openFileDialog1.FileName);
                     this.Import((int)numericUpDownScreenFromX.Value, (int)numericUpDownScreenFromY.Value, (int)numericUpDown6.Value, openFileDialog1.FileName);
                     RedrawEditorWindow();
                     break;
@@ -2328,6 +2840,7 @@ namespace AtariMapMaker
                 }
                 
                 AtariFontRenderer.SetAlpa(checkBoxAlpa.Checked);
+                UpdateDliMaskControlsVisibility();
                 
                 Size mapSize = new Size((int)nudMapW.Value, (int)nudMapH.Value);
                 Size screenSize = new Size((int)nudScreenW.Value, (int)nudScreenH.Value);
@@ -2418,6 +2931,9 @@ namespace AtariMapMaker
                         {
                             AtariFontRenderer.SetFontData(tempSubmap.FontDataArray[0], Globals.FontType.Screen);
                         }
+                        AtariFontRenderer.ClearFontCache();
+                        AtariFontRenderer.CharPickerFontIndex = null;
+                        AtariFontRenderer.CharPickerFontSourceMap = null;
                     }
                     catch (Exception ex)
                     {
@@ -2440,10 +2956,12 @@ namespace AtariMapMaker
                 
                 ClearClipboard();
                 undoManager = new UndoManager(myMap);
+                UpdateUndoRedoUI();
                 AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
                 if (myCharPicker != null)
                     myCharPicker.RedrawFontWindow();
                 numericUpDown6.Maximum = myMap.ScreenSize.Width * myMap.MapSize.Width;
+                UpdateDatalineWidthDefault();
                 numericUpDownScreenFromX.Maximum = nudMapW.Value - 1;
                 numericUpDownScreenToX.Maximum = nudMapW.Value - 1;
                 numericUpDownScreenFromY.Maximum = nudMapH.Value - 1;
@@ -2464,9 +2982,11 @@ namespace AtariMapMaker
                 UpdateFontMappingReferenceUI();
                 UpdateMultiFontUI();
                 UpdateClipboardInverseButtonState();  // Update button state when map type changes
+                currentAtrmapPath = null;
+                UpdateMainFormCaption();
                 RedrawEditorWindow();
                 dliForm.Dispose();
-                dliForm = new DliForm(myMap, pictureBoxMap);
+                dliForm = CreateDliForm();
                 dliForm.RenderData();
             }
 
@@ -2502,24 +3022,33 @@ namespace AtariMapMaker
         private void RedrawEditorWindow()
         {
             //AtariFontRenderer.RenderMapData(myMap, AtariFontRenderer.offset, dataImage); //redraw data
-            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, true, true, currentScreen, isScreenLocked, lockedScreen); //dataImage);                         //redraw grids
-            if (!ScreenSelectionShown)  //refresh only when selection is not supposed to be drawn (prevents flickering)
-                pictureBoxMap.Refresh();
-            ScreenSelectionShown = false;
+            AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
+            if (ShouldShowScreenSelectionOverlay())
+                DrawScreenSelectionOverlay();
+            else
+                ScreenSelectionShown = false;
+            pictureBoxMap.Refresh();
+        }
+
+        private bool ShouldShowScreenSelectionOverlay()
+        {
+            return tabControl1.SelectedTab == tabPage2 && checkBoxShowScreenSelection.Checked;
         }
 
         private void ComboBoxOperation_SelectedIndexChanged(object sender, EventArgs e)
         {
             //{"Export","Import","Column Export","Column Import","Export DLI"};
+            if (checkBoxExportSingleScreen != null)
+                checkBoxExportSingleScreen.Visible = IsSingleScreenExportOperation();
+
             switch (comboOperation.SelectedIndex)
             {
                 case 0:
                     numericUpDownScreenFromX.Enabled = true;
-                    numericUpDownScreenToX.Enabled = true;
                     numericUpDownScreenFromY.Enabled = true;
-                    numericUpDownScreenToY.Enabled = true;
                     numericUpDown5.Enabled = true;
                     numericUpDown6.Enabled = false;
+                    ApplyExportSingleScreenState();
                     break;
                 case 1:
                     numericUpDownScreenFromX.Enabled = true;
@@ -2531,11 +3060,10 @@ namespace AtariMapMaker
                     break;
                 case 2:
                     numericUpDownScreenFromX.Enabled = true;
-                    numericUpDownScreenToX.Enabled = true;
                     numericUpDownScreenFromY.Enabled = true;
-                    numericUpDownScreenToY.Enabled = true;
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
+                    ApplyExportSingleScreenState();
                     break;
                 case 3:
                     numericUpDownScreenFromX.Enabled = true;
@@ -2561,9 +3089,88 @@ namespace AtariMapMaker
                     numericUpDown5.Enabled = false;
                     numericUpDown6.Enabled = false;
                     break;
+                case 6: // Export screen by screen — range
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = true;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = true;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
+                case 7: // Import screen by screen — single From screen
+                    numericUpDownScreenFromX.Enabled = true;
+                    numericUpDownScreenToX.Enabled = false;
+                    numericUpDownScreenFromY.Enabled = true;
+                    numericUpDownScreenToY.Enabled = false;
+                    numericUpDown5.Enabled = false;
+                    numericUpDown6.Enabled = false;
+                    break;
             }
-            maskedTextBoxDli.Visible = labelDliMask.Visible = comboOperation.SelectedIndex == 4;
+            UpdateDliMaskControlsVisibility();
+            if (checkBoxShowScreenSelection.Checked)
+                ShowScreenSelection();
 
+        }
+
+        private bool IsSingleScreenExportOperation()
+        {
+            // Export, Column Export
+            return comboOperation.SelectedIndex == 0 || comboOperation.SelectedIndex == 2;
+        }
+
+        private void UpdateDliMaskControlsVisibility()
+        {
+            bool dliOp = comboOperation.SelectedIndex == 4 || comboOperation.SelectedIndex == 5;
+            bool alpa = IsAlpaEnabledForDliMask();
+
+            if (labelDliOrderHint != null)
+                labelDliOrderHint.Visible = dliOp;
+            if (labelDliMask != null)
+                labelDliMask.Visible = dliOp;
+            if (maskedTextBoxDli != null)
+                maskedTextBoxDli.Visible = dliOp;
+            if (labelAlpaDliMask != null)
+                labelAlpaDliMask.Visible = dliOp && alpa;
+            if (maskedTextBoxAlpaDli != null)
+                maskedTextBoxAlpaDli.Visible = dliOp && alpa;
+        }
+
+        private void UpdateDatalineWidthDefault()
+        {
+            if (myMap == null || numericUpDown6 == null)
+                return;
+            int width = myMap.ScreenSize.Width;
+            if (width < numericUpDown6.Minimum)
+                width = (int)numericUpDown6.Minimum;
+            if (width > numericUpDown6.Maximum)
+                width = (int)numericUpDown6.Maximum;
+            numericUpDown6.Value = width;
+        }
+
+        private void ApplyExportSingleScreenState()
+        {
+            if (!IsSingleScreenExportOperation())
+                return;
+            bool single = checkBoxExportSingleScreen != null && checkBoxExportSingleScreen.Checked;
+            numericUpDownScreenToX.Enabled = !single;
+            numericUpDownScreenToY.Enabled = !single;
+            if (single)
+                SyncExportToScreenFromFrom();
+        }
+
+        private void SyncExportToScreenFromFrom()
+        {
+            if (numericUpDownScreenToX.Value != numericUpDownScreenFromX.Value)
+                numericUpDownScreenToX.Value = numericUpDownScreenFromX.Value;
+            if (numericUpDownScreenToY.Value != numericUpDownScreenFromY.Value)
+                numericUpDownScreenToY.Value = numericUpDownScreenFromY.Value;
+        }
+
+        private void CheckBoxExportSingleScreen_CheckedChanged(object sender, EventArgs e)
+        {
+            ApplyExportSingleScreenState();
+            if (checkBoxShowScreenSelection.Checked)
+                ShowScreenSelection();
         }
 
         private void ButtonPerform_Click(object sender, EventArgs e)
@@ -2707,7 +3314,7 @@ namespace AtariMapMaker
                     return;
                 }
                 // ESC also exits clipboard paste mode (same as right double-click)
-                if (AtariClipboard.IsValid)
+                if (AtariClipboard.IsValid || floatingPasteArmed)
                 {
                     if (AtariPictureTools.PreviousClipboardLocation.HasValue)
                     {
@@ -2716,16 +3323,70 @@ namespace AtariMapMaker
                     AtariClipboard.IsValid = false;
                     AtariPictureTools.PreviousClipboardLocation = null;
                     AtariPictureTools.PreviousClipboardGridCell = null;
+                    floatingPasteArmed = false;
                     AtariPictureTools.Redraw(Globals.WindowType.Editor);
                     pictureBoxMap.Refresh();
-                    if (pictureBoxClipboard != null)
+                    // Keep clipboard preview visible so Ctrl+V / picturebox click can reactivate paste.
+                    if (pictureBoxClipboard != null && AtariClipboard.ClipboardImage != null)
                     {
-                        pictureBoxClipboard.Image = null;
+                        pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
                         pictureBoxClipboard.Refresh();
                     }
                     e.Handled = true;
                     return;
                 }
+            }
+            if (e.Control && e.KeyCode == Keys.Z)
+            {
+                PerformUndo();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+            if (e.Control && e.KeyCode == Keys.Y)
+            {
+                PerformRedo();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+            if (e.Control && e.KeyCode == Keys.C)
+            {
+                // Ctrl+C only used when Autopaste is off (selection copies automatically when Autopaste is on).
+                if (IsAutopasteEnabled)
+                    return;
+
+                if (AtariPictureTools.CopyCurrentSelectionToClipboard(Globals.WindowType.Editor))
+                {
+                    AtariClipboard.IsValid = true;
+                    pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                    floatingPasteArmed = false;
+                    AtariPictureTools.Redraw(Globals.WindowType.Editor, true, comboBoxDrawBorders.Checked, comboBoxDrawGrid.Checked, currentScreen, isScreenLocked, lockedScreen);
+                    pictureBoxMap.Refresh();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                    return;
+                }
+            }
+            if (e.Control && e.KeyCode == Keys.V)
+            {
+                // Same as clicking the clipboard picturebox: reactivate clipboard if we still have an image.
+                if (AtariClipboard.ClipboardImage != null)
+                {
+                    AtariClipboard.IsValid = true;
+                    if (pictureBoxClipboard != null)
+                        pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                }
+                if (!AtariClipboard.IsValid)
+                    return;
+
+                if (!IsAutopasteEnabled)
+                    floatingPasteArmed = true;
+
+                ShowFloatingClipboardAt(lastMapMouseLocation);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
             }
             if (e.KeyCode == Keys.I && buttonClipboardInverse != null && buttonClipboardInverse.Enabled)
             {
@@ -3086,9 +3747,10 @@ namespace AtariMapMaker
             AtariMap newMap = myMap.ExtendWithNewScreenRow();
             myMap = newMap;
             undoManager = new UndoManager(myMap);
+            UpdateUndoRedoUI();
             AtariPictureTools.AssignWindow(Globals.WindowType.Editor, (Bitmap)pictureBoxMap.Image, myMap);
             dliForm?.Dispose();
-            dliForm = new DliForm(myMap, pictureBoxMap);
+            dliForm = CreateDliForm();
             dliForm.RenderData();
             if (myCharPicker != null)
                 myCharPicker.RedrawFontWindow();
@@ -3118,10 +3780,10 @@ namespace AtariMapMaker
             RedrawEditorWindow();
         }
 
-        private void ShowScreenSelection(bool redraw = true)
+        private void DrawScreenSelectionOverlay()
         {
-            if (redraw)
-                RedrawEditorWindow();
+            if (pictureBoxMap?.Image == null || myMap == null)
+                return;
             // Use character units per screen (for tilemap, ScreenSize is in tiles so multiply by tile size)
             int screenCharWidth = myMap.ScreenSize.Width;
             int screenCharHeight = myMap.ScreenSize.Height;
@@ -3132,13 +3794,36 @@ namespace AtariMapMaker
             }
             int left = (int)numericUpDownScreenFromX.Value * screenCharWidth;
             int top = (int)numericUpDownScreenFromY.Value * screenCharHeight;
-            int width = (int)(numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1) * screenCharWidth * Globals.CharSize;
-            int height = (int)(numericUpDownScreenToY.Value - numericUpDownScreenFromY.Value + 1) * screenCharHeight * Globals.CharSize;
+            // Import-style ops disable To X/Y — highlight only the From screen
+            bool singleScreen = !numericUpDownScreenToX.Enabled || !numericUpDownScreenToY.Enabled;
+            int screensWide = singleScreen ? 1 : (int)(numericUpDownScreenToX.Value - numericUpDownScreenFromX.Value + 1);
+            int screensHigh = singleScreen ? 1 : (int)(numericUpDownScreenToY.Value - numericUpDownScreenFromY.Value + 1);
+            if (screensWide < 1) screensWide = 1;
+            if (screensHigh < 1) screensHigh = 1;
+            int width = screensWide * screenCharWidth * Globals.CharSize;
+            int height = screensHigh * screenCharHeight * Globals.CharSize;
+            int x = (left - myMap.OffsetX) * Globals.CharSize;
+            int y = (top - myMap.OffsetY) * Globals.CharSize;
+            int penWidth = 2 * Globals.CharSize;
             Graphics g = Graphics.FromImage(pictureBoxMap.Image);
-            Brush b = new HatchBrush(HatchStyle.Percent80, Color.FromArgb(96, Color.GreenYellow));
-            g.FillRectangle(b, (left - myMap.OffsetX) * Globals.CharSize, (top - myMap.OffsetY) * Globals.CharSize, width, height);
-            pictureBoxMap.Refresh();
-            this.ScreenSelectionShown = true;
+            using (Pen p = new Pen(Color.FromArgb(96, Color.GreenYellow), penWidth))
+            {
+                // Pen is centered on the path; inset by half width so the stroke stays inside the selection
+                float inset = penWidth / 2f;
+                g.DrawRectangle(p, x + inset, y + inset, width - penWidth, height - penWidth);
+            }
+            ScreenSelectionShown = true;
+        }
+
+        private void ShowScreenSelection(bool redraw = true)
+        {
+            if (redraw)
+                RedrawEditorWindow();
+            else
+            {
+                DrawScreenSelectionOverlay();
+                pictureBoxMap.Refresh();
+            }
         }
 
         private void CheckBoxShowScreenSelection_CheckedChanged(object sender, EventArgs e)
@@ -3169,6 +3854,13 @@ namespace AtariMapMaker
 
         private void NumericUpDownScreenSelection_ValueChanged(object sender, EventArgs e)
         {
+            if (IsSingleScreenExportOperation()
+                && checkBoxExportSingleScreen != null
+                && checkBoxExportSingleScreen.Checked
+                && (sender == numericUpDownScreenFromX || sender == numericUpDownScreenFromY))
+            {
+                SyncExportToScreenFromFrom();
+            }
             if (checkBoxShowScreenSelection.Checked)
             {
                 ShowScreenSelection();

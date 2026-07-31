@@ -86,6 +86,15 @@ namespace AtariMapMaker
             return int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
         }
 
+        private bool TryParseTypeByte(string s, out byte value)
+        {
+            value = 0;
+            if (string.IsNullOrWhiteSpace(s)) return false;
+            s = s.Trim().Replace("$", "");
+            return byte.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value)
+                || byte.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+        }
+
         private bool Matches(MetadataLayerItem item, int filterBy, string filterVal)
         {
             if (string.IsNullOrWhiteSpace(filterVal)) return false;
@@ -95,6 +104,7 @@ namespace AtariMapMaker
                 case 0: return (item.Text ?? "").Trim().Equals(filterVal, StringComparison.OrdinalIgnoreCase);
                 case 1: return TryParseValue(filterVal, out int v) && item.Value == v;
                 case 2: return TryParseColor(filterVal, out byte c) && item.Color == c;
+                case 3: return TryParseTypeByte(filterVal, out byte t) && item.Type == t;
                 default: return false;
             }
         }
@@ -133,7 +143,7 @@ namespace AtariMapMaker
                     return;
                 }
             }
-            else
+            else if (changeField == 2)
             {
                 if (!TryParseColor(newVal, out _))
                 {
@@ -141,13 +151,75 @@ namespace AtariMapMaker
                     return;
                 }
             }
+            else if (changeField == 3)
+            {
+                if (!TryParseTypeByte(newVal, out _))
+                {
+                    MessageBox.Show("New type must be a byte (hex $00-$FF or decimal 0-255).", "Mass change", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+            else
+            {
+                MessageBox.Show("Invalid change field.", "Mass change", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var matched = GetItemsInScope().Where(i => Matches(i, filterBy, filterVal)).ToList();
+
+            if (changeField == 0)
+            {
+                var distinctTypes = matched.Select(i => i.Type).Distinct().ToList();
+                if (distinctTypes.Count > 1)
+                {
+                    MessageBox.Show("Mass text change applies when all matched items share the same type byte. Filter to one type or change items separately.", "Mass change", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (distinctTypes.Count == 1 && map != null)
+                {
+                    MetadataTypeRegistry.EnsureLabelsDictionary(map);
+                    try
+                    {
+                        MetadataTypeRegistry.SetLabelForTypeAndSyncItems(map, distinctTypes[0], newVal);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        MessageBox.Show(ex.Message, "Mass change", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
+                onApply?.Invoke();
+                UpdateCount(null, EventArgs.Empty);
+                MessageBox.Show(matched.Count + " item(s) updated.", "Mass change", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
             int count = 0;
-            foreach (var item in GetItemsInScope().Where(i => Matches(i, filterBy, filterVal)))
+            foreach (var item in matched)
             {
-                if (changeField == 0) item.Text = newVal;
-                else if (changeField == 1) { TryParseValue(newVal, out int v); item.Value = v; }
-                else { TryParseColor(newVal, out byte c); item.Color = (byte)(c & 0xFE); }
+                if (changeField == 1) { TryParseValue(newVal, out int v); item.Value = v; }
+                else if (changeField == 2) { TryParseColor(newVal, out byte c); item.Color = (byte)(c & 0xFE); }
+                else if (changeField == 3)
+                {
+                    TryParseTypeByte(newVal, out byte newType);
+                    MetadataTypeRegistry.EnsureLabelsDictionary(map);
+                    if (!map.MetadataTypeLabels.TryGetValue(newType, out string lab))
+                    {
+                        string hint = matched.Count > 0 ? (matched[0].Text ?? "").Trim() : "";
+                        if (!string.IsNullOrEmpty(hint))
+                        {
+                            byte? otherType = MetadataTypeRegistry.FindTypeByLabel(map, hint);
+                            if (otherType.HasValue && otherType.Value != newType)
+                                hint = "";
+                        }
+                        if (string.IsNullOrEmpty(hint))
+                            hint = "T" + newType.ToString("X2");
+                        map.MetadataTypeLabels[newType] = hint;
+                        lab = hint;
+                    }
+                    item.Type = newType;
+                    item.Text = lab;
+                }
                 count++;
             }
 

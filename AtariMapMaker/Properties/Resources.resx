@@ -121,9 +121,6 @@
   <data name="altirraPAL" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\altirraPAL.pal;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="BuildDate" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\BuildDate.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>
-  </data>
   <data name="Default" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Default.fnt;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>

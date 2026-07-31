@@ -42,7 +42,7 @@ namespace AtariMapMaker
             this.comboFilterBy.Location = new System.Drawing.Point(120, 10);
             this.comboFilterBy.Name = "comboFilterBy";
             this.comboFilterBy.Size = new System.Drawing.Size(100, 21);
-            this.comboFilterBy.Items.AddRange(new object[] { "Text", "Value", "Color" });
+            this.comboFilterBy.Items.AddRange(new object[] { "Text", "Value", "Color", "Type (byte)" });
             this.comboFilterBy.SelectedIndex = 0;
             this.comboFilterBy.SelectedIndexChanged += new System.EventHandler(this.UpdateCount);
             //
@@ -73,7 +73,7 @@ namespace AtariMapMaker
             this.comboChangeField.Location = new System.Drawing.Point(120, 66);
             this.comboChangeField.Name = "comboChangeField";
             this.comboChangeField.Size = new System.Drawing.Size(100, 21);
-            this.comboChangeField.Items.AddRange(new object[] { "Text", "Value", "Color" });
+            this.comboChangeField.Items.AddRange(new object[] { "Text", "Value", "Color", "Type (byte)" });
             this.comboChangeField.SelectedIndex = 0;
             //
             // labelNewValue
@@ -93,7 +93,7 @@ namespace AtariMapMaker
             //
             this.checkGlobal.AutoSize = true;
             this.checkGlobal.Checked = true;
-            this.checkGlobal.Location = new System.Drawing.Point(12, 124);
+            this.checkGlobal.Location = new System.Drawing.Point(12, 144);
             this.checkGlobal.Name = "checkGlobal";
             this.checkGlobal.Text = "Global (all screens)";
             this.checkGlobal.CheckedChanged += new System.EventHandler(this.UpdateCount);
@@ -101,13 +101,13 @@ namespace AtariMapMaker
             // labelCount
             //
             this.labelCount.AutoSize = true;
-            this.labelCount.Location = new System.Drawing.Point(12, 152);
+            this.labelCount.Location = new System.Drawing.Point(12, 172);
             this.labelCount.Name = "labelCount";
             this.labelCount.Text = "0 items selected";
             //
             // buttonApply
             //
-            this.buttonApply.Location = new System.Drawing.Point(12, 180);
+            this.buttonApply.Location = new System.Drawing.Point(12, 200);
             this.buttonApply.Name = "buttonApply";
             this.buttonApply.Size = new System.Drawing.Size(85, 28);
             this.buttonApply.Text = "Apply";
@@ -116,7 +116,7 @@ namespace AtariMapMaker
             //
             // buttonDelete
             //
-            this.buttonDelete.Location = new System.Drawing.Point(105, 180);
+            this.buttonDelete.Location = new System.Drawing.Point(105, 200);
             this.buttonDelete.Name = "buttonDelete";
             this.buttonDelete.Size = new System.Drawing.Size(85, 28);
             this.buttonDelete.Text = "Delete";
@@ -125,7 +125,7 @@ namespace AtariMapMaker
             //
             // MetadataMassChangeForm
             //
-            this.ClientSize = new System.Drawing.Size(312, 248);
+            this.ClientSize = new System.Drawing.Size(312, 268);
             this.Controls.Add(this.labelFilterBy);
             this.Controls.Add(this.comboFilterBy);
             this.Controls.Add(this.labelFilterValue);

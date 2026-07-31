@@ -182,6 +182,7 @@
     </Compile>
     <Compile Include="MetadataLayerRenderer.cs" />
     <Compile Include="MetadataParser.cs" />
+    <Compile Include="MetadataTypeRegistry.cs" />
     <Compile Include="MetadataItemEditDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -245,6 +246,9 @@
       <SubType>Designer</SubType>
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="MetadataExportForm.resx">
+      <DependentUpon>MetadataExportForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>
@@ -299,15 +303,12 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\altirraPAL.pal" />
-    <None Include="Resources\BuildDate.txt" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="matosimi.ico" />
+    <None Include="tools\GenerateGitCommitInfo.ps1" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PreBuildEvent>echo %25date%25 %25time%25 &gt; "$(ProjectDir)\Resources\BuildDate.txt"</PreBuildEvent>
-  </PropertyGroup>
   <Import Project="..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets" Condition="Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -315,11 +316,14 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.ValueTuple.4.6.1\build\net471\System.ValueTuple.targets'))" />
   </Target>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
+  <Target Name="GenerateGitCommitInfo" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <GitCommitInfoFile>$(IntermediateOutputPath)GitCommitInfo.g.cs</GitCommitInfoFile>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" Condition="!Exists('$(IntermediateOutputPath)')" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)tools\GenerateGitCommitInfo.ps1&quot; -OutputPath &quot;$(GitCommitInfoFile)&quot; -RepoRoot &quot;$(ProjectDir)..&quot;" />
+    <ItemGroup>
+      <Compile Include="$(GitCommitInfoFile)" />
+    </ItemGroup>
   </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>

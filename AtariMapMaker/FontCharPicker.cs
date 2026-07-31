@@ -1,10 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 
 namespace AtariMapMaker
@@ -14,9 +9,13 @@ namespace AtariMapMaker
         private AtariMap fontPickerMap;
         private readonly PictureBox clipboardPictureBox;
         private AtariMap mainMap;
+        private Point colorSourceScreen = new Point(0, 0);
         public const Globals.WindowType window = Globals.WindowType.CharPicker;
 
         private static int savedLayoutIndex = 0;
+        private CheckBox checkBoxUseScreenColors;
+        private Label labelDliLine;
+        private ComboBox comboBoxDliLine;
 
         public FontCharPicker(PictureBox clipboardPictureBox, AtariMap mainMap = null)
         {
@@ -24,15 +23,63 @@ namespace AtariMapMaker
             this.mainMap = mainMap;
             InitializeComponent();
             this.Font = new Font("Segoe UI", 8F);
+            BuildScreenColorControls();
             fontPickerMap = CreatePickerMap(16, 16);
             pictureBoxFontPicker.Image = new Bitmap(16 * Globals.CharSize, 16 * Globals.CharSize);
             AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
+        }
+
+        private void BuildScreenColorControls()
+        {
+            checkBoxUseScreenColors = new CheckBox
+            {
+                Text = "Screen colors",
+                AutoSize = true,
+                Margin = new Padding(8, 6, 3, 3)
+            };
+            checkBoxUseScreenColors.CheckedChanged += (s, e) =>
+            {
+                UpdateDliLineComboEnabled();
+                ApplyColorOverrideAndRedraw();
+            };
+
+            labelDliLine = new Label
+            {
+                Text = "DLI line:",
+                AutoSize = true,
+                Margin = new Padding(8, 8, 0, 3),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            comboBoxDliLine = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 70,
+                Margin = new Padding(3, 3, 3, 3)
+            };
+            comboBoxDliLine.SelectedIndexChanged += (s, e) => ApplyColorOverrideAndRedraw();
+
+            flowLayoutPanelSelection.Controls.Add(checkBoxUseScreenColors);
+            flowLayoutPanelSelection.Controls.Add(labelDliLine);
+            flowLayoutPanelSelection.Controls.Add(comboBoxDliLine);
+            // Keep picture box last
+            flowLayoutPanelSelection.Controls.SetChildIndex(pictureBoxFontPicker, flowLayoutPanelSelection.Controls.Count - 1);
+            UpdateDliLineComboEnabled();
         }
 
         public void SetMainMap(AtariMap map)
         {
             mainMap = map;
             RefreshFontCombo();
+            RefreshDliLineCombo();
+            ApplyColorOverrideAndRedraw();
+        }
+
+        public void NotifyScreenChanged(Point screen)
+        {
+            colorSourceScreen = screen;
+            if (checkBoxUseScreenColors != null && checkBoxUseScreenColors.Checked)
+                ApplyColorOverrideAndRedraw();
         }
 
         private static AtariMap CreatePickerMap(int cols, int rows)
@@ -61,7 +108,7 @@ namespace AtariMapMaker
             pictureBoxFontPicker.Height = h;
             pictureBoxFontPicker.Image = new Bitmap(w, h);
             AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
-            AtariPictureTools.Redraw(Globals.WindowType.CharPicker, true, false, true);
+            ApplyColorOverrideAndRedraw();
         }
 
         public PictureBox GetPictureBox()
@@ -84,6 +131,7 @@ namespace AtariMapMaker
             else
                 ApplyLayout();
             RefreshFontCombo();
+            RefreshDliLineCombo();
         }
 
         private void RefreshFontCombo()
@@ -108,6 +156,74 @@ namespace AtariMapMaker
             }
         }
 
+        private void RefreshDliLineCombo()
+        {
+            if (comboBoxDliLine == null) return;
+            int prev = comboBoxDliLine.SelectedIndex;
+            comboBoxDliLine.Items.Clear();
+            int lines = 25;
+            if (mainMap != null)
+            {
+                lines = mainMap.ScreenSize.Height;
+                if (mainMap.IsTilemap && mainMap.TilemapInfo != null && mainMap.TilemapInfo.TileHeight > 0)
+                    lines = mainMap.ScreenSize.Height * mainMap.TilemapInfo.TileHeight;
+            }
+            for (int i = 0; i < lines; i++)
+                comboBoxDliLine.Items.Add(i.ToString());
+            if (comboBoxDliLine.Items.Count > 0)
+                comboBoxDliLine.SelectedIndex = Math.Max(0, Math.Min(prev, comboBoxDliLine.Items.Count - 1));
+            UpdateDliLineComboEnabled();
+        }
+
+        private void UpdateDliLineComboEnabled()
+        {
+            bool on = checkBoxUseScreenColors != null && checkBoxUseScreenColors.Checked;
+            if (comboBoxDliLine != null) comboBoxDliLine.Enabled = on;
+            if (labelDliLine != null) labelDliLine.Enabled = on;
+        }
+
+        private void ApplyColorOverrideAndRedraw()
+        {
+            if (checkBoxUseScreenColors != null && checkBoxUseScreenColors.Checked && mainMap != null)
+            {
+                int line = comboBoxDliLine != null && comboBoxDliLine.SelectedIndex >= 0 ? comboBoxDliLine.SelectedIndex : 0;
+                byte[] lineColors = GetScreenLineColors(colorSourceScreen.X, colorSourceScreen.Y, line);
+                AtariFontRenderer.CharPickerColorOverride = lineColors;
+            }
+            else
+            {
+                AtariFontRenderer.CharPickerColorOverride = null;
+            }
+            RedrawFontWindow();
+        }
+
+        private byte[] GetScreenLineColors(int screenX, int screenY, int line)
+        {
+            int screenCharHeight = mainMap.ScreenSize.Height;
+            if (mainMap.IsTilemap && mainMap.TilemapInfo != null && mainMap.TilemapInfo.TileHeight > 0)
+                screenCharHeight = mainMap.ScreenSize.Height * mainMap.TilemapInfo.TileHeight;
+            if (line < 0) line = 0;
+            if (line >= screenCharHeight) line = screenCharHeight - 1;
+
+            int screenCharWidth = mainMap.ScreenSize.Width;
+            if (mainMap.IsTilemap && mainMap.TilemapInfo != null && mainMap.TilemapInfo.TileWidth > 0)
+                screenCharWidth = mainMap.ScreenSize.Width * mainMap.TilemapInfo.TileWidth;
+
+            int stride = mainMap.IsTilemap ? mainMap.CharStride : mainMap.Stride;
+            int charOffset = screenY * screenCharHeight * stride + screenX * screenCharWidth + line * stride;
+            byte[] colors = mainMap.GetDliColor5(charOffset);
+            if (colors[0] == Globals.DEFAULT_COLOR)
+            {
+                byte[] g = new byte[AtariMap.DliColorsPerLine];
+                int n = Math.Min(AtariFontRenderer.Color5.Length, g.Length);
+                Array.Copy(AtariFontRenderer.Color5, g, n);
+                if (AtariFontRenderer.Color5.Length > 5 && AtariFontRenderer.Color5.Length < 9 && g.Length > 8)
+                    g[8] = AtariFontRenderer.Color5.Length > 1 ? AtariFontRenderer.Color5[1] : g[1];
+                return g;
+            }
+            return colors;
+        }
+
         private void ComboBoxFontPickerLayout_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBoxFontPickerLayout.SelectedIndex < 0) return;
@@ -121,12 +237,11 @@ namespace AtariMapMaker
             int idx = comboBoxFontToPick.SelectedIndex;
             AtariFontRenderer.CharPickerFontIndex = idx;
             AtariFontRenderer.CharPickerFontSourceMap = mainMap;
-            RedrawFontWindow();
+            ApplyColorOverrideAndRedraw();
         }
 
         private void PictureBoxFontPicker_MouseDown(object sender, MouseEventArgs e)
         {
-            //AtariPictureTools.AssignWindow((Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
             AtariPictureTools.PreviousMouseLocation = e.Location;
             AtariPictureTools.SelectionStart(e.Location, Globals.WindowType.CharPicker);
         }
@@ -157,9 +272,9 @@ namespace AtariMapMaker
 
         private void FontCharPicker_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // Hide instead of close so the form is never disposed (only when app exits)
             if (e.CloseReason == CloseReason.UserClosing || e.CloseReason == CloseReason.None)
             {
+                AtariFontRenderer.CharPickerColorOverride = null;
                 this.Hide();
                 e.Cancel = true;
             }
@@ -167,11 +282,6 @@ namespace AtariMapMaker
 
         private void FontCharPicker_Shown(object sender, EventArgs e)
         {
-            /*
-            pictureBoxFontPicker.Image.Palette = AtariPalette.GetPalette();
-            AtariFontRenderer.SelectFont(Globals.FontType.Screen);
-            AtariFontRenderer.RedrawFont();
-            AtariFontRenderer.RenderMapData(fontPickerMap, 0, dataImage);*/
         }
 
         public void RedrawFontWindow()
@@ -181,20 +291,14 @@ namespace AtariMapMaker
 
         private void FontCharPicker_VisibleChanged(object sender, EventArgs e)
         {
+            if (!Visible)
+            {
+                AtariFontRenderer.CharPickerColorOverride = null;
+                return;
+            }
             pictureBoxFontPicker.Image = new Bitmap(pictureBoxFontPicker.Width, pictureBoxFontPicker.Height);
             AtariPictureTools.AssignWindow(window, (Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
-
-            //AtariPictureTools.AssignWindow((Bitmap)pictureBoxFontPicker.Image, fontPickerMap);
-            //myRenderer = new AtariFontRenderer("default.fnt");
-
-
-            //dataImage = new Bitmap(128, 128, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-
-            //AtariFontRenderer.RedrawFont();
-            //AtariFontRenderer.RenderMapData(fontPickerMap, 0, dataImage);
-            //pictureBoxFontPicker.Image.Palette = AtariPalette.GetPalette();
             AtariPictureTools.Redraw(Globals.WindowType.CharPicker, true, false, true);
         }
-
     }
 }

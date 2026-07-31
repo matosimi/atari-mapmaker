@@ -31,21 +31,87 @@ namespace AtariMapMaker
         public int X { get; set; }
         public int Y { get; set; }
         public string Text { get; set; }
+        /// <summary>Global metadata object type byte; <see cref="AtariMap.MetadataTypeLabels"/> defines the label for this type.</summary>
+        public byte Type { get; set; }
         public int Value { get; set; }
         public byte Color { get; set; }
     }
 
-    /// <summary>Holds a single copied metadata item for paste (CTRL+click to copy, click to paste).</summary>
+    /// <summary>Holds a single copied metadata item for paste (CTRL+click copy, click paste) or move (ALT+click grab, one click to place).</summary>
     public static class MetadataItemClipboard
     {
         public static MetadataLayerItem CopiedItem { get; private set; }
         public static bool HasItem => CopiedItem != null;
+        /// <summary>When true, the next place removes the item from the source cell once (move), not duplicate paste.</summary>
+        public static bool IsMovePending { get; private set; }
+        public static int MoveSourceScreenX { get; private set; }
+        public static int MoveSourceScreenY { get; private set; }
+        public static int MoveSourceCellX { get; private set; }
+        public static int MoveSourceCellY { get; private set; }
+
         public static void Copy(MetadataLayerItem item)
         {
-            if (item == null) { CopiedItem = null; return; }
-            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Value = item.Value, Color = item.Color };
+            if (item == null) { CopiedItem = null; ClearMove(); return; }
+            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Type = item.Type, Value = item.Value, Color = item.Color };
+            ClearMove();
         }
-        public static void Clear() { CopiedItem = null; }
+
+        /// <summary>Grab metadata for a single move; next click without CTRL places it and clears.</summary>
+        public static void BeginMove(MetadataLayerItem item, int screenX, int screenY, int cellX, int cellY)
+        {
+            if (item == null) return;
+            CopiedItem = new MetadataLayerItem { Text = item.Text ?? "", Type = item.Type, Value = item.Value, Color = item.Color };
+            IsMovePending = true;
+            MoveSourceScreenX = screenX;
+            MoveSourceScreenY = screenY;
+            MoveSourceCellX = cellX;
+            MoveSourceCellY = cellY;
+        }
+
+        static void ClearMove()
+        {
+            IsMovePending = false;
+            MoveSourceScreenX = MoveSourceScreenY = MoveSourceCellX = MoveSourceCellY = 0;
+        }
+
+        public static void Clear()
+        {
+            CopiedItem = null;
+            ClearMove();
+        }
+    }
+
+    /// <summary>Multi-item clipboard for Screen Metadata dialog Copy/Paste between screens.</summary>
+    public static class ScreenMetadataListClipboard
+    {
+        private static readonly List<MetadataLayerItem> items = new List<MetadataLayerItem>();
+
+        public static int Count => items.Count;
+        public static IReadOnlyList<MetadataLayerItem> Items => items;
+
+        public static void Copy(IEnumerable<MetadataLayerItem> source)
+        {
+            items.Clear();
+            if (source == null) return;
+            foreach (var item in source)
+            {
+                if (item == null) continue;
+                items.Add(new MetadataLayerItem
+                {
+                    X = item.X,
+                    Y = item.Y,
+                    Text = item.Text ?? "",
+                    Type = item.Type,
+                    Value = item.Value,
+                    Color = item.Color
+                });
+            }
+        }
+
+        public static void Clear()
+        {
+            items.Clear();
+        }
     }
 
     public class TilemapData

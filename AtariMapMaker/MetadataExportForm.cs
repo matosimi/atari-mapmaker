@@ -29,7 +29,47 @@ namespace AtariMapMaker
             }
             InitializeComponent();
             this.Font = new Font("Segoe UI", 8F);
+            LoadExportSettings();
+            FormClosing += MetadataExportForm_FormClosing;
             RegenerateOutput(null, EventArgs.Empty);
+        }
+
+        // Session-only: remembered while the app is running
+        private static int savedGroupBy;
+        private static int savedCoordOrder;
+        private static bool savedIncludeHeader;
+        private static bool savedIncludeTypes;
+        private static bool savedIncludeColors;
+        private static bool savedColumnMode = true;
+        private static bool hasSavedSettings;
+
+        private void LoadExportSettings()
+        {
+            if (!hasSavedSettings) return;
+            if (comboGroupBy.Items.Count > 0)
+                comboGroupBy.SelectedIndex = Math.Max(0, Math.Min(savedGroupBy, comboGroupBy.Items.Count - 1));
+            if (comboCoordOrder.Items.Count > 0)
+                comboCoordOrder.SelectedIndex = Math.Max(0, Math.Min(savedCoordOrder, comboCoordOrder.Items.Count - 1));
+            checkHeader.Checked = savedIncludeHeader;
+            checkBoxIncludeTypes.Checked = savedIncludeTypes;
+            checkBoxIncludeColors.Checked = savedIncludeColors;
+            checkBoxColumnModeDisplay.Checked = savedColumnMode;
+        }
+
+        private void SaveExportSettings()
+        {
+            savedGroupBy = comboGroupBy.SelectedIndex;
+            savedCoordOrder = comboCoordOrder.SelectedIndex;
+            savedIncludeHeader = checkHeader.Checked;
+            savedIncludeTypes = checkBoxIncludeTypes.Checked;
+            savedIncludeColors = checkBoxIncludeColors.Checked;
+            savedColumnMode = checkBoxColumnModeDisplay.Checked;
+            hasSavedSettings = true;
+        }
+
+        private void MetadataExportForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            SaveExportSettings();
         }
 
         private void ButtonCopy_Click(object sender, EventArgs e)
@@ -53,6 +93,9 @@ namespace AtariMapMaker
             int groupBy = comboGroupBy.SelectedIndex;
             int coordOrder = comboCoordOrder.SelectedIndex;
             bool header = checkHeader.Checked;
+            bool includeColors = checkBoxIncludeColors.Checked;
+            bool includeTypes = checkBoxIncludeTypes.Checked;
+            bool columnModeLists = checkBoxColumnModeDisplay.Checked;
 
             var groups = new List<List<MetadataLayerItem>>();
             if (groupBy == 0)
@@ -76,7 +119,22 @@ namespace AtariMapMaker
 
             var sb = new StringBuilder();
             if (header)
-                sb.AppendLine(coordOrder == 2 ? "; dta a(index)[,value] ;text" : "; dta x,y[,value] ;text");
+            {
+                if (coordOrder == 2)
+                {
+                    string opt = "[,value]";
+                    if (includeTypes) opt += "[,type]";
+                    if (includeColors) opt += "[,color]";
+                    sb.AppendLine("; dta a(index)" + opt + " ;text");
+                }
+                else
+                {
+                    string opt = "[,value]";
+                    if (includeTypes) opt += "[,type]";
+                    if (includeColors) opt += "[,color]";
+                    sb.AppendLine("; dta x,y" + opt + " ;text");
+                }
+            }
 
             for (int g = 0; g < groups.Count; g++)
             {
@@ -99,15 +157,19 @@ namespace AtariMapMaker
                 }
                 foreach (var item in groupItems)
                 {
+                    string colorHex = (item.Color & 0xFF).ToString("X2");
+                    string colorTail = includeColors ? $",${colorHex}" : "";
+                    string typeHex = (item.Type & 0xFF).ToString("X2");
+                    string typeTail = includeTypes ? $",${typeHex}" : "";
                     if (coordOrder == 2)
                     {
                         int index = item.Y * screenCharWidth + item.X;
                         string indexHex = (index & 0xFFFF).ToString("X4");
                         string valueHex = four ? $"a(${(item.Value & 0xFFFF).ToString("X4")})" : item.Value.ToString("X2");
                         if (groupBy == 3)
-                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}");
+                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}{typeTail}{colorTail}");
                         else
-                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}\t;{Escape(item.Text)}");
+                            sb.AppendLine($"\tdta a(${indexHex}),{valueHex}{typeTail}{colorTail}\t;{Escape(item.Text)}");
                     }
                     else
                     {
@@ -116,17 +178,18 @@ namespace AtariMapMaker
                         bool omitValue = (groupBy == 2);
                         bool omitText = (groupBy == 3);
                         if (omitValue)
-                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex}" : $"\tdta ${xHex},${yHex}\t;{Escape(item.Text)}");
+                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex}{typeTail}{colorTail}" : $"\tdta ${xHex},${yHex}{typeTail}{colorTail}\t;{Escape(item.Text)}");
                         else
                         {
                             string valueHex = four ? $"a(${(item.Value & 0xFFFF).ToString("X4")})" : item.Value.ToString("X2");
-                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex},${valueHex}" : $"\tdta ${xHex},${yHex},${valueHex}\t;{Escape(item.Text)}");
+                            sb.AppendLine(omitText ? $"\tdta ${xHex},${yHex},${valueHex}{typeTail}{colorTail}" : $"\tdta ${xHex},${yHex},${valueHex}{typeTail}{colorTail}\t;{Escape(item.Text)}");
                         }
                     }
                 }
 
                 sb.AppendLine();
-                AppendAddressLists(sb, groupItems);
+                if (columnModeLists)
+                    AppendAddressLists(sb, groupItems);
             }
 
             textBoxOutput.Text = sb.ToString();
@@ -191,7 +254,17 @@ namespace AtariMapMaker
             }
             sb.AppendLine();
 
-            sb.AppendLine("\t;6. values");
+            sb.AppendLine("\t;6. types");
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (i > 0 && i % AddressListPerLine == 0) sb.AppendLine();
+                if (i > 0 && i % AddressListPerLine != 0) sb.Append(",");
+                if (i % AddressListPerLine == 0) sb.Append("\tdta ");
+                sb.Append("$" + ((int)list[i].Type).ToString("X2"));
+            }
+            sb.AppendLine();
+
+            sb.AppendLine("\t;7. values");
             bool four = false; //check if 16bit value exists -> all 16bit
             for (int i = 0; i < list.Count; i++)
             {
@@ -217,7 +290,7 @@ namespace AtariMapMaker
             }
             sb.AppendLine();
 
-            sb.AppendLine("\t;7. colors");
+            sb.AppendLine("\t;8. colors");
             for (int i = 0; i < list.Count; i++)
             {
                 if (i > 0 && i % AddressListPerLine == 0) sb.AppendLine();
@@ -232,15 +305,22 @@ namespace AtariMapMaker
         {
             if (groupBy == 1) return item.Color;
             if (groupBy == 2) return item.Value;
-            if (groupBy == 3) return item.Text ?? "";
+            if (groupBy == 3) return item.Type;
             return null;
         }
 
-        private static string GroupComment(int groupBy, object key)
+        private string GroupComment(int groupBy, object key)
         {
             if (groupBy == 1) return "; ##### color $" + ((int)(byte)key).ToString("X2") + " ##########";
             if (groupBy == 2) return "; ##### value $" + (key is int v ? (v <= 255 ? v.ToString("X2") : (v & 0xFFFF).ToString("X4")) : key.ToString()) + " ##########";
-            if (groupBy == 3) return "; ##### text: \"" + (key.ToString().Replace("\"", "\\\"")) + "\" ##########";
+            if (groupBy == 3)
+            {
+                byte t = key is byte bt ? bt : (byte)0;
+                string tx = "";
+                if (map?.MetadataTypeLabels != null && map.MetadataTypeLabels.TryGetValue(t, out string lab))
+                    tx = lab ?? "";
+                return "; ##### type $" + t.ToString("X2") + " text: \"" + tx.Replace("\"", "\\\"") + "\" ##########";
+            }
             return "";
         }
 
@@ -255,23 +335,39 @@ namespace AtariMapMaker
             int groupBy = comboGroupBy.SelectedIndex;
             int coordOrder = comboCoordOrder.SelectedIndex;
             Func<MetadataLayerItem, int> indexOf = i => i.Y * screenCharWidth + i.X;
-            List<MetadataLayerItem> byPosition()
+
+            if (groupBy == 0)
             {
+                if (coordOrder == 3)
+                    return items.OrderBy(i => i.Type).ThenBy(i => i.Value).ThenBy(i => i.Y).ThenBy(i => i.X).ToList();
+                if (coordOrder == 4)
+                    return items.OrderBy(i => i.Value).ThenBy(i => i.Type).ThenBy(i => i.Y).ThenBy(i => i.X).ToList();
                 if (coordOrder == 0) return items.OrderBy(i => i.Y).ThenBy(i => i.X).ToList();
                 if (coordOrder == 1) return items.OrderBy(i => i.X).ThenBy(i => i.Y).ToList();
                 return items.OrderBy(indexOf).ToList();
             }
-            if (groupBy == 0) return byPosition();
-            if (groupBy == 1) return coordOrder == 0 ? items.OrderBy(i => i.Color).ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
-                : coordOrder == 1 ? items.OrderBy(i => i.Color).ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
-                : items.OrderBy(i => i.Color).ThenBy(indexOf).ToList();
-            if (groupBy == 2) return coordOrder == 0 ? items.OrderBy(i => i.Value).ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
-                : coordOrder == 1 ? items.OrderBy(i => i.Value).ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
-                : items.OrderBy(i => i.Value).ThenBy(indexOf).ToList();
-            if (groupBy == 3) return coordOrder == 0 ? items.OrderBy(i => i.Text ?? "").ThenBy(i => i.Y).ThenBy(i => i.X).ToList()
-                : coordOrder == 1 ? items.OrderBy(i => i.Text ?? "").ThenBy(i => i.X).ThenBy(i => i.Y).ToList()
-                : items.OrderBy(i => i.Text ?? "").ThenBy(indexOf).ToList();
-            return byPosition();
+
+            IOrderedEnumerable<MetadataLayerItem> ordered =
+                groupBy == 1 ? items.OrderBy(i => i.Color)
+                : groupBy == 2 ? items.OrderBy(i => i.Value)
+                : groupBy == 3 ? items.OrderBy(i => i.Type)
+                : items.OrderBy(i => i.Y);
+
+            return ApplySecondarySortKey(ordered, coordOrder, indexOf).ToList();
+        }
+
+        /// <summary>Tie-break after primary group/sort key (color, value, or type).</summary>
+        private static IOrderedEnumerable<MetadataLayerItem> ApplySecondarySortKey(
+            IOrderedEnumerable<MetadataLayerItem> primary,
+            int coordOrder,
+            Func<MetadataLayerItem, int> indexOf)
+        {
+            if (coordOrder == 0) return primary.ThenBy(i => i.Y).ThenBy(i => i.X);
+            if (coordOrder == 1) return primary.ThenBy(i => i.X).ThenBy(i => i.Y);
+            if (coordOrder == 2) return primary.ThenBy(indexOf);
+            if (coordOrder == 3) return primary.ThenBy(i => i.Type).ThenBy(i => i.Value).ThenBy(i => i.Y).ThenBy(i => i.X);
+            if (coordOrder == 4) return primary.ThenBy(i => i.Value).ThenBy(i => i.Type).ThenBy(i => i.Y).ThenBy(i => i.X);
+            return primary.ThenBy(indexOf);
         }
     }
 }

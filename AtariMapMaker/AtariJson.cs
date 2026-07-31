@@ -74,6 +74,8 @@ namespace AtariMapMaker
             public string MapDescription { get; set; }
             public Dictionary<string, string> ScreenDescriptions { get; set; }  // Key: "x,y"
             public Dictionary<string, ScreenMetadata> ScreenMetadataDict { get; set; }
+            /// <summary>Global type byte → label for metadata (1:1 per map).</summary>
+            public Dictionary<byte, string> MetadataTypeLabels { get; set; }
             public string SubmapPath { get; set; }  // Path to submap file
             public bool? IsTilemap { get; set; }
             public TilemapData TilemapInfo { get; set; }
@@ -241,6 +243,7 @@ namespace AtariMapMaker
                                  !string.IsNullOrEmpty(atrmap.MapDescription) ||
                                  (atrmap.ScreenDescriptions != null && atrmap.ScreenDescriptions.Count > 0) ||
                                  (atrmap.ScreenMetadataDict != null && atrmap.ScreenMetadataDict.Count > 0) ||
+                                 (atrmap.MetadataTypeLabels != null && atrmap.MetadataTypeLabels.Count > 0) ||
                                  !string.IsNullOrEmpty(atrmap.SubmapPath) ||
                                  (atrmap.IsTilemap.HasValue && atrmap.IsTilemap.Value) ||
                                  atrmap.TilemapInfo != null ||

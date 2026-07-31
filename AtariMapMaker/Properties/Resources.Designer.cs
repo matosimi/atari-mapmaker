@@ -71,16 +71,6 @@ namespace AtariMapMaker.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to ut 23. 08. 2022 10:42:05,05 
-        ///.
-        /// </summary>
-        internal static string BuildDate {
-            get {
-                return ResourceManager.GetString("BuildDate", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
         internal static byte[] Default {
