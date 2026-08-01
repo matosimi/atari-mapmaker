@@ -702,16 +702,14 @@ namespace AtariMapMaker
             }
             bool hasLink = !string.IsNullOrEmpty(linkedLine);
 
+            // Font mapping labels only when multifont is on (and not free charmap — no per-row mapping there).
             string fontRefLine = null;
-            if (myMap.GetFontMappingReference(screen.X, screen.Y, out int refScreenX, out int refScreenY))
+            if (myMap.MultiFontEnabled && !myMap.FreeCharmapMode)
             {
-                // Reference Font Mapping checked: show which screen's font mapping is referenced.
-                fontRefLine = $"Referenced font mapping from screen {refScreenX}:{refScreenY}";
-            }
-            else if (myMap.MultiFontEnabled || myMap.ScreenHasCustomFontMapping(screen.X, screen.Y))
-            {
-                // Own mapping: always when multi-font is on; when off, only if mapping data exists.
-                fontRefLine = "Font mapping included";
+                if (myMap.GetFontMappingReference(screen.X, screen.Y, out int refScreenX, out int refScreenY))
+                    fontRefLine = $"Referenced font mapping from screen {refScreenX}:{refScreenY}";
+                else
+                    fontRefLine = "Font mapping included";
             }
             bool hasFontRef = !string.IsNullOrEmpty(fontRefLine);
 

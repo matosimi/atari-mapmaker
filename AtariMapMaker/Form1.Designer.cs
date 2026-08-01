@@ -1646,7 +1646,7 @@ namespace AtariMapMaker
             this.groupBoxFreeCharmap.Location = new System.Drawing.Point(9, 300);
             this.groupBoxFreeCharmap.Name = "groupBoxFreeCharmap";
             this.groupBoxFreeCharmap.Padding = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.groupBoxFreeCharmap.Size = new System.Drawing.Size(333, 200);
+            this.groupBoxFreeCharmap.Size = new System.Drawing.Size(356, 200);
             this.groupBoxFreeCharmap.TabIndex = 20;
             this.groupBoxFreeCharmap.TabStop = false;
             this.groupBoxFreeCharmap.Text = "Free Charmap Mode";

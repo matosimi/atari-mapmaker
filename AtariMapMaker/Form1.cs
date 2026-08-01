@@ -2387,19 +2387,11 @@ namespace AtariMapMaker
         {
             if (myMap != null)
             {
+                // Free charmap can only be left via Data manipulation revert — keep Multi-Font on.
                 if (!checkBoxMultiFont.Checked && myMap.FreeCharmapMode)
                 {
-                    var r = MessageBox.Show(
-                        "Free charmap mode is active. Disabling Multi-Font will exit free charmap mode and discard per-cell charset data.\n\nContinue?",
-                        "Disable Multi-Font", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (r != DialogResult.Yes)
-                    {
-                        checkBoxMultiFont.Checked = true;
-                        return;
-                    }
-                    myMap.FreeCharmapMode = false;
-                    myMap.CharFontData = null;
-                    Globals.FreeCharmapOverlayVisible = false;
+                    checkBoxMultiFont.Checked = true;
+                    return;
                 }
                 myMap.MultiFontEnabled = checkBoxMultiFont.Checked;
                 // Enable/disable reference controls based on MultiFont
@@ -2504,21 +2496,47 @@ namespace AtariMapMaker
                 suppressFontMappingUiEvents = false;
             }
             
-            bool enabled = myMap.MultiFontEnabled && !myMap.FreeCharmapMode;
-            checkBoxFontMappingReference.Enabled = enabled;
-            numericUpDownRefScreenX.Enabled = enabled && useReference;
-            numericUpDownRefScreenY.Enabled = enabled && useReference;
-            labelRefScreen.Enabled = enabled && useReference;
-            labelRefScreenComma.Enabled = enabled && useReference;
+            bool freeCharmap = myMap.FreeCharmapMode;
+            bool enabled = myMap.MultiFontEnabled && !freeCharmap;
+            // Hide entire font-mapping reference UI in free charmap (no per-row mapping)
+            bool showRef = enabled;
+            if (checkBoxFontMappingReference != null)
+            {
+                checkBoxFontMappingReference.Visible = showRef;
+                checkBoxFontMappingReference.Enabled = enabled;
+            }
+            if (numericUpDownRefScreenX != null)
+            {
+                numericUpDownRefScreenX.Visible = showRef;
+                numericUpDownRefScreenX.Enabled = enabled && useReference;
+            }
+            if (numericUpDownRefScreenY != null)
+            {
+                numericUpDownRefScreenY.Visible = showRef;
+                numericUpDownRefScreenY.Enabled = enabled && useReference;
+            }
+            if (labelRefScreen != null)
+            {
+                labelRefScreen.Visible = showRef;
+                labelRefScreen.Enabled = enabled && useReference;
+            }
+            if (labelRefScreenComma != null)
+            {
+                labelRefScreenComma.Visible = showRef;
+                labelRefScreenComma.Enabled = enabled && useReference;
+            }
         }
 
         private void UpdateMultiFontUI()
         {
             bool enabled = checkBoxMultiFont != null && checkBoxMultiFont.Checked;
             bool tilemapEnabled = myMap != null && myMap.IsTilemap;
+            bool freeCharmap = myMap != null && myMap.FreeCharmapMode;
+            // Free charmap: hide Multi-Font checkbox and font-mapping reference controls;
+            // exit free mode only via Data manipulation revert.
+            bool hideMultiFontControls = tilemapEnabled || freeCharmap;
             
-            // For tilemaps, hide/disable multi-font related controls (they don't make sense for tilemaps)
-            if (tilemapEnabled)
+            if (hideMultiFontControls)
             {
                 if (checkBoxMultiFont != null)
                 {
@@ -2553,7 +2571,7 @@ namespace AtariMapMaker
             }
             else
             {
-                // Show controls for regular maps
+                // Show controls for regular maps (multifont, not free charmap)
                 if (checkBoxMultiFont != null)
                 {
                     checkBoxMultiFont.Visible = true;
