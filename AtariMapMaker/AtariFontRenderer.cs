@@ -291,10 +291,10 @@ namespace AtariMapMaker
         }
 
         /// <summary>
-        /// Renders clipboard character data to an 8bpp bitmap.
+        /// Renders clipboard character data to an 8bpp bitmap (full Atari palette, same as map render).
         /// When <paramref name="fontMap"/> and <paramref name="fontIndices"/> are set, uses per-cell fonts from the map.
-        /// When <paramref name="screenColors"/> is set (length ≥ 5), palette indices 0–4 map to those Atari colors
-        /// (active screen colors); otherwise uses the global Color5 palette via GetIndexedColor5Palette.
+        /// When <paramref name="screenColors"/> is set (length ≥ 5), those colors are used as the line palette
+        /// (with global Color5 for ALPA alternate fallback); otherwise uses Color5. Odd font rows use ALPA alternates.
         /// </summary>
         public static void RenderClipboardData(byte[,] data, int width, int height, Bitmap outBmp,
             AtariMap fontMap = null, byte[,] fontIndices = null, byte[] screenColors = null)
@@ -307,18 +307,11 @@ namespace AtariMapMaker
             bool usePerCellFonts = fontMap != null && fontMap.MultiFontEnabled && fontIndices != null
                 && fontMap.FontDataArray != null;
 
-            // Build display palette from screen colors or global Color5
-            if (screenColors != null && screenColors.Length >= 5)
-            {
-                ColorPalette pal = outBmp.Palette;
-                for (int i = 0; i < 5; i++)
-                    pal.Entries[i] = AtariPalette.GetColor(screenColors[i]);
-                outBmp.Palette = pal;
-            }
-            else
-            {
-                outBmp.Palette = AtariPalette.GetIndexedColor5Palette();
-            }
+            // Same as map buffer: 256-entry Atari palette; pixels are Atari color indices (not PF 0–4).
+            outBmp.Palette = AtariPalette.GetPalette();
+
+            byte[] lineColors = (screenColors != null && screenColors.Length >= 5) ? screenColors : color5;
+            byte[] alpaPalette = color5;
 
             AtariFont defaultFont = fonts[Globals.FontType.Screen];
             BitmapData outData = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
@@ -335,6 +328,7 @@ namespace AtariMapMaker
                     {
                         for (int py = 0; py < 8; py++)
                         {
+                            bool oddScanline = (py & 0x1) == 1;
                             for (int cx = 0; cx < width; cx++)
                             {
                                 bool hMirror = false;
@@ -364,8 +358,9 @@ namespace AtariMapMaker
                                 for (int px = 0; px < 8; px++)
                                 {
                                     int srcPx = hMirror ? (7 - px) : px;
-                                    byte pixel = fntRow[charValue * 8 + srcPx];
-                                    outRow[(cy * 8 + py) * outData.Stride + cx * 8 + px] = pixel;
+                                    int colorIndex = fntRow[charValue * 8 + srcPx];
+                                    byte color = ResolveAlpaColor(lineColors, colorIndex, oddScanline, alpaPalette);
+                                    outRow[(cy * 8 + py) * outData.Stride + cx * 8 + px] = color;
                                 }
                             }
                         }
