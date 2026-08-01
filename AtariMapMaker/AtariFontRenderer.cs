@@ -337,9 +337,12 @@ namespace AtariMapMaker
                         {
                             for (int cx = 0; cx < width; cx++)
                             {
+                                bool hMirror = false;
                                 if (usePerCellFonts)
                                 {
-                                    int needed = fontIndices[cx, cy] & 0x07;
+                                    byte fontByte = fontIndices[cx, cy];
+                                    int needed = fontByte & AtariMap.CharsetIndexMask;
+                                    hMirror = (fontByte & AtariMap.CharsetMirrorFlag) != 0;
                                     if (needed != lastFontIdx)
                                     {
                                         AtariFont nf = GetFontByIndex(fontMap, (byte)needed, Globals.FontType.Screen);
@@ -360,7 +363,8 @@ namespace AtariMapMaker
                                     charValue = 0;
                                 for (int px = 0; px < 8; px++)
                                 {
-                                    byte pixel = fntRow[charValue * 8 + px];
+                                    int srcPx = hMirror ? (7 - px) : px;
+                                    byte pixel = fntRow[charValue * 8 + srcPx];
                                     outRow[(cy * 8 + py) * outData.Stride + cx * 8 + px] = pixel;
                                 }
                             }
@@ -517,6 +521,7 @@ namespace AtariMapMaker
                                 if (screenX >= myMap.MapSize.Width) screenX = myMap.MapSize.Width - 1;
 
                                 index = adrOffset + x;
+                                bool hMirror = false;
 
                                 // Switch font: per-cell in free charmap mode, else per screen/line
                                 if (!useCharPickerFont)
@@ -525,7 +530,11 @@ namespace AtariMapMaker
                                     if (freeCharmap)
                                     {
                                         if (index >= 0 && index < myMap.CharFontData.Length)
-                                            neededFontIndex = myMap.CharFontData[index] & 0x07;
+                                        {
+                                            byte fontByte = myMap.CharFontData[index];
+                                            neededFontIndex = fontByte & AtariMap.CharsetIndexMask;
+                                            hMirror = (fontByte & AtariMap.CharsetMirrorFlag) != 0;
+                                        }
                                         else
                                             neededFontIndex = 0;
                                     }
@@ -566,7 +575,8 @@ namespace AtariMapMaker
                                 bool oddScanline = (scln & 0x1) == 1;
                                 for (int c = 0; c < 8; c++)
                                 {
-                                    int colorIndex = fntRow[charValue * 8 + c];
+                                    int srcC = hMirror ? (7 - c) : c;
+                                    int colorIndex = fntRow[charValue * 8 + srcC];
                                     byte color = ResolveAlpaColor(dliColor5, colorIndex, oddScanline, activeColors);
                                     row[x * 8 + c] = (index < data.Length) ? color : (byte)0;
                                 }

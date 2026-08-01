@@ -10,12 +10,14 @@ namespace AtariMapMaker
         private AtariMap map;
         private Action onClipboardSet;
         private Action onInvertRequested;
+        private Action onHMirrorRequested;
 
-        public ElementLibraryDialog(AtariMap map, Action onClipboardSet = null, Action onInvertRequested = null)
+        public ElementLibraryDialog(AtariMap map, Action onClipboardSet = null, Action onInvertRequested = null, Action onHMirrorRequested = null)
         {
             this.map = map;
             this.onClipboardSet = onClipboardSet;
             this.onInvertRequested = onInvertRequested;
+            this.onHMirrorRequested = onHMirrorRequested;
             InitializeComponent();
             this.Font = new Font("Segoe UI", 8F);
             this.KeyPreview = true;
@@ -39,6 +41,12 @@ namespace AtariMapMaker
             if (e.KeyCode == Keys.I && AtariClipboard.IsValid && !AtariClipboard.IsTileIndexes)
             {
                 onInvertRequested?.Invoke();
+                e.Handled = true;
+            }
+            if (e.KeyCode == Keys.M && AtariClipboard.IsValid && !AtariClipboard.IsTileIndexes
+                && map != null && map.FreeCharmapMode && !map.IsTilemap)
+            {
+                onHMirrorRequested?.Invoke();
                 e.Handled = true;
             }
         }

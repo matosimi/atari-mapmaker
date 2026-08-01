@@ -513,9 +513,11 @@ namespace AtariMapMaker
             int a = (int)(alpha * 255);
             bool showNumbers = Globals.FreeCharmapOverlayShowNumbers;
             int fontSize = Globals.Zoom == 1 ? 6 : Math.Max(8, 4 + Globals.Zoom * 2);
-            using (Font font = new Font("Consolas", fontSize, FontStyle.Bold))
+            using (Font fontNormal = new Font("Consolas", fontSize, FontStyle.Bold))
+            using (Font fontMirrored = new Font("Consolas", fontSize, FontStyle.Bold | FontStyle.Underline))
             using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
             using (Brush textBrush = new SolidBrush(Color.FromArgb(Math.Min(255, a + 40), Color.White)))
+            using (Pen mirrorPen = new Pen(Color.FromArgb(Math.Min(255, a + 80), Color.White), Math.Max(1f, Globals.Zoom * 0.75f)))
             {
                 for (int y = 0; y < heightChars; y++)
                 {
@@ -527,7 +529,9 @@ namespace AtariMapMaker
                         if (absX < 0 || absX >= stride) continue;
                         int idx = absX + absY * stride;
                         if (idx < 0 || idx >= myMap.CharFontData.Length) continue;
-                        byte cs = (byte)(myMap.CharFontData[idx] & 0x07);
+                        byte fontByte = myMap.CharFontData[idx];
+                        byte cs = (byte)(fontByte & AtariMap.CharsetIndexMask);
+                        bool mirrored = (fontByte & AtariMap.CharsetMirrorFlag) != 0;
                         Color c = AtariPalette.GetColor(myMap.CharsetColors[cs]);
                         int px = x * Globals.CharSize;
                         int py = y * Globals.CharSize;
@@ -538,7 +542,13 @@ namespace AtariMapMaker
                         if (showNumbers)
                         {
                             RectangleF r = new RectangleF(px, py, cw, ch);
-                            gr.DrawString(cs.ToString(), font, textBrush, r, sf);
+                            gr.DrawString(cs.ToString(), mirrored ? fontMirrored : fontNormal, textBrush, r, sf);
+                        }
+                        else if (mirrored)
+                        {
+                            // Colors-only mode: short underline at bottom of cell marks H-mirror
+                            float uy = py + ch - Math.Max(2f, Globals.Zoom);
+                            gr.DrawLine(mirrorPen, px + 1, uy, px + cw - 2, uy);
                         }
                     }
                 }

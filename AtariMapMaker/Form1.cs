@@ -123,6 +123,7 @@ namespace AtariMapMaker
             
             // Update button state based on map type
             UpdateClipboardInverseButtonState();
+            UpdateClipboardHMirrorButtonState();
             UpdateUndoRedoUI();
             if (checkBoxAutopaste != null)
                 toolTip1.SetToolTip(checkBoxAutopaste, "On: select copies clipboard, click/Ctrl+V pastes. Off: Ctrl+C copies, Ctrl+V arms floating paste, click places once.");
@@ -982,7 +983,8 @@ namespace AtariMapMaker
                 if (myMap.MultiFontEnabled || myMap.FreeCharmapMode)
                 {
                     byte cs = myMap.GetFontForChar(xx, yy);
-                    toolStripStatusLabel2.Text += $" | CS: {cs}";
+                    string mir = myMap.IsCharMirrored(xx, yy) ? "H" : "";
+                    toolStripStatusLabel2.Text += $" | CS: {cs}{mir}";
                 }
                 
                 //calculate the occurence
@@ -1956,7 +1958,7 @@ namespace AtariMapMaker
                 {
                     int n = Math.Min(myMap.CharFontData.Length, AtariJson.ParsedData.CharFontData.Length);
                     for (int i = 0; i < n; i++)
-                        myMap.CharFontData[i] = (byte)(AtariJson.ParsedData.CharFontData[i] & 0x07);
+                        myMap.CharFontData[i] = (byte)(AtariJson.ParsedData.CharFontData[i] & (AtariMap.CharsetIndexMask | AtariMap.CharsetMirrorFlag));
                 }
                 myMap.FreeCharmapMode = true;
                 if (!myMap.MultiFontEnabled)
@@ -2056,7 +2058,7 @@ namespace AtariMapMaker
             if (index < 0 || index >= target.Length)
                 return;
             if (UseCharsetDataOperation())
-                target[index] = (byte)(value & 0x07);
+                target[index] = (byte)(value & (AtariMap.CharsetIndexMask | AtariMap.CharsetMirrorFlag));
             else
                 target[index] = value;
         }
@@ -2655,7 +2657,8 @@ namespace AtariMapMaker
                         if (AtariClipboard.IsValid && pictureBoxClipboard != null)
                             RegenerateClipboardImage();
                     },
-                    onInvertRequested: () => InvertClipboard());
+                    onInvertRequested: () => InvertClipboard(),
+                    onHMirrorRequested: () => HMirrorClipboard());
             }
             elementLibraryDialog.SetMap(myMap);
             elementLibraryDialog.Show();
@@ -3369,6 +3372,11 @@ namespace AtariMapMaker
         {
             InvertClipboard();
         }
+
+        private void ButtonClipboardHMirror_Click(object sender, EventArgs e)
+        {
+            HMirrorClipboard();
+        }
         
         /// <summary>
         /// CheckedChanged handler for checkBoxClipboardSkip0 - updates SkipZero and regenerates clipboard image so pixel format stays correct (avoids grey when toggling with library content).
@@ -3487,6 +3495,11 @@ namespace AtariMapMaker
                 InvertClipboard();
                 e.Handled = true;
             }
+            if (e.KeyCode == Keys.M && buttonClipboardHMirror != null && buttonClipboardHMirror.Enabled)
+            {
+                HMirrorClipboard();
+                e.Handled = true;
+            }
         }
 
         /// <summary>Updates pictureBoxClipboard to show metadata item preview when HasItem; otherwise restores char/tile clipboard or clears.</summary>
@@ -3561,6 +3574,35 @@ namespace AtariMapMaker
             RegenerateClipboardImage();
             
             // 4) Update underclipboard from current map and draw new inverted clipboard on top
+            if (AtariPictureTools.PreviousClipboardLocation.HasValue)
+            {
+                AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
+                pictureBoxMap.Refresh();
+            }
+        }
+
+        /// <summary>
+        /// Horizontal mirror of clipboard (free charmap only): reverse each row and toggle 0x80 mirror flag.
+        /// </summary>
+        private void HMirrorClipboard()
+        {
+            if (myMap == null || !myMap.FreeCharmapMode || myMap.IsTilemap)
+                return;
+            if (!AtariClipboard.IsValid || AtariClipboard.IsTileIndexes)
+                return;
+
+            if (AtariPictureTools.PreviousClipboardLocation.HasValue)
+            {
+                AtariPictureTools.DrawUnderClipBoard(AtariPictureTools.PreviousClipboardLocation.Value);
+                pictureBoxMap.Refresh();
+            }
+
+            bool skipZero = checkBoxClipboardSkip0 != null && checkBoxClipboardSkip0.Checked;
+            if (!AtariClipboard.HorizontalMirror(skipZero))
+                return;
+
+            RegenerateClipboardImage();
+
             if (AtariPictureTools.PreviousClipboardLocation.HasValue)
             {
                 AtariPictureTools.DrawClipBoard(AtariPictureTools.PreviousClipboardLocation.Value, (Bitmap)pictureBoxMap.Image);
@@ -3867,6 +3909,19 @@ namespace AtariMapMaker
                 // Disable in tile mode, enable in font mode
                 buttonClipboardInverse.Enabled = !(myMap != null && myMap.IsTilemap);
             }
+            UpdateClipboardHMirrorButtonState();
+        }
+
+        /// <summary>
+        /// H-Mirror is only available in free charmap (non-tilemap) mode.
+        /// </summary>
+        private void UpdateClipboardHMirrorButtonState()
+        {
+            if (buttonClipboardHMirror == null)
+                return;
+            bool free = myMap != null && myMap.FreeCharmapMode && !myMap.IsTilemap;
+            buttonClipboardHMirror.Visible = free;
+            buttonClipboardHMirror.Enabled = free;
         }
 
         private void ButtonReplaceCurrentScreen_Click(object sender, EventArgs e)
@@ -4108,6 +4163,7 @@ namespace AtariMapMaker
             if (checkBoxShowCharsetOverlay != null)
                 checkBoxShowCharsetOverlay.Checked = free && Globals.FreeCharmapOverlayVisible;
 
+            UpdateClipboardHMirrorButtonState();
             RefreshCharsetColorPanels();
             UpdateFontMappingReferenceUI();
         }

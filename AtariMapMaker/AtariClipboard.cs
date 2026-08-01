@@ -518,7 +518,7 @@ namespace AtariMapMaker
                         {
                             int index = y * w + x;
                             if (index < element.FontData.Length)
-                                fontData[x, y] = (byte)(element.FontData[index] & 0x07);
+                                fontData[x, y] = (byte)(element.FontData[index] & (AtariMap.CharsetIndexMask | AtariMap.CharsetMirrorFlag));
                         }
                 }
                 // Preview image is built by caller via RegenerateClipboardImage (uses map fonts + active screen colors)
@@ -540,6 +540,46 @@ namespace AtariMapMaker
             }
 
             IsValid = true;
+        }
+
+        /// <summary>
+        /// Horizontal mirror of clipboard (free charmap): reverse each row of chars/fonts and toggle 0x80 mirror flag.
+        /// Creates fontData if missing (all font 0). Returns false if not applicable.
+        /// </summary>
+        public static bool HorizontalMirror(bool skipZeroChars)
+        {
+            if (!IsValid || IsTileIndexes || data == null)
+                return false;
+            int w = ClipboardWidth;
+            int h = ClipboardHeight;
+            if (w <= 0 || h <= 0)
+                return false;
+
+            if (fontData == null)
+                fontData = new byte[w, h];
+
+            for (int y = 0; y < h; y++)
+            {
+                // Reverse character / font positions in the row
+                for (int x = 0; x < w / 2; x++)
+                {
+                    int xr = w - 1 - x;
+                    byte tmp = data[x, y];
+                    data[x, y] = data[xr, y];
+                    data[xr, y] = tmp;
+                    byte tmpF = fontData[x, y];
+                    fontData[x, y] = fontData[xr, y];
+                    fontData[xr, y] = tmpF;
+                }
+                // Toggle H-mirror flag on each cell (glyph faces the other way)
+                for (int x = 0; x < w; x++)
+                {
+                    if (skipZeroChars && data[x, y] == 0)
+                        continue;
+                    fontData[x, y] = (byte)(fontData[x, y] ^ AtariMap.CharsetMirrorFlag);
+                }
+            }
+            return true;
         }
 
         public static void Paste(int offset)
@@ -634,7 +674,7 @@ namespace AtariMapMaker
                                 if (dataSource.FreeCharmapMode && fontData != null)
                                 {
                                     dataSource.EnsureCharFontData();
-                                    dataSource.CharFontData[destIndex] = (byte)(fontData[x, y] & 0x07);
+                                    dataSource.CharFontData[destIndex] = (byte)(fontData[x, y] & (AtariMap.CharsetIndexMask | AtariMap.CharsetMirrorFlag));
                                 }
                             }
                         }

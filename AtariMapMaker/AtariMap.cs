@@ -36,8 +36,13 @@ namespace AtariMapMaker
         public bool MultiFontEnabled { get; set; }  // Enable/disable multifont features
         /// <summary>When true, each cell has its own charset index in <see cref="CharFontData"/> (no per-row restriction).</summary>
         public bool FreeCharmapMode { get; set; }
-        /// <summary>Per-cell charset index (0–7), same layout/size as <see cref="Data"/> for character maps.</summary>
+        /// <summary>
+        /// Per-cell charset byte, same layout/size as <see cref="Data"/> for character maps.
+        /// Bits 0–2 = font index 0–7; bit 7 (0x80) = horizontally mirrored glyph (free charmap only).
+        /// </summary>
         public byte[] CharFontData { get; set; }
+        public const byte CharsetIndexMask = 0x07;
+        public const byte CharsetMirrorFlag = 0x80;
         /// <summary>Atari palette indexes used to visualize each charset (length 8).</summary>
         public byte[] CharsetColors { get; set; }
         public string MapDescription { get; set; }
@@ -1050,7 +1055,7 @@ namespace AtariMapMaker
         }
 
         /// <summary>
-        /// Charset index for a character cell. In free mode uses CharFontData; otherwise uses per-line mapping.
+        /// Charset index (0–7) for a character cell. In free mode uses CharFontData; otherwise uses per-line mapping.
         /// </summary>
         public byte GetFontForChar(int charX, int charY)
         {
@@ -1058,7 +1063,7 @@ namespace AtariMapMaker
             {
                 int idx = charX + charY * CharStride;
                 if (idx >= 0 && idx < CharFontData.Length)
-                    return (byte)(CharFontData[idx] & 0x07);
+                    return (byte)(CharFontData[idx] & CharsetIndexMask);
                 return 0;
             }
             int screenCharWidth = ScreenSize.Width;
@@ -1071,14 +1076,30 @@ namespace AtariMapMaker
             return GetFontForLine(screenX, screenY, lineInScreen);
         }
 
-        public void SetFontForChar(int charX, int charY, byte fontIndex)
+        /// <summary>True if free-charmap cell has horizontal mirror flag (bit 0x80).</summary>
+        public bool IsCharMirrored(int charX, int charY)
+        {
+            if (!FreeCharmapMode || CharFontData == null || IsTilemap)
+                return false;
+            int idx = charX + charY * CharStride;
+            if (idx < 0 || idx >= CharFontData.Length)
+                return false;
+            return (CharFontData[idx] & CharsetMirrorFlag) != 0;
+        }
+
+        public void SetFontForChar(int charX, int charY, byte fontIndex, bool mirrored = false)
         {
             if (!FreeCharmapMode || IsTilemap)
                 return;
             EnsureCharFontData();
             int idx = charX + charY * CharStride;
             if (idx >= 0 && idx < CharFontData.Length)
-                CharFontData[idx] = (byte)(fontIndex & 0x07);
+            {
+                byte v = (byte)(fontIndex & CharsetIndexMask);
+                if (mirrored)
+                    v |= CharsetMirrorFlag;
+                CharFontData[idx] = v;
+            }
         }
 
         /// <summary>

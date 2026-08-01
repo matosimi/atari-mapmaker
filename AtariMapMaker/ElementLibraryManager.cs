@@ -38,7 +38,7 @@ namespace AtariMapMaker
                 fontBytes = new byte[w * h];
                 for (int y = 0; y < h; y++)
                     for (int x = 0; x < w; x++)
-                        fontBytes[y * w + x] = (byte)(clipFonts[x, y] & 0x07);
+                        fontBytes[y * w + x] = (byte)(clipFonts[x, y] & (AtariMap.CharsetIndexMask | AtariMap.CharsetMirrorFlag));
             }
 
             LibraryElement element = new LibraryElement
@@ -123,7 +123,7 @@ namespace AtariMapMaker
                     {
                         int index = charX + charY * map.CharStride;
                         if (index < map.CharFontData.Length)
-                            fonts[y * selection.Width + x] = (byte)(map.CharFontData[index] & 0x07);
+                            fonts[y * selection.Width + x] = (byte)(map.CharFontData[index] & (AtariMap.CharsetIndexMask | AtariMap.CharsetMirrorFlag));
                     }
                 }
             }
@@ -173,7 +173,7 @@ namespace AtariMapMaker
                             if (map.FreeCharmapMode && map.CharFontData != null && element.FontData != null
                                 && sourceIndex < element.FontData.Length && destIndex < map.CharFontData.Length)
                             {
-                                map.CharFontData[destIndex] = (byte)(element.FontData[sourceIndex] & 0x07);
+                                map.CharFontData[destIndex] = (byte)(element.FontData[sourceIndex] & (AtariMap.CharsetIndexMask | AtariMap.CharsetMirrorFlag));
                             }
                         }
                     }
