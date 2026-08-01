@@ -71,6 +71,9 @@ namespace AtariMapMaker
             public bool? FontTemplateLocked { get; set; }  // Lock/unlock font templates
             public string FontTemplatePattern { get; set; }  // Template pattern name
             public bool? MultiFontEnabled { get; set; }  // Enable/disable multifont features
+            public bool? FreeCharmapMode { get; set; }
+            public int[] CharFontData { get; set; }  // Per-cell charset index (free charmap mode)
+            public int[] CharsetColors { get; set; }  // Visualization colors for charsets 0–7
             public string MapDescription { get; set; }
             public Dictionary<string, string> ScreenDescriptions { get; set; }  // Key: "x,y"
             public Dictionary<string, ScreenMetadata> ScreenMetadataDict { get; set; }

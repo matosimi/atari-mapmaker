@@ -31,11 +31,22 @@ namespace AtariMapMaker
                 for (int x = 0; x < w; x++)
                     data[y * w + x] = clipboardData[x, y];
 
+            byte[] fontBytes = null;
+            byte[,] clipFonts = AtariClipboard.GetFontData();
+            if (clipFonts != null && map.FreeCharmapMode && !AtariClipboard.IsTileIndexes)
+            {
+                fontBytes = new byte[w * h];
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                        fontBytes[y * w + x] = (byte)(clipFonts[x, y] & 0x07);
+            }
+
             LibraryElement element = new LibraryElement
             {
                 Name = name,
                 Size = new Size(w, h),
                 Data = data,
+                FontData = fontBytes,
                 IsTileData = AtariClipboard.IsTileIndexes
             };
 
@@ -55,12 +66,16 @@ namespace AtariMapMaker
 
             byte[] data = ExtractSelectionData(map, selection);
             Size size = new Size(selection.Width, selection.Height);
+            byte[] fontBytes = null;
+            if (map.FreeCharmapMode && map.CharFontData != null && !map.IsTilemap)
+                fontBytes = ExtractSelectionFontData(map, selection);
 
             LibraryElement element = new LibraryElement
             {
                 Name = name,
                 Size = size,
-                Data = data
+                Data = data,
+                FontData = fontBytes
             };
 
             map.ElementLibrary[name] = element;
@@ -92,6 +107,29 @@ namespace AtariMapMaker
             return data;
         }
 
+        private static byte[] ExtractSelectionFontData(AtariMap map, Rectangle selection)
+        {
+            byte[] fonts = new byte[selection.Width * selection.Height];
+            if (map.CharFontData == null)
+                return fonts;
+
+            for (int y = 0; y < selection.Height; y++)
+            {
+                for (int x = 0; x < selection.Width; x++)
+                {
+                    int charX = selection.X + x;
+                    int charY = selection.Y + y;
+                    if (charX < map.CharStride && charY < map.MapSize.Height * map.ScreenSize.Height)
+                    {
+                        int index = charX + charY * map.CharStride;
+                        if (index < map.CharFontData.Length)
+                            fonts[y * selection.Width + x] = (byte)(map.CharFontData[index] & 0x07);
+                    }
+                }
+            }
+            return fonts;
+        }
+
         /// <summary>
         /// Paste element from library with optional transparency (skip zero bytes)
         /// </summary>
@@ -103,6 +141,9 @@ namespace AtariMapMaker
             LibraryElement element = map.ElementLibrary[elementName];
             if (element == null || element.Data == null)
                 return;
+
+            if (map.FreeCharmapMode && !map.IsTilemap)
+                map.EnsureCharFontData();
 
             for (int y = 0; y < element.Size.Height; y++)
             {
@@ -129,6 +170,11 @@ namespace AtariMapMaker
                             map.Data[destIndex] = value;
                             if (map.IsTilemap && map.TilemapInfo != null)
                                 map.ExpandTileToCharData(destX, destY, value);
+                            if (map.FreeCharmapMode && map.CharFontData != null && element.FontData != null
+                                && sourceIndex < element.FontData.Length && destIndex < map.CharFontData.Length)
+                            {
+                                map.CharFontData[destIndex] = (byte)(element.FontData[sourceIndex] & 0x07);
+                            }
                         }
                     }
                 }

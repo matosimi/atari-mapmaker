@@ -89,7 +89,7 @@ namespace AtariMapMaker
             InitializeComponent();
             this.Font = new Font("Segoe UI", 8F);
             // Initial width will be set in Show() method based on MultiFont state
-            bool showFontColumn = screenMap.MultiFontEnabled;
+            bool showFontColumn = screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode;
             int numColumns = showFontColumn ? 6 : 5;
             pictureBoxDli.Width = numColumns * Globals.CharSize;
             pictureBoxDli.Height = dliMap.ScreenSize.Height * Globals.CharSize;
@@ -137,7 +137,7 @@ namespace AtariMapMaker
             // The CopyDliColorsFullScreen is called in UpdateAndShowDliForm before Show(), so dliMap should already have the colors
             
             // Update font numbers in column 5 from FontLineMapping (only if MultiFont is enabled)
-            bool showFontColumn = screenMap.MultiFontEnabled;
+            bool showFontColumn = (screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode);
             if (showFontColumn)
             {
                 for (int line = 0; line < screenCharHeight; line++)
@@ -173,7 +173,7 @@ namespace AtariMapMaker
         }
         public void ZoomResize()
         {
-            bool showFontColumn = screenMap.MultiFontEnabled;
+            bool showFontColumn = (screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode);
             int numColumns = showFontColumn ? 6 : 5;
             int screenCharHeight = GetScreenCharHeight(screenMap);
             pictureBoxDli.Width = numColumns * Globals.CharSize;
@@ -196,7 +196,7 @@ namespace AtariMapMaker
             clickedChar = new Point(xchar, ychar);
 
             // Handle font number column (column 5) - only if MultiFont is enabled
-            if (xchar == 5 && screenMap.MultiFontEnabled)
+            if (xchar == 5 && (screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode))
             {
                 int screenCharHeight = GetScreenCharHeight(screenMap);
                 if (ychar < 0 || ychar >= screenCharHeight)
@@ -397,7 +397,7 @@ namespace AtariMapMaker
             pasteAllFromClipboardToolStripMenuItem.Enabled = clipBoardDataType == Globals.ClipBoardEnum.colorAll;
 
             // Add "Fonts for whole screen" menu item if MultiFont is enabled
-            if (screenMap.MultiFontEnabled)
+            if ((screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode))
             {
                 if (fontsForWholeScreenToolStripMenuItem == null)
                 {
@@ -454,7 +454,7 @@ namespace AtariMapMaker
             int screenX = screenNumber % screenMap.MapSize.Width;
             int screenY = screenNumber / screenMap.MapSize.Width;
 
-            if (clickedChar.X == 5 && screenMap.MultiFontEnabled)
+            if (clickedChar.X == 5 && (screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode))
             {
                 // Check if this screen references another screen - if so, editing is not allowed
                 int refScreenX, refScreenY;
@@ -518,7 +518,7 @@ namespace AtariMapMaker
 
         private void CopyToClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (clickedChar.X == 5 && screenMap.MultiFontEnabled)
+            if (clickedChar.X == 5 && (screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode))
             {
                 // Copy font number
                 int screenX = screenNumber % screenMap.MapSize.Width;
@@ -563,7 +563,7 @@ namespace AtariMapMaker
 
         private void Paste1FromClipboardToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (clickedChar.X == 5 && screenMap.MultiFontEnabled)
+            if (clickedChar.X == 5 && (screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode))
             {
                 // Paste font number
                 int screenX = screenNumber % screenMap.MapSize.Width;
@@ -665,7 +665,7 @@ namespace AtariMapMaker
             int screenCharHeight = GetScreenCharHeight(screenMap);
             for (int j = 0; j < screenCharHeight; j++)
             {
-                if (screenMap.MultiFontEnabled)
+                if ((screenMap.MultiFontEnabled && !screenMap.FreeCharmapMode))
                 {
                     byte fontIndex = clipBoard[j, ClipFontCol];
                     screenMap.SetFontForLine(screenX, screenY, j, fontIndex);

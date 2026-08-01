@@ -226,64 +226,55 @@ namespace AtariMapMaker
         }
 
         /// <summary>
+        /// Resolve font bitmap for a font slot index (0–7), with caching and fallbacks.
+        /// </summary>
+        private static AtariFont GetFontByIndex(AtariMap myMap, byte fontIndex, Globals.FontType fontType)
+        {
+            if (!myMap.MultiFontEnabled)
+                return fonts[fontType];
+
+            fontIndex = (byte)(fontIndex & 0x07);
+
+            if (myMap.FontDataArray != null && fontIndex < myMap.FontDataArray.Length && myMap.FontDataArray[fontIndex] != null)
+            {
+                if (cachedFonts.ContainsKey(fontIndex))
+                    return cachedFonts[fontIndex];
+
+                AtariFont customFont = new AtariFont
+                {
+                    data = myMap.FontDataArray[fontIndex],
+                    bitmap = CreateFontImage(true, myMap.FontDataArray[fontIndex])
+                };
+                cachedFonts[fontIndex] = customFont;
+                return customFont;
+            }
+
+            // Font slot undefined — inherit from font 0, then default screen font
+            if (myMap.FontDataArray != null && myMap.FontDataArray[0] != null)
+            {
+                if (cachedFonts.ContainsKey(0))
+                    return cachedFonts[0];
+
+                AtariFont font0 = new AtariFont
+                {
+                    data = myMap.FontDataArray[0],
+                    bitmap = CreateFontImage(true, myMap.FontDataArray[0])
+                };
+                cachedFonts[0] = font0;
+                return font0;
+            }
+            return fonts[fontType];
+        }
+
+        /// <summary>
         /// Get font bitmap for a specific line, supporting per-line font selection
         /// </summary>
         private static AtariFont GetFontForLine(AtariMap myMap, int screenx, int screeny, int line, Globals.FontType fontType)
         {
-            // If multifont is disabled, always use default font (font 0)
             if (!myMap.MultiFontEnabled)
-            {
                 return fonts[fontType];
-            }
-
-            // Get font index for this line (with screen coordinates)
             byte fontIndex = myMap.GetFontForLine(screenx, screeny, line);
-            
-            // Check if map has multiple fonts
-            if (myMap.FontDataArray != null && fontIndex < myMap.FontDataArray.Length && myMap.FontDataArray[fontIndex] != null)
-            {
-                // Check if we have this font cached
-                if (cachedFonts.ContainsKey(fontIndex))
-                {
-                    return cachedFonts[fontIndex];
-                }
-                else
-                {
-                    // Create font bitmap and cache it
-                    AtariFont customFont = new AtariFont
-                    {
-                        data = myMap.FontDataArray[fontIndex],
-                        bitmap = CreateFontImage(true, myMap.FontDataArray[fontIndex])
-                    };
-                    cachedFonts[fontIndex] = customFont;
-                    return customFont;
-                }
-            }
-            else
-            {
-                // Font slot is undefined - inherit from font 0 (single font)
-                // If font 0 is also undefined, use the default screen font
-                if (myMap.FontDataArray != null && myMap.FontDataArray[0] != null)
-                {
-                    // Use font 0
-                    if (cachedFonts.ContainsKey(0))
-                    {
-                        return cachedFonts[0];
-                    }
-                    else
-                    {
-                        AtariFont font0 = new AtariFont
-                        {
-                            data = myMap.FontDataArray[0],
-                            bitmap = CreateFontImage(true, myMap.FontDataArray[0])
-                        };
-                        cachedFonts[0] = font0;
-                        return font0;
-                    }
-                }
-            }
-            // Fall back to default font
-            return fonts[fontType];
+            return GetFontByIndex(myMap, fontIndex, fontType);
         }
 
         /// <summary>
@@ -300,42 +291,91 @@ namespace AtariMapMaker
         }
 
         /// <summary>
-        /// Renders clipboard character data directly to an 8bpp bitmap using the Screen font.
-        /// Use this for clipboard preview/inverse so all lines render correctly without map/DLI logic.
+        /// Renders clipboard character data to an 8bpp bitmap.
+        /// When <paramref name="fontMap"/> and <paramref name="fontIndices"/> are set, uses per-cell fonts from the map.
+        /// When <paramref name="screenColors"/> is set (length ≥ 5), palette indices 0–4 map to those Atari colors
+        /// (active screen colors); otherwise uses the global Color5 palette via GetIndexedColor5Palette.
         /// </summary>
-        public static void RenderClipboardData(byte[,] data, int width, int height, Bitmap outBmp)
+        public static void RenderClipboardData(byte[,] data, int width, int height, Bitmap outBmp,
+            AtariMap fontMap = null, byte[,] fontIndices = null, byte[] screenColors = null)
         {
             if (data == null || outBmp.PixelFormat != PixelFormat.Format8bppIndexed)
                 return;
             if (outBmp.Width < width * 8 || outBmp.Height < height * 8)
                 return;
-            AtariFont font = fonts[Globals.FontType.Screen];
-            BitmapData outData = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-            BitmapData fntData = font.bitmap.LockBits(new Rectangle(0, 0, font.bitmap.Width, font.bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
-            unsafe
+
+            bool usePerCellFonts = fontMap != null && fontMap.MultiFontEnabled && fontIndices != null
+                && fontMap.FontDataArray != null;
+
+            // Build display palette from screen colors or global Color5
+            if (screenColors != null && screenColors.Length >= 5)
             {
-                byte* outRow = (byte*)outData.Scan0;
-                byte* fntRow = (byte*)fntData.Scan0;
-                for (int cy = 0; cy < height; cy++)
+                ColorPalette pal = outBmp.Palette;
+                for (int i = 0; i < 5; i++)
+                    pal.Entries[i] = AtariPalette.GetColor(screenColors[i]);
+                outBmp.Palette = pal;
+            }
+            else
+            {
+                outBmp.Palette = AtariPalette.GetIndexedColor5Palette();
+            }
+
+            AtariFont defaultFont = fonts[Globals.FontType.Screen];
+            BitmapData outData = outBmp.LockBits(new Rectangle(0, 0, outBmp.Width, outBmp.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+            BitmapData fntData = null;
+            Bitmap lockedFontBmp = defaultFont.bitmap;
+            int lastFontIdx = -1;
+            try
+            {
+                fntData = lockedFontBmp.LockBits(new Rectangle(0, 0, lockedFontBmp.Width, lockedFontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+                unsafe
                 {
-                    for (int py = 0; py < 8; py++)
+                    byte* outRow = (byte*)outData.Scan0;
+                    for (int cy = 0; cy < height; cy++)
                     {
-                        for (int cx = 0; cx < width; cx++)
+                        for (int py = 0; py < 8; py++)
                         {
-                            byte charValue = data[cx, cy];
-                            if (charValue * 8 + 7 >= fntData.Width)
-                                charValue = 0;
-                            for (int px = 0; px < 8; px++)
+                            for (int cx = 0; cx < width; cx++)
                             {
-                                byte pixel = fntRow[py * fntData.Stride + charValue * 8 + px];
-                                outRow[(cy * 8 + py) * outData.Stride + cx * 8 + px] = pixel;
+                                if (usePerCellFonts)
+                                {
+                                    int needed = fontIndices[cx, cy] & 0x07;
+                                    if (needed != lastFontIdx)
+                                    {
+                                        AtariFont nf = GetFontByIndex(fontMap, (byte)needed, Globals.FontType.Screen);
+                                        if (nf.bitmap != lockedFontBmp)
+                                        {
+                                            lockedFontBmp.UnlockBits(fntData);
+                                            fntData = null;
+                                            lockedFontBmp = nf.bitmap;
+                                            fntData = lockedFontBmp.LockBits(new Rectangle(0, 0, lockedFontBmp.Width, lockedFontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+                                        }
+                                        lastFontIdx = needed;
+                                    }
+                                }
+
+                                byte* fntRow = (byte*)fntData.Scan0 + (py * fntData.Stride);
+                                byte charValue = data[cx, cy];
+                                if (charValue * 8 + 7 >= fntData.Width)
+                                    charValue = 0;
+                                for (int px = 0; px < 8; px++)
+                                {
+                                    byte pixel = fntRow[charValue * 8 + px];
+                                    outRow[(cy * 8 + py) * outData.Stride + cx * 8 + px] = pixel;
+                                }
                             }
                         }
                     }
                 }
             }
-            outBmp.UnlockBits(outData);
-            font.bitmap.UnlockBits(fntData);
+            finally
+            {
+                if (fntData != null && lockedFontBmp != null)
+                {
+                    try { lockedFontBmp.UnlockBits(fntData); } catch { }
+                }
+                outBmp.UnlockBits(outData);
+            }
         }
 
         /// <summary>
@@ -440,6 +480,9 @@ namespace AtariMapMaker
                         screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
                     }
                     
+                    bool freeCharmap = myMap.FreeCharmapMode && myMap.CharFontData != null && !myMap.IsTilemap
+                        && windowType != Globals.WindowType.CharPicker;
+
                     for (int y = 0; y < height; y++)
                     {
                         // Determine which font to use for this line
@@ -450,8 +493,9 @@ namespace AtariMapMaker
                         if (screenY < 0) screenY = 0;
                         if (screenY >= myMap.MapSize.Height) screenY = myMap.MapSize.Height - 1;
                         
-                        // Track current screen X to detect when we cross screen boundaries
+                        // Track current screen X / font slot to detect when font must change
                         int lastScreenX = -1;
+                        int lastFontIndex = -1;
                         
                         // For tilemaps, ScreenSize.Width is in tiles, so convert to character lines
                         int screenCharWidth = myMap.ScreenSize.Width;
@@ -471,26 +515,41 @@ namespace AtariMapMaker
                                 // Clamp screen X to valid range
                                 if (screenX < 0) screenX = 0;
                                 if (screenX >= myMap.MapSize.Width) screenX = myMap.MapSize.Width - 1;
-                                
-                                // If we've crossed into a new screen, switch to that screen's font (skip when CharPicker uses override font)
-                                if (!useCharPickerFont && screenX != lastScreenX)
-                                {
-                                    AtariFont lineFont = GetFontForLine(myMap, screenX, screenY, lineInScreen, fontType);
-                                    
-                                    // If font changed, unlock old and lock new
-                                    if (lineFont.bitmap != currentFont.bitmap)
-                                    {
-                                        lockedFontBmp.UnlockBits(fntd);
-                                        fntd = null;
-                                        currentFont = lineFont;
-                                        lockedFontBmp = currentFont.bitmap;
-                                        fntd = lockedFontBmp.LockBits(new Rectangle(0, 0, lockedFontBmp.Width, lockedFontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
-                                        fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
-                                    }
-                                    lastScreenX = screenX;
-                                }
-                                
+
                                 index = adrOffset + x;
+
+                                // Switch font: per-cell in free charmap mode, else per screen/line
+                                if (!useCharPickerFont)
+                                {
+                                    int neededFontIndex = -1;
+                                    if (freeCharmap)
+                                    {
+                                        if (index >= 0 && index < myMap.CharFontData.Length)
+                                            neededFontIndex = myMap.CharFontData[index] & 0x07;
+                                        else
+                                            neededFontIndex = 0;
+                                    }
+                                    else if (screenX != lastScreenX)
+                                    {
+                                        neededFontIndex = myMap.GetFontForLine(screenX, screenY, lineInScreen);
+                                        lastScreenX = screenX;
+                                    }
+
+                                    if (neededFontIndex >= 0 && neededFontIndex != lastFontIndex)
+                                    {
+                                        AtariFont lineFont = GetFontByIndex(myMap, (byte)neededFontIndex, fontType);
+                                        if (lineFont.bitmap != currentFont.bitmap)
+                                        {
+                                            lockedFontBmp.UnlockBits(fntd);
+                                            fntd = null;
+                                            currentFont = lineFont;
+                                            lockedFontBmp = currentFont.bitmap;
+                                            fntd = lockedFontBmp.LockBits(new Rectangle(0, 0, lockedFontBmp.Width, lockedFontBmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+                                            fntRow = (byte*)fntd.Scan0 + (scln * fntd.Stride);
+                                        }
+                                        lastFontIndex = neededFontIndex;
+                                    }
+                                }
                                 
                                 // Bounds check for data array
                                 if (index < 0 || index >= data.Length)

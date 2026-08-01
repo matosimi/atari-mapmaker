@@ -68,5 +68,14 @@ namespace AtariMapMaker
 
         /// <summary>When true with metadata layer on, draw lines between metadata items sharing the same value (color 0x0E).</summary>
         public static bool MetadataLayerShowValueLinks { get; set; }
+
+        /// <summary>When true, free-charmap charset overlay is drawn on the map.</summary>
+        public static bool FreeCharmapOverlayVisible { get; set; }
+
+        /// <summary>True = show charset numbers; false = show charset color fills.</summary>
+        public static bool FreeCharmapOverlayShowNumbers { get; set; } = true;
+
+        /// <summary>Overlay transparency 0–100 (0 = invisible, 100 = opaque).</summary>
+        public static int FreeCharmapOverlayBlendPercent { get; set; } = 50;
     }
 }

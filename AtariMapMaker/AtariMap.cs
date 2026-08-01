@@ -34,6 +34,12 @@ namespace AtariMapMaker
         public bool FontTemplateLocked { get; set; }
         public string FontTemplatePattern { get; set; }
         public bool MultiFontEnabled { get; set; }  // Enable/disable multifont features
+        /// <summary>When true, each cell has its own charset index in <see cref="CharFontData"/> (no per-row restriction).</summary>
+        public bool FreeCharmapMode { get; set; }
+        /// <summary>Per-cell charset index (0–7), same layout/size as <see cref="Data"/> for character maps.</summary>
+        public byte[] CharFontData { get; set; }
+        /// <summary>Atari palette indexes used to visualize each charset (length 8).</summary>
+        public byte[] CharsetColors { get; set; }
         public string MapDescription { get; set; }
         public Dictionary<string, string> ScreenDescriptions { get; set; }
         public Dictionary<string, ScreenMetadata> ScreenMetadata { get; set; }
@@ -87,6 +93,9 @@ namespace AtariMapMaker
             FontTemplateLocked = false;
             FontTemplatePattern = "All Font0";
             MultiFontEnabled = false;  // Default to single font mode
+            FreeCharmapMode = false;
+            CharFontData = null;
+            CharsetColors = CreateDefaultCharsetColors();
             MapDescription = "";
             ScreenDescriptions = new Dictionary<string, string>();
             ScreenMetadata = new Dictionary<string, ScreenMetadata>();
@@ -821,6 +830,14 @@ namespace AtariMapMaker
                     newMap.FontLineMappingReferences[$"{sx},{MapSize.Height}"] = new ScreenReference(0, 0);
             }
             newMap.MultiFontEnabled = MultiFontEnabled;
+            newMap.FreeCharmapMode = FreeCharmapMode;
+            if (CharsetColors != null)
+                newMap.CharsetColors = (byte[])CharsetColors.Clone();
+            if (FreeCharmapMode && CharFontData != null)
+            {
+                newMap.EnsureCharFontData();
+                Array.Copy(CharFontData, 0, newMap.CharFontData, 0, Math.Min(CharFontData.Length, newMap.CharFontData.Length));
+            }
             newMap.FontTemplateLocked = FontTemplateLocked;
             newMap.FontTemplatePattern = FontTemplatePattern;
             newMap.MapDescription = MapDescription;
@@ -1009,6 +1026,147 @@ namespace AtariMapMaker
             if (FontDataArray == null || fontIndex < 0 || fontIndex >= FontDataArray.Length)
                 return null;
             return FontDataArray[fontIndex];
+        }
+
+        public static byte[] CreateDefaultCharsetColors()
+        {
+            // Distinct Atari palette hues for charset 0–7 visualization
+            return new byte[] { 0x28, 0x88, 0xC8, 0x48, 0xA8, 0x68, 0xE8, 0x18 };
+        }
+
+        public void EnsureCharsetColors()
+        {
+            if (CharsetColors == null || CharsetColors.Length != 8)
+                CharsetColors = CreateDefaultCharsetColors();
+        }
+
+        public void EnsureCharFontData()
+        {
+            if (IsTilemap)
+                return;
+            int needed = dataSize.Width * dataSize.Height;
+            if (CharFontData == null || CharFontData.Length != needed)
+                CharFontData = new byte[needed];
+        }
+
+        /// <summary>
+        /// Charset index for a character cell. In free mode uses CharFontData; otherwise uses per-line mapping.
+        /// </summary>
+        public byte GetFontForChar(int charX, int charY)
+        {
+            if (FreeCharmapMode && CharFontData != null && !IsTilemap)
+            {
+                int idx = charX + charY * CharStride;
+                if (idx >= 0 && idx < CharFontData.Length)
+                    return (byte)(CharFontData[idx] & 0x07);
+                return 0;
+            }
+            int screenCharWidth = ScreenSize.Width;
+            int screenCharHeight = ScreenSize.Height;
+            if (screenCharWidth <= 0 || screenCharHeight <= 0)
+                return 0;
+            int screenX = charX / screenCharWidth;
+            int screenY = charY / screenCharHeight;
+            int lineInScreen = charY % screenCharHeight;
+            return GetFontForLine(screenX, screenY, lineInScreen);
+        }
+
+        public void SetFontForChar(int charX, int charY, byte fontIndex)
+        {
+            if (!FreeCharmapMode || IsTilemap)
+                return;
+            EnsureCharFontData();
+            int idx = charX + charY * CharStride;
+            if (idx >= 0 && idx < CharFontData.Length)
+                CharFontData[idx] = (byte)(fontIndex & 0x07);
+        }
+
+        /// <summary>
+        /// Migrate from per-row multifont mapping into per-cell free charmap mode.
+        /// </summary>
+        public void ConvertToFreeCharmapMode()
+        {
+            if (IsTilemap)
+                throw new InvalidOperationException("Free charmap mode is not available for tilemaps.");
+            if (!MultiFontEnabled)
+                MultiFontEnabled = true;
+            EnsureCharFontData();
+            EnsureCharsetColors();
+            int w = dataSize.Width;
+            int h = dataSize.Height;
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    int screenX = x / ScreenSize.Width;
+                    int screenY = y / ScreenSize.Height;
+                    int line = y % ScreenSize.Height;
+                    CharFontData[x + y * w] = GetFontForLine(screenX, screenY, line);
+                }
+            }
+            FreeCharmapMode = true;
+        }
+
+        /// <summary>
+        /// Revert free charmap to normal multifont: all rows use the selected font.
+        /// Character glyphs are unchanged; only the row font mapping is set.
+        /// </summary>
+        public void RevertFreeCharmapToSingleFont(byte fontIndex)
+        {
+            fontIndex = (byte)(fontIndex & 0x07);
+            SetFontForAllLines(fontIndex);
+            FreeCharmapMode = false;
+            CharFontData = null;
+        }
+
+        /// <summary>
+        /// Revert free charmap to normal multifont: each screen row gets the most-used charset on that row.
+        /// </summary>
+        public void RevertFreeCharmapMajorityPerRow()
+        {
+            if (CharFontData == null)
+            {
+                FreeCharmapMode = false;
+                return;
+            }
+            int screenCharHeight = ScreenSize.Height;
+            int screenCharWidth = ScreenSize.Width;
+            int mapW = MapSize.Width;
+            int mapH = MapSize.Height;
+            if (FontLineMappingPerScreen == null)
+                FontLineMappingPerScreen = new byte[mapW * mapH * screenCharHeight];
+
+            for (int sy = 0; sy < mapH; sy++)
+            {
+                for (int sx = 0; sx < mapW; sx++)
+                {
+                    for (int line = 0; line < screenCharHeight; line++)
+                    {
+                        int[] counts = new int[8];
+                        int absY = sy * screenCharHeight + line;
+                        int startX = sx * screenCharWidth;
+                        for (int x = 0; x < screenCharWidth; x++)
+                        {
+                            int idx = (startX + x) + absY * CharStride;
+                            if (idx >= 0 && idx < CharFontData.Length)
+                                counts[CharFontData[idx] & 0x07]++;
+                        }
+                        byte best = 0;
+                        int bestCount = -1;
+                        for (byte f = 0; f < 8; f++)
+                        {
+                            if (counts[f] > bestCount)
+                            {
+                                bestCount = counts[f];
+                                best = f;
+                            }
+                        }
+                        SetFontForLine(sx, sy, line, best);
+                    }
+                }
+            }
+            FreeCharmapMode = false;
+            CharFontData = null;
         }
     }
 }

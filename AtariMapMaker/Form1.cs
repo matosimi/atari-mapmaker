@@ -45,6 +45,10 @@ namespace AtariMapMaker
         private Point lastMapMouseLocation = Point.Empty;
         /// <summary>When Autopaste is off, Ctrl+V arms one floating-paste session until the user clicks to place it.</summary>
         private bool floatingPasteArmed = false;
+
+        // Free charmap: panelCharsetColors filled in InitFreeCharmapUi from designer panels
+        private Panel[] panelCharsetColors;
+
         public MainForm()
         {
             InitializeComponent();
@@ -99,6 +103,8 @@ namespace AtariMapMaker
             UpdateFontMappingReferenceUI();
             UpdateMultiFontUI();
             UpdateMetadataLayerUI();
+            InitFreeCharmapUi();
+            UpdateFreeCharmapUi();
 
             // Set up clipboard-related event handlers
             pictureBoxClipboard.Click += PictureBoxClipboard_Click;
@@ -442,7 +448,7 @@ namespace AtariMapMaker
             {
                 if (item.Text == "Apply Font Template..." || item.Text.EndsWith("Apply Font Template..."))
                 {
-                    bool enabled = myMap != null && myMap.MultiFontEnabled;
+                    bool enabled = myMap != null && myMap.MultiFontEnabled && !myMap.FreeCharmapMode;
                     if (enabled)
                     {
                         int refScreenX, refScreenY;
@@ -971,6 +977,12 @@ namespace AtariMapMaker
                 else
                 {
                     toolStripStatusLabel2.Text = $"Char: ${charVal:X2} ({charVal})";
+                }
+
+                if (myMap.MultiFontEnabled || myMap.FreeCharmapMode)
+                {
+                    byte cs = myMap.GetFontForChar(xx, yy);
+                    toolStripStatusLabel2.Text += $" | CS: {cs}";
                 }
                 
                 //calculate the occurence
@@ -1704,6 +1716,9 @@ namespace AtariMapMaker
                 FontTemplateLocked = myMap.FontTemplateLocked,
                 FontTemplatePattern = myMap.FontTemplatePattern,
                 MultiFontEnabled = myMap.MultiFontEnabled,
+                FreeCharmapMode = myMap.FreeCharmapMode,
+                CharFontData = myMap.CharFontData?.Select(i => (int)i).ToArray(),
+                CharsetColors = myMap.CharsetColors?.Select(i => (int)i).ToArray(),
                 MapDescription = myMap.MapDescription,
                 ScreenDescriptions = myMap.ScreenDescriptions,
                 ScreenMetadataDict = myMap.ScreenMetadata,
@@ -1777,6 +1792,7 @@ namespace AtariMapMaker
                         checkBoxMultiFont.Checked = myMap.MultiFontEnabled;
                         checkBoxMultiFont.Enabled = true;
                     }
+                    UpdateFreeCharmapUi();
                     
                     currentScreen = new Point(0, 0);
                     previousScreen = new Point(-1, -1);  // Reset to force redraw
@@ -1920,6 +1936,37 @@ namespace AtariMapMaker
                 myMap.FontTemplatePattern = AtariJson.ParsedData.FontTemplatePattern;
             if (AtariJson.ParsedData.MultiFontEnabled.HasValue)
                 myMap.MultiFontEnabled = AtariJson.ParsedData.MultiFontEnabled.Value;
+
+            if (AtariJson.ParsedData.CharsetColors != null && AtariJson.ParsedData.CharsetColors.Length > 0)
+            {
+                myMap.CharsetColors = AtariMap.CreateDefaultCharsetColors();
+                for (int i = 0; i < 8 && i < AtariJson.ParsedData.CharsetColors.Length; i++)
+                    myMap.CharsetColors[i] = (byte)AtariJson.ParsedData.CharsetColors[i];
+            }
+            else
+            {
+                myMap.EnsureCharsetColors();
+            }
+
+            if (AtariJson.ParsedData.FreeCharmapMode.HasValue && AtariJson.ParsedData.FreeCharmapMode.Value
+                && !myMap.IsTilemap)
+            {
+                myMap.EnsureCharFontData();
+                if (AtariJson.ParsedData.CharFontData != null)
+                {
+                    int n = Math.Min(myMap.CharFontData.Length, AtariJson.ParsedData.CharFontData.Length);
+                    for (int i = 0; i < n; i++)
+                        myMap.CharFontData[i] = (byte)(AtariJson.ParsedData.CharFontData[i] & 0x07);
+                }
+                myMap.FreeCharmapMode = true;
+                if (!myMap.MultiFontEnabled)
+                    myMap.MultiFontEnabled = true;
+            }
+            else
+            {
+                myMap.FreeCharmapMode = false;
+                myMap.CharFontData = null;
+            }
             
             // Load DLI data
             if (AtariJson.ParsedData.DliData == null)
@@ -1973,7 +2020,7 @@ namespace AtariMapMaker
             RememberAtrmapPath(fileName, seedDataPath: true);
         }
 
-        private void ButtonExport_Click(object sender, EventArgs e)
+        private void MapdataExport()
         {
             PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
@@ -1988,6 +2035,32 @@ namespace AtariMapMaker
             }
         }
 
+        private bool UseCharsetDataOperation()
+        {
+            return checkBoxCharsetDataOp != null && checkBoxCharsetDataOp.Checked
+                && myMap != null && myMap.FreeCharmapMode && !myMap.IsTilemap;
+        }
+
+        private byte[] GetDataOperationArray()
+        {
+            if (UseCharsetDataOperation())
+            {
+                myMap.EnsureCharFontData();
+                return myMap.CharFontData;
+            }
+            return myMap.Data;
+        }
+
+        private void WriteDataOperationByte(byte[] target, int index, byte value)
+        {
+            if (index < 0 || index >= target.Length)
+                return;
+            if (UseCharsetDataOperation())
+                target[index] = (byte)(value & 0x07);
+            else
+                target[index] = value;
+        }
+
         private void Export(int x1, int y1, int x2, int y2, int extraCharsOnLine, string filename)
         {
             // For tilemaps, ScreenSize is in tiles; for normal maps, it's in characters
@@ -1995,6 +2068,8 @@ namespace AtariMapMaker
             int ys = y1 * myMap.ScreenSize.Height;
             int xf = (x2 + 1) * myMap.ScreenSize.Width;
             int yf = (y2 + 1) * myMap.ScreenSize.Height;
+            byte[] src = GetDataOperationArray();
+            int stride = myMap.Stride;
 
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Create);
 
@@ -2005,7 +2080,7 @@ namespace AtariMapMaker
                 {
 
                     if (x < xf)
-                        myData = myMap.Data[x + y * myMap.Stride];
+                        myData = src[x + y * stride];
                     else
                         myData = 0;
 
@@ -2018,6 +2093,8 @@ namespace AtariMapMaker
         private void ExportScreens(int x1, int y1, int x2, int y2, string filename)
         {
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Create);
+            byte[] src = GetDataOperationArray();
+            int stride = myMap.Stride;
 
             byte myData;
             for (int ymap = y1; ymap <= y2; ymap++)
@@ -2034,7 +2111,7 @@ namespace AtariMapMaker
                         {
 
                             if (x < xf)
-                                myData = myMap.Data[x + y * myMap.Stride];
+                                myData = src[x + y * stride];
                             else
                                 myData = 0;
 
@@ -2080,6 +2157,8 @@ namespace AtariMapMaker
             int ys = y1 * myMap.ScreenSize.Height;
             int xf = (x2 + 1) * myMap.ScreenSize.Width;
             int yf = (y2 + 1) * myMap.ScreenSize.Height;
+            byte[] src = GetDataOperationArray();
+            int stride = myMap.Stride;
 
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Create);
 
@@ -2091,7 +2170,7 @@ namespace AtariMapMaker
                 {
 
 
-                    myData = myMap.Data[x + y * myMap.Stride];
+                    myData = src[x + y * stride];
 
                     fs.WriteByte(myData);
                 }
@@ -2105,6 +2184,8 @@ namespace AtariMapMaker
             int xs = x1 * myMap.ScreenSize.Width;
             int ys = y1 * myMap.ScreenSize.Height;
             int yf = ys + myMap.ScreenSize.Height;
+            byte[] dest = GetDataOperationArray();
+            int stride = myMap.Stride;
 
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Open);
 
@@ -2119,7 +2200,7 @@ namespace AtariMapMaker
                 {
                     myData = (byte)fs.ReadByte();
 
-                    myMap.Data[x + y * myMap.Stride] = myData;
+                    WriteDataOperationByte(dest, x + y * stride, myData);
 
                 }
                 x++;
@@ -2133,7 +2214,7 @@ namespace AtariMapMaker
             fs.Dispose();
             
             // For tilemaps, regenerate CharData from imported tile indexes
-            if (myMap.IsTilemap)
+            if (myMap.IsTilemap && !UseCharsetDataOperation())
             {
                 myMap.RegenerateCharDataFromTiles();
             }
@@ -2157,6 +2238,8 @@ namespace AtariMapMaker
             int screenSize = myMap.ScreenSize.Width * myMap.ScreenSize.Height;
             int importedScreens = 0;
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Open);
+            byte[] dest = GetDataOperationArray();
+            int stride = myMap.Stride;
 
             while (fs.Position <= (fs.Length - screenSize))
             {
@@ -2173,7 +2256,7 @@ namespace AtariMapMaker
                     for (int x = xs; x < xf; x++)
                     {
                         myData = (byte)fs.ReadByte();
-                        myMap.Data[x + y * myMap.Stride] = myData;
+                        WriteDataOperationByte(dest, x + y * stride, myData);
                     }
                 importedScreens++;
 
@@ -2195,7 +2278,7 @@ namespace AtariMapMaker
             fs.Dispose();
             
             // For tilemaps, regenerate CharData from imported tile indexes
-            if (myMap.IsTilemap)
+            if (myMap.IsTilemap && !UseCharsetDataOperation())
             {
                 myMap.RegenerateCharDataFromTiles();
             }
@@ -2207,6 +2290,8 @@ namespace AtariMapMaker
             int xs = x1 * myMap.ScreenSize.Width;
             int ys = y1 * myMap.ScreenSize.Height;
             int xf = xs + width;
+            byte[] dest = GetDataOperationArray();
+            int stride = myMap.Stride;
 
             System.IO.FileStream fs = new System.IO.FileStream(filename, System.IO.FileMode.Open);
 
@@ -2219,7 +2304,7 @@ namespace AtariMapMaker
                 for (int x = xs; x < xf; x++)
                 {
                     myData = (byte)fs.ReadByte();
-                    myMap.Data[x + y * myMap.Stride] = myData;
+                    WriteDataOperationByte(dest, x + y * stride, myData);
 
                 }
                 y++;
@@ -2234,7 +2319,7 @@ namespace AtariMapMaker
             fs.Dispose();
             
             // For tilemaps, regenerate CharData from imported tile indexes
-            if (myMap.IsTilemap)
+            if (myMap.IsTilemap && !UseCharsetDataOperation())
             {
                 myMap.RegenerateCharDataFromTiles();
             }
@@ -2302,6 +2387,20 @@ namespace AtariMapMaker
         {
             if (myMap != null)
             {
+                if (!checkBoxMultiFont.Checked && myMap.FreeCharmapMode)
+                {
+                    var r = MessageBox.Show(
+                        "Free charmap mode is active. Disabling Multi-Font will exit free charmap mode and discard per-cell charset data.\n\nContinue?",
+                        "Disable Multi-Font", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (r != DialogResult.Yes)
+                    {
+                        checkBoxMultiFont.Checked = true;
+                        return;
+                    }
+                    myMap.FreeCharmapMode = false;
+                    myMap.CharFontData = null;
+                    Globals.FreeCharmapOverlayVisible = false;
+                }
                 myMap.MultiFontEnabled = checkBoxMultiFont.Checked;
                 // Enable/disable reference controls based on MultiFont
                 UpdateFontMappingReferenceUI();
@@ -2309,6 +2408,7 @@ namespace AtariMapMaker
                 AtariPictureTools.Redraw(Globals.WindowType.Editor);
                 pictureBoxMap.Refresh();
                 UpdateMultiFontUI();
+                UpdateFreeCharmapUi();
                 
                 // Update DLI form to show/hide font column
                 if (dliForm != null && dliForm.Visible)
@@ -2404,7 +2504,7 @@ namespace AtariMapMaker
                 suppressFontMappingUiEvents = false;
             }
             
-            bool enabled = myMap.MultiFontEnabled;
+            bool enabled = myMap.MultiFontEnabled && !myMap.FreeCharmapMode;
             checkBoxFontMappingReference.Enabled = enabled;
             numericUpDownRefScreenX.Enabled = enabled && useReference;
             numericUpDownRefScreenY.Enabled = enabled && useReference;
@@ -2482,9 +2582,9 @@ namespace AtariMapMaker
                 }
             }
             
-            // Font Templates: enabled only when multifont is checked (and not tilemap)
+            // Font Templates: enabled only when multifont is checked (and not tilemap / free charmap)
             if (buttonFontTemplate != null)
-                buttonFontTemplate.Enabled = !tilemapEnabled && enabled;
+                buttonFontTemplate.Enabled = !tilemapEnabled && enabled && (myMap == null || !myMap.FreeCharmapMode);
             
             // Handle groupBoxFont: groupbox stays enabled; when multifont checked only disable Load/Export/Refresh buttons
             if (groupBoxFont != null)
@@ -2509,6 +2609,7 @@ namespace AtariMapMaker
             }
             
             UpdateMetadataLayerUI();
+            UpdateFreeCharmapUi();
         }
 
         private void ButtonFontTemplate_Click(object sender, EventArgs e)
@@ -2639,32 +2740,7 @@ namespace AtariMapMaker
             }
         }
    
-
-        private void ButtonShiftChars_Click(object sender, EventArgs e)
-        {
-            //64-79 -> 80-95
-            //32-47 -> 64-79
-            if (MessageBox.Show("R U sure?", "Shift characters in map", MessageBoxButtons.YesNo) == System.Windows.Forms.DialogResult.Yes)
-            {
-                for (int i = 0; i < myMap.Data.Length; i++)
-                {
-                    if (myMap.Data[i] >= 64 && myMap.Data[i] <= 79)
-                    {
-                        myMap.Data[i] += 16;
-                    }
-                    else
-                    {
-                        if (myMap.Data[i] >= 32 && myMap.Data[i] <= 47)
-                        {
-                            myMap.Data[i] += 32;
-                        }
-                    }
-                }
-                MessageBox.Show("Done");
-            }
-        }
-
-        private void ButtonHoboExport_Click(object sender, EventArgs e)
+        private void MapdataColumnExport()
         {
             PrepareDataSaveDialog("MapData export (*.dat)|*.dat");
             switch (saveFileDialog1.ShowDialog())
@@ -2781,7 +2857,7 @@ namespace AtariMapMaker
             return AtariFontRenderer.Color5 != null && AtariFontRenderer.Color5.Length > 5;
         }
 
-        private void ButtonHoboImport_Click(object sender, EventArgs e)
+        private void MapdataColumnImport()
         {
             PrepareDataOpenDialog("Column based map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
@@ -2794,7 +2870,7 @@ namespace AtariMapMaker
             }
         }
 
-        private void ButtonImport_Click(object sender, EventArgs e)
+        private void MapdataImport()
         {
             PrepareDataOpenDialog("Map datafile (*.*)|*.*");
             switch (openFileDialog1.ShowDialog())
@@ -3179,16 +3255,16 @@ namespace AtariMapMaker
             switch (comboOperation.SelectedIndex)
             {
                 case 0:
-                    ButtonExport_Click(null, null);
+                    MapdataExport();
                     break;
                 case 1:
-                    ButtonImport_Click(null, null);
+                    MapdataImport();
                     break;
                 case 2:
-                    ButtonHoboExport_Click(null, null);
+                    MapdataColumnExport();
                     break;
                 case 3:
-                    ButtonHoboImport_Click(null, null);
+                    MapdataColumnImport();
                     break;
                 case 4:
                     DliExport();
@@ -3627,20 +3703,30 @@ namespace AtariMapMaker
             byte[,] data = AtariClipboard.GetData();
             if (data == null)
                 return;
-            
-            // Render clipboard data directly (all lines) using Screen font, no map/DLI.
-            // Font bitmap uses GetIndexedColor5Palette() (indices 0-4); we must use the same palette
-            // or copied pixels will show wrong colors (e.g. grey).
+
+            byte[,] fontIndices = AtariClipboard.GetFontData();
+            byte[] screenColors = GetActiveScreenColorsForClipboard();
+            bool useMapFonts = myMap != null && myMap.MultiFontEnabled
+                && (myMap.FreeCharmapMode || fontIndices != null);
+
+            // Font bitmap uses indices 0-4; palette comes from active screen colors (or global Color5).
             Bitmap baseClipboardImage = new Bitmap(AtariClipboard.ClipboardWidth * 8, AtariClipboard.ClipboardHeight * 8, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-            baseClipboardImage.Palette = AtariPalette.GetIndexedColor5Palette();
-            AtariFontRenderer.RenderClipboardData(data, AtariClipboard.ClipboardWidth, AtariClipboard.ClipboardHeight, baseClipboardImage);
+            AtariFontRenderer.RenderClipboardData(
+                data,
+                AtariClipboard.ClipboardWidth,
+                AtariClipboard.ClipboardHeight,
+                baseClipboardImage,
+                useMapFonts ? myMap : null,
+                useMapFonts ? fontIndices : null,
+                screenColors);
             
             int zoomedWidth = baseClipboardImage.Width * Globals.Zoom;
             int zoomedHeight = baseClipboardImage.Height * Globals.Zoom;
             
             // Scale in 8-bit only (nearest-neighbor) to avoid 8→32→8 round-trip color shifts
             Bitmap newClipboardImage = new Bitmap(zoomedWidth, zoomedHeight, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-            newClipboardImage.Palette = AtariPalette.GetIndexedColor5Palette();
+            // Copy palette from rendered base (already set to screen or Color5 colors)
+            newClipboardImage.Palette = baseClipboardImage.Palette;
             BitmapData srcData = baseClipboardImage.LockBits(
                 new Rectangle(0, 0, baseClipboardImage.Width, baseClipboardImage.Height),
                 System.Drawing.Imaging.ImageLockMode.ReadOnly,
@@ -3672,7 +3758,7 @@ namespace AtariMapMaker
             // If SkipZero: convert 8bpp→32bpp with exact palette (index → Color), no matching
             if (AtariClipboard.SkipZero)
             {
-                Color[] palette = AtariPalette.GetIndexedColor5Palette().Entries;
+                Color[] palette = newClipboardImage.Palette.Entries;
                 Bitmap temp32Bit = new Bitmap(zoomedWidth, zoomedHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 BitmapData srcData8 = newClipboardImage.LockBits(
                     new Rectangle(0, 0, zoomedWidth, zoomedHeight),
@@ -3691,33 +3777,66 @@ namespace AtariMapMaker
                         for (int x = 0; x < zoomedWidth; x++)
                         {
                             byte idx = srcPtr[y * srcData8.Stride + x];
-                            if (idx >= palette.Length) idx = 0;
-                            dstPtr[y * (dstData32.Stride / 4) + x] = palette[idx].ToArgb();
+                            Color c = (idx < palette.Length) ? palette[idx] : Color.Black;
+                            dstPtr[y * (dstData32.Stride / 4) + x] = c.ToArgb();
                         }
                     }
                 }
                 newClipboardImage.UnlockBits(srcData8);
                 temp32Bit.UnlockBits(dstData32);
                 newClipboardImage.Dispose();
-                newClipboardImage = temp32Bit;
-            }
-            
-            // Replace old clipboard image
-            if (AtariClipboard.ClipboardImage != null)
-                AtariClipboard.ClipboardImage.Dispose();
-            AtariClipboard.ClipboardImage = newClipboardImage;
 
-            // Keep UnderClipBoardImage in sync with ClipboardImage size (fixes trails when clipboard from element library)
+                // Apply skip-zero transparency mask
+                int cellPxW = Globals.CharSize;
+                int cellPxH = Globals.CharSize;
+                AtariClipboard.ApplySkipZeroTransparencyMask(temp32Bit, data,
+                    AtariClipboard.ClipboardWidth, AtariClipboard.ClipboardHeight, cellPxW, cellPxH);
+                if (AtariClipboard.ClipboardImage != null)
+                    AtariClipboard.ClipboardImage.Dispose();
+                AtariClipboard.ClipboardImage = temp32Bit;
+            }
+            else
+            {
+                if (AtariClipboard.ClipboardImage != null)
+                    AtariClipboard.ClipboardImage.Dispose();
+                AtariClipboard.ClipboardImage = newClipboardImage;
+            }
+
             if (AtariClipboard.UnderClipBoardImage != null)
                 AtariClipboard.UnderClipBoardImage.Dispose();
-            AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.ClipboardImage);
             if (AtariClipboard.UnderImageGraphics != null)
                 AtariClipboard.UnderImageGraphics.Dispose();
+            AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.ClipboardImage);
             AtariClipboard.UnderImageGraphics = Graphics.FromImage(AtariClipboard.UnderClipBoardImage);
 
-            // Update UI
-            pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
-            pictureBoxClipboard.Refresh();
+            if (pictureBoxClipboard != null)
+            {
+                pictureBoxClipboard.Image = AtariClipboard.ClipboardImage;
+                pictureBoxClipboard.Refresh();
+            }
+        }
+
+        /// <summary>Colors of the active (current) screen, line 0 — for clipboard / library preview.</summary>
+        private byte[] GetActiveScreenColorsForClipboard()
+        {
+            if (myMap == null)
+                return AtariFontRenderer.Color5;
+
+            Point scr = isScreenLocked ? lockedScreen : currentScreen;
+            int screenCharWidth = myMap.ScreenSize.Width;
+            int screenCharHeight = myMap.ScreenSize.Height;
+            int stride = myMap.Stride;
+            if (myMap.IsTilemap && myMap.TilemapInfo != null)
+            {
+                screenCharWidth = myMap.ScreenSize.Width * myMap.TilemapInfo.TileWidth;
+                screenCharHeight = myMap.ScreenSize.Height * myMap.TilemapInfo.TileHeight;
+                stride = myMap.CharStride;
+            }
+            int charOffset = scr.Y * screenCharHeight * stride + scr.X * screenCharWidth;
+            byte[] colors = myMap.GetDliColor5(charOffset);
+            if (colors == null || colors.Length < 5 || colors[0] == Globals.DEFAULT_COLOR)
+                return AtariFontRenderer.Color5;
+            return colors;
         }
         
         /// <summary>
@@ -3877,5 +3996,276 @@ namespace AtariMapMaker
             flowLayoutPanel1.Refresh();
             flowLayoutPanel1.Invalidate();
         }
+
+        /// <summary>
+        /// Designer owns the Free Charmap controls; this only wires tooltips, charset panel clicks, and the panel array.
+        /// </summary>
+        private void InitFreeCharmapUi()
+        {
+            if (toolTip1 != null && checkBoxCharsetDataOp != null)
+            {
+                toolTip1.SetToolTip(checkBoxCharsetDataOp,
+                    "When checked, Export/Import operate on per-cell charset indexes (0–7) instead of character codes. Available in Free Charmap mode.");
+            }
+
+            panelCharsetColors = new Panel[]
+            {
+                panelCharsetColor0, panelCharsetColor1, panelCharsetColor2, panelCharsetColor3,
+                panelCharsetColor4, panelCharsetColor5, panelCharsetColor6, panelCharsetColor7
+            };
+            for (int i = 0; i < panelCharsetColors.Length; i++)
+            {
+                if (panelCharsetColors[i] == null)
+                    continue;
+                panelCharsetColors[i].Tag = i;
+                panelCharsetColors[i].Cursor = Cursors.Hand;
+                panelCharsetColors[i].Click += PanelCharsetColor_Click;
+                foreach (Control child in panelCharsetColors[i].Controls)
+                {
+                    child.Tag = i;
+                    child.Click += PanelCharsetColor_Click;
+                }
+            }
+
+            RefreshCharsetColorPanels();
+        }
+
+        private void UpdateFreeCharmapUi()
+        {
+            if (groupBoxFreeCharmap == null || myMap == null)
+                return;
+
+            bool tilemap = myMap.IsTilemap;
+            bool free = myMap.FreeCharmapMode;
+            bool multi = myMap.MultiFontEnabled;
+
+            groupBoxFreeCharmap.Enabled = !tilemap;
+            if (labelFreeCharmapStatus != null)
+            {
+                if (tilemap)
+                    labelFreeCharmapStatus.Text = "Status: N/A (tilemap)";
+                else if (free)
+                    labelFreeCharmapStatus.Text = "Status: Free Charmap Mode (per-cell charset)";
+                else if (multi)
+                    labelFreeCharmapStatus.Text = "Status: Multifont (charset per row)";
+                else
+                    labelFreeCharmapStatus.Text = "Status: Single font";
+            }
+
+            if (buttonConvertToFreeCharmap != null)
+                buttonConvertToFreeCharmap.Enabled = !tilemap && !free && multi;
+            if (buttonRevertFreeSingleFont != null)
+                buttonRevertFreeSingleFont.Enabled = !tilemap && free;
+            if (buttonRevertFreeMajority != null)
+                buttonRevertFreeMajority.Enabled = !tilemap && free;
+
+            // Colors-tab settings group: only visible in free charmap mode
+            if (groupBoxFreeCharmapSettings != null)
+            {
+                groupBoxFreeCharmapSettings.Visible = free && !tilemap;
+                if (groupBoxFreeCharmapSettings.Visible)
+                {
+                    if (checkBoxShowCharsetOverlay != null) checkBoxShowCharsetOverlay.Enabled = true;
+                    if (radioCharsetOverlayNumbers != null) radioCharsetOverlayNumbers.Enabled = true;
+                    if (radioCharsetOverlayColors != null) radioCharsetOverlayColors.Enabled = true;
+                    if (trackBarCharsetOverlayBlend != null) trackBarCharsetOverlayBlend.Enabled = true;
+                    if (labelCharsetOverlayBlend != null) labelCharsetOverlayBlend.Enabled = true;
+                    if (labelCharsetColors != null) labelCharsetColors.Enabled = true;
+                    if (panelCharsetColors != null)
+                    {
+                        foreach (var p in panelCharsetColors)
+                            if (p != null) p.Enabled = true;
+                    }
+                }
+            }
+
+            if (checkBoxCharsetDataOp != null)
+            {
+                checkBoxCharsetDataOp.Visible = !tilemap;
+                checkBoxCharsetDataOp.Enabled = free;
+                if (!free)
+                    checkBoxCharsetDataOp.Checked = false;
+            }
+
+            if (checkBoxShowCharsetOverlay != null)
+                checkBoxShowCharsetOverlay.Checked = free && Globals.FreeCharmapOverlayVisible;
+
+            RefreshCharsetColorPanels();
+            UpdateFontMappingReferenceUI();
+        }
+
+        private void RefreshCharsetColorPanels()
+        {
+            if (panelCharsetColors == null || myMap == null)
+                return;
+            myMap.EnsureCharsetColors();
+            for (int i = 0; i < panelCharsetColors.Length; i++)
+            {
+                if (panelCharsetColors[i] == null)
+                    continue;
+                Color c = AtariPalette.GetColor(myMap.CharsetColors[i]);
+                panelCharsetColors[i].BackColor = c;
+                int lum = (c.R * 299 + c.G * 587 + c.B * 114) / 1000;
+                foreach (Control child in panelCharsetColors[i].Controls)
+                    child.ForeColor = lum > 128 ? Color.Black : Color.White;
+            }
+        }
+
+        private void PanelCharsetColor_Click(object sender, EventArgs e)
+        {
+            int charsetIndex = -1;
+            if (sender is Control ctrl && ctrl.Tag is int tagInt)
+                charsetIndex = tagInt;
+            else if (sender is Control ctrl2 && ctrl2.Tag != null && int.TryParse(ctrl2.Tag.ToString(), out int parsed))
+                charsetIndex = parsed;
+            if (charsetIndex < 0 || charsetIndex > 7)
+                return;
+            PanelCharsetColor_Click(charsetIndex);
+        }
+
+        private void PanelCharsetColor_Click(int charsetIndex)
+        {
+            if (myMap == null || !myMap.MultiFontEnabled || myMap.IsTilemap || !myMap.FreeCharmapMode)
+                return;
+            myMap.EnsureCharsetColors();
+            colorPickerForm.Pick(myMap.CharsetColors[charsetIndex]);
+            if (colorPickerForm.PickedNewColor)
+            {
+                myMap.CharsetColors[charsetIndex] = colorPickerForm.PickedColorIndex;
+                RefreshCharsetColorPanels();
+                if (myMap.FreeCharmapMode && Globals.FreeCharmapOverlayVisible)
+                    RedrawEditorWindow();
+            }
+        }
+
+        private void ButtonConvertToFreeCharmap_Click(object sender, EventArgs e)
+        {
+            if (myMap == null || myMap.IsTilemap)
+                return;
+            if (!myMap.MultiFontEnabled)
+            {
+                MessageBox.Show("Enable Multi-Font first.", "Free Charmap", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (myMap.FreeCharmapMode)
+                return;
+
+            var r = MessageBox.Show(
+                "Convert this map to Free Charmap Mode?\n\n" +
+                "Each character cell will store which charset (0–7) it uses.\n" +
+                "The per-row charset restriction will no longer apply.\n" +
+                "DLI font-per-line editing will be disabled while in this mode.\n\n" +
+                "You can revert later (with confirmation).",
+                "Convert to Free Charmap Mode",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+            if (r != DialogResult.Yes)
+                return;
+
+            myMap.ConvertToFreeCharmapMode();
+            AtariFontRenderer.ClearFontCache();
+            UpdateFreeCharmapUi();
+            UpdateMultiFontUI();
+            if (dliForm != null && dliForm.Visible)
+            {
+                dliForm.ZoomResize();
+                dliForm.Show(dliForm.screenNumber);
+                dliForm.RenderData();
+            }
+            if (myCharPicker != null && myCharPicker.Visible)
+                myCharPicker.Refresh();
+            RedrawEditorWindow();
+        }
+
+        private void ButtonRevertFreeSingleFont_Click(object sender, EventArgs e)
+        {
+            if (myMap == null || !myMap.FreeCharmapMode)
+                return;
+
+            using (var dlg = new InputDialog("Font index for all rows (0–7):", "Revert Free Charmap", "0"))
+            {
+                if (dlg.ShowDialog(this) != DialogResult.OK)
+                    return;
+                if (!byte.TryParse(dlg.InputText?.Trim(), out byte fontIndex) || fontIndex > 7)
+                {
+                    MessageBox.Show("Please enter a font index from 0 to 7.", "Revert Free Charmap", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var r = MessageBox.Show(
+                    $"Revert to normal multifont mode?\n\nAll screen rows will use font {fontIndex}.\n" +
+                    "Per-cell charset data will be discarded.\n" +
+                    "Characters that used other fonts may display incorrectly.\n\nContinue?",
+                    "Revert Free Charmap",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+                if (r != DialogResult.Yes)
+                    return;
+
+                myMap.RevertFreeCharmapToSingleFont(fontIndex);
+                FinishFreeCharmapRevert();
+            }
+        }
+
+        private void ButtonRevertFreeMajority_Click(object sender, EventArgs e)
+        {
+            if (myMap == null || !myMap.FreeCharmapMode)
+                return;
+
+            var r = MessageBox.Show(
+                "Revert to normal multifont mode?\n\n" +
+                "For each screen row, the charset used most often on that row will be selected.\n" +
+                "Per-cell charset data will be discarded.\n" +
+                "Characters that used a minority charset on their row may display incorrectly.\n\nContinue?",
+                "Revert Free Charmap (majority)",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+            if (r != DialogResult.Yes)
+                return;
+
+            myMap.RevertFreeCharmapMajorityPerRow();
+            FinishFreeCharmapRevert();
+        }
+
+        private void FinishFreeCharmapRevert()
+        {
+            Globals.FreeCharmapOverlayVisible = false;
+            AtariFontRenderer.ClearFontCache();
+            UpdateFreeCharmapUi();
+            UpdateMultiFontUI();
+            if (dliForm != null && dliForm.Visible)
+            {
+                dliForm.ZoomResize();
+                dliForm.Show(dliForm.screenNumber);
+                dliForm.RenderData();
+            }
+            RedrawEditorWindow();
+        }
+
+        private void CheckBoxShowCharsetOverlay_CheckedChanged(object sender, EventArgs e)
+        {
+            Globals.FreeCharmapOverlayVisible = checkBoxShowCharsetOverlay.Checked && myMap != null && myMap.FreeCharmapMode;
+            RedrawEditorWindow();
+        }
+
+        private void RadioCharsetOverlayMode_CheckedChanged(object sender, EventArgs e)
+        {
+            if (radioCharsetOverlayNumbers != null && radioCharsetOverlayNumbers.Checked)
+                Globals.FreeCharmapOverlayShowNumbers = true;
+            else if (radioCharsetOverlayColors != null && radioCharsetOverlayColors.Checked)
+                Globals.FreeCharmapOverlayShowNumbers = false;
+            if (Globals.FreeCharmapOverlayVisible)
+                RedrawEditorWindow();
+        }
+
+        private void TrackBarCharsetOverlayBlend_Scroll(object sender, EventArgs e)
+        {
+            int pct = trackBarCharsetOverlayBlend.Value * 5;
+            Globals.FreeCharmapOverlayBlendPercent = pct;
+            labelCharsetOverlayBlend.Text = $"Overlay transparency: {pct}%";
+            if (Globals.FreeCharmapOverlayVisible)
+                RedrawEditorWindow();
+        }
+
     }
 }

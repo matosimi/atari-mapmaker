@@ -10,6 +10,7 @@ namespace AtariMapMaker
     public static class AtariClipboard
     {
         private static byte[,] data;
+        private static byte[,] fontData;  // Per-cell charset (free charmap mode); null if not applicable
         private static AtariMap dataSource;
         private static Graphics gr;
         public static int ClipboardWidth { get; private set; }
@@ -20,6 +21,8 @@ namespace AtariMapMaker
         public static bool IsValid { get; set; }
         public static bool IsTileIndexes { get; set; }  // True if clipboard contains tile indexes (for tilemaps), false if characters
         public static bool SkipZero { get; set; }  // If true, skip pasting 0 chars/tiles (transparency)
+        /// <summary>True when clipboard carries per-cell charset indexes for free charmap paste.</summary>
+        public static bool HasFontData { get { return fontData != null; } }
         
         /// <summary>
         /// Gets the clipboard data array (for inverse operation)
@@ -27,6 +30,14 @@ namespace AtariMapMaker
         public static byte[,] GetData()
         {
             return data;
+        }
+
+        /// <summary>
+        /// Gets per-cell charset indexes from clipboard (free charmap), or null.
+        /// </summary>
+        public static byte[,] GetFontData()
+        {
+            return fontData;
         }
         public static void SetDataSource(AtariMap myMap)
         {
@@ -45,6 +56,7 @@ namespace AtariMapMaker
             ClipboardWidth = width;
             ClipboardHeight = height;
             data = new byte[width, height];
+            fontData = null;
             for (int y = 0; y < height && y < tileData.GetLength(1); y++)
                 for (int x = 0; x < width && x < tileData.GetLength(0); x++)
                     data[x, y] = tileData[x, y];
@@ -65,7 +77,7 @@ namespace AtariMapMaker
             }
         }
 
-        public static void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset)
+        public static void Copy(Bitmap srcBmp, Rectangle mouseSelection, int offset, Globals.WindowType sourceWindow = Globals.WindowType.Editor)
         {
             if (dataSource == null)
                 return;
@@ -98,6 +110,7 @@ namespace AtariMapMaker
                 ClipboardWidth = tileWidthInTiles;
                 ClipboardHeight = tileHeightInTiles;
                 data = new byte[ClipboardWidth, ClipboardHeight];
+                fontData = null;
                 int tilesPerRow = dataSource.Stride;
                 for (int y = 0; y < ClipboardHeight; y++)
                 {
@@ -119,12 +132,27 @@ namespace AtariMapMaker
                 int yo = mouseSelection.Y / Globals.CharSize;
                 byte[] sourceData = dataSource.Data;
                 int sourceStride = dataSource.Stride;
+                bool fromCharPicker = sourceWindow == Globals.WindowType.CharPicker;
+                byte pickerFont = 0;
+                if (fromCharPicker && AtariFontRenderer.CharPickerFontIndex.HasValue)
+                    pickerFont = (byte)(AtariFontRenderer.CharPickerFontIndex.Value & 0x07);
+
+                bool copyFonts = (dataSource.FreeCharmapMode && dataSource.CharFontData != null) || fromCharPicker;
+                fontData = copyFonts ? new byte[ClipboardWidth, ClipboardHeight] : null;
+
                 for (int y = 0; y < ClipboardHeight; y++)
                     for (int x = 0; x < ClipboardWidth; x++)
                     {
                         int dataIndex = offset + x + xo + (y + yo) * sourceStride;
                         if (dataIndex >= 0 && dataIndex < sourceData.Length)
                             data[x, y] = sourceData[dataIndex];
+                        if (fontData != null)
+                        {
+                            if (fromCharPicker)
+                                fontData[x, y] = pickerFont;
+                            else if (dataSource.CharFontData != null && dataIndex >= 0 && dataIndex < dataSource.CharFontData.Length)
+                                fontData[x, y] = dataSource.CharFontData[dataIndex];
+                        }
                     }
             }
 
@@ -368,7 +396,7 @@ namespace AtariMapMaker
         }
 
         /// <summary>Full alpha=0 for each cell where pasted data is 0x00 (same rule as <see cref="Paste"/>).</summary>
-        private static void ApplySkipZeroTransparencyMask(Bitmap argb32, byte[,] clipData, int cellsW, int cellsH, int cellPixelW, int cellPixelH)
+        public static void ApplySkipZeroTransparencyMask(Bitmap argb32, byte[,] clipData, int cellsW, int cellsH, int cellPixelW, int cellPixelH)
         {
             if (argb32 == null || clipData == null)
                 return;
@@ -476,23 +504,39 @@ namespace AtariMapMaker
             }
             else
             {
-                // Character mode: set data and render preview from font
+                // Character mode: set data (+ optional free-charmap fonts) and render preview from font
                 IsTileIndexes = false;
                 ClipboardWidth = w;
                 ClipboardHeight = h;
                 data = tileData;
-                Bitmap preview = new Bitmap(w * 8, h * 8, System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
-                preview.Palette = AtariPalette.GetIndexedColor5Palette();
-                AtariFontRenderer.RenderClipboardData(data, w, h, preview);
+                fontData = null;
+                if (element.FontData != null && element.FontData.Length > 0)
+                {
+                    fontData = new byte[w, h];
+                    for (int y = 0; y < h; y++)
+                        for (int x = 0; x < w; x++)
+                        {
+                            int index = y * w + x;
+                            if (index < element.FontData.Length)
+                                fontData[x, y] = (byte)(element.FontData[index] & 0x07);
+                        }
+                }
+                // Preview image is built by caller via RegenerateClipboardImage (uses map fonts + active screen colors)
                 if (ClipboardImage != null)
+                {
                     ClipboardImage.Dispose();
-                ClipboardImage = preview;
+                    ClipboardImage = null;
+                }
                 if (UnderClipBoardImage != null)
+                {
                     UnderClipBoardImage.Dispose();
-                UnderClipBoardImage = new Bitmap(ClipboardImage);
+                    UnderClipBoardImage = null;
+                }
                 if (UnderImageGraphics != null)
+                {
                     UnderImageGraphics.Dispose();
-                UnderImageGraphics = Graphics.FromImage(UnderClipBoardImage);
+                    UnderImageGraphics = null;
+                }
             }
 
             IsValid = true;
@@ -586,6 +630,12 @@ namespace AtariMapMaker
                                     continue;
                                 
                                 dataSource.Data[destIndex] = charVal;
+
+                                if (dataSource.FreeCharmapMode && fontData != null)
+                                {
+                                    dataSource.EnsureCharFontData();
+                                    dataSource.CharFontData[destIndex] = (byte)(fontData[x, y] & 0x07);
+                                }
                             }
                         }
                     }

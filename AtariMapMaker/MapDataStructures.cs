@@ -154,6 +154,8 @@ namespace AtariMapMaker
         public string Name { get; set; }
         public Size Size { get; set; }
         public byte[] Data { get; set; }
+        /// <summary>Per-cell charset indexes (0–7), same layout as <see cref="Data"/>. Null for older library entries / non-free-charmap maps.</summary>
+        public byte[] FontData { get; set; }
         /// <summary>True when element was saved from a tilemap (clipboard had tile indexes).</summary>
         public bool IsTileData { get; set; }
     }

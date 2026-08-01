@@ -192,7 +192,7 @@ namespace AtariMapMaker
                 AtariClipboard.UnderImageGraphics.Dispose();
 
             AtariClipboard.SetDataSource(windows[window].map);
-            AtariClipboard.Copy(windows[window].fontRendererMapImage, mouseSelection, windows[window].map.Offset);
+            AtariClipboard.Copy(windows[window].fontRendererMapImage, mouseSelection, windows[window].map.Offset, window);
             AtariClipboard.UnderClipBoardImage = new Bitmap(AtariClipboard.ClipboardImage);
             AtariClipboard.UnderImageGraphics = Graphics.FromImage(AtariClipboard.UnderClipBoardImage);
             return true;
@@ -373,6 +373,12 @@ namespace AtariMapMaker
                 {
                     DrawTileByteOverlay(gr, myMap, mapImage);
                 }
+                // Free charmap: visualize charset per cell
+                if (window == Globals.WindowType.Editor && myMap.FreeCharmapMode && Globals.FreeCharmapOverlayVisible
+                    && myMap.CharFontData != null && Globals.FreeCharmapOverlayBlendPercent > 0)
+                {
+                    DrawFreeCharmapOverlay(gr, myMap, mapImage);
+                }
             }
             //separatory screenov
             if (drawScreenBorders)
@@ -493,6 +499,52 @@ namespace AtariMapMaker
         /// <summary>
         /// Draws hexadecimal (X2) tile indexes on top of each visible tile. Uses lime/bright green with transparency from TilemapInfo.ByteOverlayTransparency.
         /// </summary>
+        private static void DrawFreeCharmapOverlay(Graphics gr, AtariMap myMap, Bitmap mapImage)
+        {
+            if (myMap.CharFontData == null) return;
+            myMap.EnsureCharsetColors();
+            int widthChars = mapImage.Width / 8;
+            int heightChars = mapImage.Height / 8;
+            int stride = myMap.CharStride;
+            int maxH = myMap.MapSize.Height * myMap.ScreenSize.Height;
+            float alpha = Globals.FreeCharmapOverlayBlendPercent / 100f;
+            if (alpha <= 0f) return;
+            if (alpha > 1f) alpha = 1f;
+            int a = (int)(alpha * 255);
+            bool showNumbers = Globals.FreeCharmapOverlayShowNumbers;
+            int fontSize = Globals.Zoom == 1 ? 6 : Math.Max(8, 4 + Globals.Zoom * 2);
+            using (Font font = new Font("Consolas", fontSize, FontStyle.Bold))
+            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            using (Brush textBrush = new SolidBrush(Color.FromArgb(Math.Min(255, a + 40), Color.White)))
+            {
+                for (int y = 0; y < heightChars; y++)
+                {
+                    int absY = myMap.OffsetY + y;
+                    if (absY < 0 || absY >= maxH) continue;
+                    for (int x = 0; x < widthChars; x++)
+                    {
+                        int absX = myMap.OffsetX + x;
+                        if (absX < 0 || absX >= stride) continue;
+                        int idx = absX + absY * stride;
+                        if (idx < 0 || idx >= myMap.CharFontData.Length) continue;
+                        byte cs = (byte)(myMap.CharFontData[idx] & 0x07);
+                        Color c = AtariPalette.GetColor(myMap.CharsetColors[cs]);
+                        int px = x * Globals.CharSize;
+                        int py = y * Globals.CharSize;
+                        int cw = Globals.CharSize;
+                        int ch = Globals.CharSize;
+                        using (Brush fill = new SolidBrush(Color.FromArgb(a, c.R, c.G, c.B)))
+                            gr.FillRectangle(fill, px, py, cw, ch);
+                        if (showNumbers)
+                        {
+                            RectangleF r = new RectangleF(px, py, cw, ch);
+                            gr.DrawString(cs.ToString(), font, textBrush, r, sf);
+                        }
+                    }
+                }
+            }
+        }
+
         private static void DrawTileByteOverlay(Graphics gr, AtariMap myMap, Bitmap mapImage)
         {
             if (myMap.TilemapInfo == null || myMap.Data == null) return;
